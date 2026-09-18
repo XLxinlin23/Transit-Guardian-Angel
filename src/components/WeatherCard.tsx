@@ -1,0 +1,80 @@
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
+import { CloudRain, RefreshCw, Sun, Umbrella } from "lucide-react";
+import { useState } from "react";
+
+import { getWeather } from "../lib/singapore.functions";
+
+const WET = /rain|shower|thunder/i;
+
+export function WeatherCard({ defaultArea = "Tampines" }: { defaultArea?: string }) {
+  const [area, setArea] = useState(defaultArea);
+  const fetchWeather = useServerFn(getWeather);
+
+  const { data, isFetching, isError, refetch } = useQuery({
+    queryKey: ["weather-2h"],
+    queryFn: () => fetchWeather(),
+    refetchInterval: 10 * 60_000,
+  });
+
+  const selected = data?.areas.find((a) => a.name === area) ?? data?.areas[0];
+  const wet = selected ? WET.test(selected.forecast) : false;
+
+  return (
+    <section className="glass-panel rounded-3xl p-5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <Umbrella className="size-4 shrink-0 text-primary" />
+          <h2 className="truncate font-display text-base font-semibold text-brand-deep">Weather · next 2 hours</h2>
+        </div>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          aria-label="Refresh weather"
+          className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-secondary"
+        >
+          <RefreshCw className={`size-4 ${isFetching ? "animate-spin" : ""}`} />
+        </button>
+      </div>
+
+      {isError ? (
+        <p className="mt-4 text-sm text-warning">Couldn’t reach the weather service right now.</p>
+      ) : (
+        <>
+          <select
+            value={selected?.name ?? area}
+            onChange={(e) => setArea(e.target.value)}
+            aria-label="Weather area"
+            className="mt-4 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-brand-deep outline-none focus:border-primary"
+          >
+            {(data?.areas ?? [{ name: area, forecast: "", lat: 0, lng: 0 }]).map((a) => (
+              <option key={a.name} value={a.name}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+
+          <div
+            className={`mt-4 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-2xl p-3 ${
+              wet ? "bg-primary/10" : "bg-success-soft"
+            }`}
+          >
+            <div
+              className={`grid size-9 place-items-center rounded-xl text-primary-foreground ${
+                wet ? "bg-primary" : "bg-success"
+              }`}
+            >
+              {wet ? <CloudRain className="size-4" /> : <Sun className="size-4" />}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-brand-deep">{selected?.forecast ?? "Loading…"}</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {wet ? "Take an umbrella for the walk." : "Dry for the walk to the station."}
+              </p>
+            </div>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
