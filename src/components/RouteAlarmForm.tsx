@@ -28,6 +28,7 @@ import { deleteCommuteSchedule, listCommuteSchedules, saveCommuteSchedule } from
 import {
   ALARMS_STORAGE_KEY,
   DEFAULT_ALARM,
+  DRAFT_STORAGE_KEY,
   REPEAT_LABELS,
   WEEKDAYS,
   newAlarmId,
@@ -48,6 +49,31 @@ import { RouteMap } from "./RouteMap";
 import { MODE_COLORS, MODE_LABELS } from "@/lib/travel-modes";
 
 const BLANK_ALARM: RouteAlarm = { ...DEFAULT_ALARM, from: "", to: "", active: false };
+
+type EditorDraft = {
+  editingId: string;
+  alarm: RouteAlarm;
+  fromPlace: PlacePoint | null;
+  toPlace: PlacePoint | null;
+};
+
+function readDraft(): EditorDraft | null {
+  try {
+    const stored = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as EditorDraft;
+    if (!parsed || typeof parsed !== "object" || !parsed.alarm) return null;
+    return {
+      editingId: typeof parsed.editingId === "string" ? parsed.editingId : newAlarmId(),
+      alarm: { ...BLANK_ALARM, ...parsed.alarm },
+      fromPlace: parsed.fromPlace ?? null,
+      toPlace: parsed.toPlace ?? null,
+    };
+  } catch {
+    window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+    return null;
+  }
+}
 
 export function RouteAlarmForm() {
   const [alarms, setAlarms] = useState<SavedRouteAlarm[]>([]);
