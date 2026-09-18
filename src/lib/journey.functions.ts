@@ -135,6 +135,15 @@ async function accessLegs(
   if (options.preferWalk && hop.minutes >= walkLeg.minutes) return [walkLeg];
   if (hop.minutes >= walkLeg.minutes) return [walkLeg];
 
+  return hopToLegs(hop, from, to);
+}
+
+/** Turn a single-service bus hop into walk + bus + walk legs. */
+function hopToLegs(
+  hop: BusHop,
+  from: { lat: number; lng: number; name: string },
+  to: { lat: number; lng: number; name: string },
+): JourneyLeg[] {
   const legs: JourneyLeg[] = [];
   if (hop.walkIn > 60) {
     legs.push({
@@ -250,5 +259,22 @@ export const planJourney = createServerFn({ method: "GET" })
     const legs = [...head, ...railLegs, ...tail];
     const changes = Math.max(0, legs.length - 1);
     const minutes = legs.reduce((total, leg) => total + leg.minutes, 0) + changes * 2;
+
+    // A single direct bus can beat rail (fewer transfers, expressway stretches).
+    if (key && !leastWalking) {
+      const directHop = await findBusHop(key, origin, destination).catch(() => null);
+      if (directHop) {
+        const busLegs = hopToLegs(directHop, origin, destination);
+        const busMinutes = busLegs.reduce((total, leg) => total + leg.minutes, 0);
+        if (busMinutes < minutes) {
+          return {
+            legs: busLegs,
+            minutes: busMinutes,
+            note: `Direct bus ${directHop.service} is faster than the train here.`,
+          };
+        }
+      }
+    }
+
     return { legs, minutes };
   });
