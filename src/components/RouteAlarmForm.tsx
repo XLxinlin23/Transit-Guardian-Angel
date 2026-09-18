@@ -211,6 +211,36 @@ export function RouteAlarmForm() {
           )}
         </div>
 
+        {preview && (
+          <div className="mt-6 space-y-3 border-t border-border/70 pt-5">
+            <RouteMap
+              stations={preview.stations}
+              title="Route preview"
+              badge={preferenceSummary}
+              transferNames={preview.legs.slice(1).map((leg) => leg.stations[0]!.name)}
+              footer={`About ${preview.minutes} min · ${preview.stops} stops · ${preview.transfers === 0 ? "no change" : `${preview.transfers} change${preview.transfers > 1 ? "s" : ""}`} · currently no disruption`}
+            />
+            <ol className="space-y-2 rounded-2xl border border-border/70 bg-background/60 p-4">
+              {preview.legs.map((leg, index) => (
+                <li key={`${leg.line}-${index}`} className="flex items-start gap-3 text-sm">
+                  <span className="mt-0.5 rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">{leg.line}</span>
+                  <span className="min-w-0 text-muted-foreground">
+                    <span className="font-semibold text-brand-deep">{leg.stations[0]!.name} → {leg.stations[leg.stations.length - 1]!.name}</span>
+                    <br />
+                    {LINE_NAMES[leg.line]} · {leg.stations.length - 1} stops
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+
+        {typedBoth && !preview && (
+          <p className="mt-6 border-t border-border/70 pt-5 text-sm text-muted-foreground">
+            {looking ? "Looking up those places…" : "We could not match those yet. Try an MRT station, a bus stop name or code, or a 6-digit postal code."}
+          </p>
+        )}
+
         <div className="mt-6 border-t border-border/70 pt-5">
           <p className="text-xs font-semibold uppercase text-muted-foreground">Alert settings</p>
           <div className="mt-3 space-y-3">
