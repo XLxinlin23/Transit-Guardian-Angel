@@ -417,60 +417,6 @@ export function RouteAlarmForm() {
   );
 }
 
-type EndpointPoint = { lat: number; lng: number; label: string };
-type EndpointState = { station: string | null; note: string | null; loading: boolean; point: EndpointPoint | null };
-
-/** Accepts an MRT station name, bus stop name/code or postal code and maps it to the nearest station. */
-function useEndpoint(value: string, resolve: (options: { data: { query: string } }) => Promise<{ label: string; lat: number; lng: number } | null>): EndpointState {
-  const [state, setState] = useState<EndpointState>({ station: null, note: null, loading: false, point: null });
-
-  useEffect(() => {
-    const query = value.trim();
-    if (query.length < 2) {
-      setState({ station: null, note: null, loading: false, point: null });
-      return;
-    }
-    const direct = findStation(query);
-    if (direct) {
-      setState({
-        station: direct.name,
-        note: null,
-        loading: false,
-        point: { lat: direct.lat, lng: direct.lng, label: `${direct.name} station` },
-      });
-      return;
-    }
-    let cancelled = false;
-    setState((current) => ({ ...current, loading: true }));
-    const timer = window.setTimeout(() => {
-      resolve({ data: { query } })
-        .then((place) => {
-          if (cancelled) return;
-          const near = place ? nearestStation(place.lat, place.lng) : null;
-          setState(
-            place
-              ? {
-                  station: near?.name ?? null,
-                  note: place.label,
-                  loading: false,
-                  point: { lat: place.lat, lng: place.lng, label: place.label },
-                }
-              : { station: null, note: null, loading: false, point: null },
-          );
-        })
-        .catch(() => {
-          if (!cancelled) setState({ station: null, note: null, loading: false, point: null });
-        });
-    }, 500);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [value, resolve]);
-
-  return state;
-}
-
 function defaultDays(repeat: RepeatOption): string[] {
   if (repeat === "weekdays") return ["Mon", "Tue", "Wed", "Thu", "Fri"];
   if (repeat === "weekends") return ["Sat", "Sun"];
