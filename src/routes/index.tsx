@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle, BellRing, Check, ChevronRight, Home, RouteIcon, Settings2, SlidersHorizontal, TrainFront } from "lucide-react";
-import { useState } from "react";
-import rachelAvatar from "../assets/rachel-avatar.jpg";
+import { useEffect, useState } from "react";
+import { RouteMap } from "../components/RouteMap";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -22,6 +22,12 @@ type Tab = "home" | "preference" | "alerts";
 function Index() {
   const [tab, setTab] = useState<Tab>("home");
 
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+    }
+  }, []);
+
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-background">
       <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
@@ -30,7 +36,7 @@ function Index() {
       </div>
 
       <main className="relative mx-auto min-h-screen w-full max-w-md px-4 pb-28 pt-5">
-        <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+        <header className="flex items-center gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand font-display text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20">WL</div>
             <div className="min-w-0 leading-tight">
@@ -38,7 +44,6 @@ function Index() {
               <p className="truncate text-xs text-muted-foreground">EWL · Weekday · 07:40</p>
             </div>
           </div>
-          <img src={rachelAvatar} alt="Rachel" width={512} height={512} className="size-11 shrink-0 rounded-xl object-cover ring-2 ring-surface-strong shadow-sm" />
         </header>
 
         {tab === "home" && <HomeView />}
@@ -93,6 +98,10 @@ function HomeView() {
           <div className="grid size-9 place-items-center rounded-xl bg-success text-primary-foreground"><Check className="size-4" /></div>
           <p className="min-w-0 text-sm font-semibold text-brand-deep">No action needed — your commute is within 5 minutes.</p>
         </div>
+      </section>
+
+      <section className="mt-4">
+        <RouteMap />
       </section>
 
       <section className="mt-6">
