@@ -25,9 +25,8 @@ import {
   type RouteAlarm,
 } from "@/lib/commute-settings";
 import { getDeviceId } from "@/lib/device-id";
-import { findStation, nearestStation } from "@/lib/mrt-network";
 import { planJourney, type Journey, type TravelMode } from "@/lib/journey.functions";
-import { resolvePlace } from "@/lib/places.functions";
+import { PlacePicker, placeLine, type ConfirmedPlace } from "./PlacePicker";
 import { CommuteAlertCard } from "./CommuteAlertCard";
 import { RouteMap } from "./RouteMap";
 import { MODE_COLORS, MODE_LABELS } from "@/lib/travel-modes";
@@ -161,6 +160,20 @@ export function RouteAlarmForm() {
     }
   };
 
+  const confirmPlace = (field: "from" | "to", place: ConfirmedPlace | null) => {
+    if (field === "from") setFromPlace(place);
+    else setToPlace(place);
+    if (!place) return;
+    const next = { from: field === "from" ? place.name : alarm.from, to: field === "to" ? place.name : alarm.to };
+    setAlarm((current) => ({ ...current, ...next }));
+    setSaved(false);
+    persistDraft({
+      ...next,
+      fromPlace: field === "from" ? place : fromPlace,
+      toPlace: field === "to" ? place : toPlace,
+    });
+  };
+
   const toggleDay = (day: string, checked: boolean) => {
     const days = checked ? [...alarm.days, day] : alarm.days.filter((item) => item !== day);
     update("days", days);
@@ -291,6 +304,11 @@ export function RouteAlarmForm() {
 
         {preview && segments.length > 0 && (
           <div className="mt-6 space-y-3 border-t border-border/70 pt-5">
+            {toPlace && (
+              <p className="rounded-xl border border-success/25 bg-success-soft/60 px-3 py-2 text-xs font-semibold text-brand-deep">
+                Destination confirmed: {placeLine(toPlace)}
+              </p>
+            )}
             <RouteMap
               stations={[]}
               segments={segments}
@@ -326,9 +344,15 @@ export function RouteAlarmForm() {
           </div>
         )}
 
-        {typedBoth && !preview && (
+        {typedBoth && !bothConfirmed && (
           <p className="mt-6 border-t border-border/70 pt-5 text-sm text-muted-foreground">
-            {looking ? "Working out the best way door to door…" : "We could not match those yet. Try an MRT station, a bus stop name or code, or a 6-digit postal code."}
+            Pick a suggestion for both locations to confirm them, then the route appears here.
+          </p>
+        )}
+
+        {bothConfirmed && !preview && (
+          <p className="mt-6 border-t border-border/70 pt-5 text-sm text-muted-foreground">
+            {looking ? "Working out the best way door to door…" : "We could not build a route between those two points yet."}
           </p>
         )}
 
