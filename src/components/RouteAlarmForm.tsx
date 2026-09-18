@@ -30,7 +30,7 @@ import { planJourney, type Journey, type TravelMode } from "@/lib/journey.functi
 import { resolvePlace } from "@/lib/places.functions";
 import { CommuteAlertCard } from "./CommuteAlertCard";
 import { RouteMap } from "./RouteMap";
-import { MODE_COLORS } from "./RouteLeafletMap";
+import { MODE_COLORS, MODE_LABELS } from "@/lib/travel-modes";
 
 export function RouteAlarmForm() {
   const [alarm, setAlarm] = useState<RouteAlarm>(DEFAULT_ALARM);
@@ -376,8 +376,6 @@ export function RouteAlarmForm() {
     </div>
   );
 }
-
-const MODE_LABELS: Record<TravelMode, string> = { walk: "Walk", bus: "Bus", mrt: "MRT", lrt: "LRT" };
 
 type EndpointPoint = { lat: number; lng: number; label: string };
 type EndpointState = { station: string | null; note: string | null; loading: boolean; point: EndpointPoint | null };

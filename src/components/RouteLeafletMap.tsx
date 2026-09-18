@@ -4,6 +4,8 @@ import type { LatLngBoundsExpression, LatLngExpression, Map as LeafletMap } from
 import type { RefObject } from "react";
 import { AttributionControl, CircleMarker, MapContainer, Polyline, TileLayer, Tooltip } from "react-leaflet";
 
+import { MODE_COLORS } from "@/lib/travel-modes";
+
 /** Swap this for a keyed provider URL if usage ever grows beyond light demo traffic. */
 const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const TILE_ATTRIBUTION = '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>';
@@ -12,13 +14,6 @@ const BRAND = "#1473E6";
 const MUTED = "#9DB2C8";
 const SUCCESS = "#18A875";
 const SURFACE = "#FFFFFF";
-
-export const MODE_COLORS = {
-  walk: "#64748B",
-  bus: "#18A875",
-  mrt: "#1473E6",
-  lrt: "#0B2A4A",
-} as const;
 
 export type MapPoint = { name: string; lat: number; lng: number };
 
