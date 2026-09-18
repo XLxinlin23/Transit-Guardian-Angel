@@ -14,7 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      commute_schedules: {
+        Row: {
+          active: boolean
+          arrive_by: string
+          bus_stop_code: string | null
+          created_at: string
+          destination: string
+          device_id: string
+          id: string
+          max_delay: number
+          notify_bus: boolean
+          notify_crowd: boolean
+          notify_lead_minutes: number
+          notify_weather: boolean
+          origin: string
+          preferences: string[]
+          repeat_option: string
+          travel_days: string[]
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          arrive_by?: string
+          bus_stop_code?: string | null
+          created_at?: string
+          destination: string
+          device_id: string
+          id?: string
+          max_delay?: number
+          notify_bus?: boolean
+          notify_crowd?: boolean
+          notify_lead_minutes?: number
+          notify_weather?: boolean
+          origin: string
+          preferences?: string[]
+          repeat_option?: string
+          travel_days?: string[]
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          arrive_by?: string
+          bus_stop_code?: string | null
+          created_at?: string
+          destination?: string
+          device_id?: string
+          id?: string
+          max_delay?: number
+          notify_bus?: boolean
+          notify_crowd?: boolean
+          notify_lead_minutes?: number
+          notify_weather?: boolean
+          origin?: string
+          preferences?: string[]
+          repeat_option?: string
+          travel_days?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
