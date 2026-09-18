@@ -25,9 +25,8 @@ import {
   type RouteAlarm,
 } from "@/lib/commute-settings";
 import { getDeviceId } from "@/lib/device-id";
-import { findStation, nearestStation } from "@/lib/mrt-network";
 import { planJourney, type Journey, type TravelMode } from "@/lib/journey.functions";
-import { resolvePlace } from "@/lib/places.functions";
+import { PlacePicker, placeLine, type ConfirmedPlace } from "./PlacePicker";
 import { CommuteAlertCard } from "./CommuteAlertCard";
 import { RouteMap } from "./RouteMap";
 import { MODE_COLORS, MODE_LABELS } from "@/lib/travel-modes";
@@ -41,15 +40,24 @@ export function RouteAlarmForm() {
   const saveRemote = useServerFn(saveCommuteSchedule);
   const loadRemote = useServerFn(getCommuteSchedule);
 
+  const [fromPlace, setFromPlace] = useState<ConfirmedPlace | null>(null);
+  const [toPlace, setToPlace] = useState<ConfirmedPlace | null>(null);
+
+  const persistDraft = (draft: { from: string; to: string; fromPlace: ConfirmedPlace | null; toPlace: ConfirmedPlace | null }) => {
+    window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+  };
+
   useEffect(() => {
     let draftFrom: string | undefined;
     let draftTo: string | undefined;
     const draftRaw = window.localStorage.getItem(DRAFT_STORAGE_KEY);
     if (draftRaw) {
       try {
-        const draft = JSON.parse(draftRaw) as { from?: string; to?: string };
+        const draft = JSON.parse(draftRaw) as { from?: string; to?: string; fromPlace?: ConfirmedPlace | null; toPlace?: ConfirmedPlace | null };
         if (typeof draft.from === "string") draftFrom = draft.from;
         if (typeof draft.to === "string") draftTo = draft.to;
+        if (draft.fromPlace) setFromPlace(draft.fromPlace);
+        if (draft.toPlace) setToPlace(draft.toPlace);
       } catch {
         window.localStorage.removeItem(DRAFT_STORAGE_KEY);
       }
@@ -118,22 +126,16 @@ export function RouteAlarmForm() {
     };
   }, []);
 
-  const resolve = useServerFn(resolvePlace);
-  const fromPoint = useEndpoint(alarm.from, resolve);
-  const toPoint = useEndpoint(alarm.to, resolve);
-
   const planJourneyFn = useServerFn(planJourney);
-  const fromCoords = fromPoint.point;
-  const toCoords = toPoint.point;
   const journeyQuery = useQuery({
-    queryKey: ["journey", fromCoords?.lat, fromCoords?.lng, toCoords?.lat, toCoords?.lng, preferences.join(",")],
-    enabled: Boolean(fromCoords && toCoords),
+    queryKey: ["journey", fromPlace?.lat, fromPlace?.lng, toPlace?.lat, toPlace?.lng, preferences.join(",")],
+    enabled: Boolean(fromPlace && toPlace),
     staleTime: 5 * 60_000,
     queryFn: () =>
       planJourneyFn({
         data: {
-          from: { lat: fromCoords!.lat, lng: fromCoords!.lng, label: fromCoords!.label },
-          to: { lat: toCoords!.lat, lng: toCoords!.lng, label: toCoords!.label },
+          from: { lat: fromPlace!.lat, lng: fromPlace!.lng, label: fromPlace!.name },
+          to: { lat: toPlace!.lat, lng: toPlace!.lng, label: toPlace!.name },
           preferences,
         },
       }),
@@ -145,7 +147,8 @@ export function RouteAlarmForm() {
   );
   const modesUsed = useMemo(() => [...new Set(preview?.legs.map((leg) => leg.mode) ?? [])], [preview]);
   const typedBoth = Boolean(alarm.from.trim() && alarm.to.trim());
-  const looking = fromPoint.loading || toPoint.loading || journeyQuery.isFetching;
+  const bothConfirmed = Boolean(fromPlace && toPlace);
+  const looking = journeyQuery.isFetching;
   const preferenceSummary = (preferences.length ? preferences : DEFAULT_PREFERENCES).map((value) => PREFERENCE_LABELS[value]).join(" · ");
 
   const update = <Key extends keyof RouteAlarm>(key: Key, value: RouteAlarm[Key]) => {
@@ -153,8 +156,22 @@ export function RouteAlarmForm() {
     setSaved(false);
     if (key === "from" || key === "to") {
       const next = { ...alarm, [key]: value };
-      window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ from: next.from, to: next.to }));
+      persistDraft({ from: next.from, to: next.to, fromPlace: key === "from" ? null : fromPlace, toPlace: key === "to" ? null : toPlace });
     }
+  };
+
+  const confirmPlace = (field: "from" | "to", place: ConfirmedPlace | null) => {
+    if (field === "from") setFromPlace(place);
+    else setToPlace(place);
+    if (!place) return;
+    const next = { from: field === "from" ? place.name : alarm.from, to: field === "to" ? place.name : alarm.to };
+    setAlarm((current) => ({ ...current, ...next }));
+    setSaved(false);
+    persistDraft({
+      ...next,
+      fromPlace: field === "from" ? place : fromPlace,
+      toPlace: field === "to" ? place : toPlace,
+    });
   };
 
   const toggleDay = (day: string, checked: boolean) => {
@@ -226,12 +243,24 @@ export function RouteAlarmForm() {
       <section className="glass-panel mt-5 rounded-3xl p-5">
         <div className="space-y-5">
           <Field icon={Navigation} label="From">
-            <Input value={alarm.from} onChange={(event) => update("from", event.target.value)} placeholder="Where are you departing from?" aria-label="From" className="h-11 bg-background/70" />
-            {fromPoint.note && <p className="mt-1.5 text-xs text-muted-foreground">{fromPoint.note}</p>}
+            <PlacePicker
+              value={alarm.from}
+              onValueChange={(value) => update("from", value)}
+              confirmed={fromPlace}
+              onConfirm={(place) => confirmPlace("from", place)}
+              placeholder="Where are you departing from?"
+              ariaLabel="From"
+            />
           </Field>
           <Field icon={MapPin} label="To">
-            <Input value={alarm.to} onChange={(event) => update("to", event.target.value)} placeholder="Where are you going?" aria-label="To" className="h-11 bg-background/70" />
-            {toPoint.note && <p className="mt-1.5 text-xs text-muted-foreground">{toPoint.note}</p>}
+            <PlacePicker
+              value={alarm.to}
+              onValueChange={(value) => update("to", value)}
+              confirmed={toPlace}
+              onConfirm={(place) => confirmPlace("to", place)}
+              placeholder="Where are you going?"
+              ariaLabel="To"
+            />
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field icon={AlarmClock} label="Reach by">
@@ -275,6 +304,11 @@ export function RouteAlarmForm() {
 
         {preview && segments.length > 0 && (
           <div className="mt-6 space-y-3 border-t border-border/70 pt-5">
+            {toPlace && (
+              <p className="rounded-xl border border-success/25 bg-success-soft/60 px-3 py-2 text-xs font-semibold text-brand-deep">
+                Destination confirmed: {placeLine(toPlace)}
+              </p>
+            )}
             <RouteMap
               stations={[]}
               segments={segments}
@@ -310,9 +344,15 @@ export function RouteAlarmForm() {
           </div>
         )}
 
-        {typedBoth && !preview && (
+        {typedBoth && !bothConfirmed && (
           <p className="mt-6 border-t border-border/70 pt-5 text-sm text-muted-foreground">
-            {looking ? "Working out the best way door to door…" : "We could not match those yet. Try an MRT station, a bus stop name or code, or a 6-digit postal code."}
+            Pick a suggestion for both locations to confirm them, then the route appears here.
+          </p>
+        )}
+
+        {bothConfirmed && !preview && (
+          <p className="mt-6 border-t border-border/70 pt-5 text-sm text-muted-foreground">
+            {looking ? "Working out the best way door to door…" : "We could not build a route between those two points yet."}
           </p>
         )}
 
@@ -375,60 +415,6 @@ export function RouteAlarmForm() {
       </section>
     </div>
   );
-}
-
-type EndpointPoint = { lat: number; lng: number; label: string };
-type EndpointState = { station: string | null; note: string | null; loading: boolean; point: EndpointPoint | null };
-
-/** Accepts an MRT station name, bus stop name/code or postal code and maps it to the nearest station. */
-function useEndpoint(value: string, resolve: (options: { data: { query: string } }) => Promise<{ label: string; lat: number; lng: number } | null>): EndpointState {
-  const [state, setState] = useState<EndpointState>({ station: null, note: null, loading: false, point: null });
-
-  useEffect(() => {
-    const query = value.trim();
-    if (query.length < 2) {
-      setState({ station: null, note: null, loading: false, point: null });
-      return;
-    }
-    const direct = findStation(query);
-    if (direct) {
-      setState({
-        station: direct.name,
-        note: null,
-        loading: false,
-        point: { lat: direct.lat, lng: direct.lng, label: `${direct.name} station` },
-      });
-      return;
-    }
-    let cancelled = false;
-    setState((current) => ({ ...current, loading: true }));
-    const timer = window.setTimeout(() => {
-      resolve({ data: { query } })
-        .then((place) => {
-          if (cancelled) return;
-          const near = place ? nearestStation(place.lat, place.lng) : null;
-          setState(
-            place
-              ? {
-                  station: near?.name ?? null,
-                  note: place.label,
-                  loading: false,
-                  point: { lat: place.lat, lng: place.lng, label: place.label },
-                }
-              : { station: null, note: null, loading: false, point: null },
-          );
-        })
-        .catch(() => {
-          if (!cancelled) setState({ station: null, note: null, loading: false, point: null });
-        });
-    }, 500);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [value, resolve]);
-
-  return state;
 }
 
 function defaultDays(repeat: RepeatOption): string[] {
