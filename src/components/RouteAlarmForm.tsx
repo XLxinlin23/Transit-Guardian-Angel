@@ -130,6 +130,10 @@ export function RouteAlarmForm() {
   const update = <Key extends keyof RouteAlarm>(key: Key, value: RouteAlarm[Key]) => {
     setAlarm((current) => ({ ...current, [key]: value }));
     setSaved(false);
+    if (key === "from" || key === "to") {
+      const next = { ...alarm, [key]: value };
+      window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ from: next.from, to: next.to }));
+    }
   };
 
   const toggleDay = (day: string, checked: boolean) => {
