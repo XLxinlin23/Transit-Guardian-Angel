@@ -104,11 +104,36 @@ export function RouteAlarmForm() {
     update("days", days);
   };
 
-  const saveAlarm = () => {
+  const saveAlarm = async () => {
     const next = { ...alarm, active: true };
     window.localStorage.setItem(ALARM_STORAGE_KEY, JSON.stringify(next));
     setAlarm(next);
     setSaved(true);
+    setSyncing(true);
+    try {
+      await saveRemote({
+        data: {
+          deviceId: getDeviceId(),
+          origin: next.from,
+          destination: next.to,
+          travelDays: next.repeat === "custom" ? next.days : defaultDays(next.repeat),
+          repeatOption: next.repeat,
+          arriveBy: next.arriveBy,
+          maxDelay: Number(next.maxDelay) || 0,
+          preferences,
+          active: true,
+          notifyLeadMinutes: Number(next.notifyLeadMinutes) || 0,
+          notifyWeather: next.notifyWeather,
+          notifyCrowd: next.notifyCrowd,
+          notifyBus: next.notifyBus,
+          busStopCode: next.busStopCode.trim() ? next.busStopCode.trim() : null,
+        },
+      });
+    } catch {
+      /* saved on device; sync retries on next save */
+    } finally {
+      setSyncing(false);
+    }
   };
 
   const canSave = alarm.from.trim() && alarm.to.trim() && alarm.arriveBy && (alarm.repeat !== "custom" || alarm.days.length > 0);
