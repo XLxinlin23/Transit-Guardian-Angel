@@ -145,6 +145,14 @@ export function RouteAlarmForm() {
 
   const canSave = alarm.from.trim() && alarm.to.trim() && alarm.arriveBy && (alarm.repeat !== "custom" || alarm.days.length > 0);
   const repeatSummary = alarm.repeat === "custom" ? alarm.days.join(", ") : REPEAT_LABELS[alarm.repeat];
+  const settingsSummary = [
+    `${alarm.notifyLeadMinutes} min before`,
+    alarm.notifyWeather ? "weather" : null,
+    alarm.notifyCrowd ? "crowd" : null,
+    alarm.notifyBus ? (alarm.busStopCode.trim() ? `bus ${alarm.busStopCode.trim()}` : "bus") : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <div className="pt-7">
