@@ -51,6 +51,13 @@ export function RouteAlarmForm() {
         window.localStorage.removeItem(DRAFT_STORAGE_KEY);
       }
     }
+    if (draftFrom !== undefined || draftTo !== undefined) {
+      setAlarm((current) => ({
+        ...current,
+        from: draftFrom ?? current.from,
+        to: draftTo ?? current.to,
+      }));
+    }
     const stored = window.localStorage.getItem(ALARM_STORAGE_KEY);
     if (stored) {
       try {
