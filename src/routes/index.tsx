@@ -30,14 +30,17 @@ type Tab = "home" | "preference" | "arrivals" | "alerts";
 
 function Index() {
   return (
-    <TripProvider>
-      <IndexShell />
-    </TripProvider>
+    <ThemeProvider>
+      <TripProvider>
+        <IndexShell />
+      </TripProvider>
+    </ThemeProvider>
   );
 }
 
 function IndexShell() {
   const [tab, setTab] = useState<Tab>("home");
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
