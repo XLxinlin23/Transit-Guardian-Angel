@@ -17,12 +17,16 @@ export type Database = {
       commute_schedules: {
         Row: {
           active: boolean
+          alarm_id: string
           arrive_by: string
           bus_stop_code: string | null
           created_at: string
           destination: string
           device_id: string
+          from_lat: number | null
+          from_lng: number | null
           id: string
+          label: string | null
           max_delay: number
           notify_bus: boolean
           notify_crowd: boolean
@@ -31,17 +35,23 @@ export type Database = {
           origin: string
           preferences: string[]
           repeat_option: string
+          to_lat: number | null
+          to_lng: number | null
           travel_days: string[]
           updated_at: string
         }
         Insert: {
           active?: boolean
+          alarm_id?: string
           arrive_by?: string
           bus_stop_code?: string | null
           created_at?: string
           destination: string
           device_id: string
+          from_lat?: number | null
+          from_lng?: number | null
           id?: string
+          label?: string | null
           max_delay?: number
           notify_bus?: boolean
           notify_crowd?: boolean
@@ -50,17 +60,23 @@ export type Database = {
           origin: string
           preferences?: string[]
           repeat_option?: string
+          to_lat?: number | null
+          to_lng?: number | null
           travel_days?: string[]
           updated_at?: string
         }
         Update: {
           active?: boolean
+          alarm_id?: string
           arrive_by?: string
           bus_stop_code?: string | null
           created_at?: string
           destination?: string
           device_id?: string
+          from_lat?: number | null
+          from_lng?: number | null
           id?: string
+          label?: string | null
           max_delay?: number
           notify_bus?: boolean
           notify_crowd?: boolean
@@ -69,6 +85,8 @@ export type Database = {
           origin?: string
           preferences?: string[]
           repeat_option?: string
+          to_lat?: number | null
+          to_lng?: number | null
           travel_days?: string[]
           updated_at?: string
         }
