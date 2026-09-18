@@ -208,18 +208,25 @@ export function RouteAlarmForm() {
     .join(" · ");
 
   const update = <Key extends keyof RouteAlarm>(key: Key, value: RouteAlarm[Key]) => {
-    setAlarm((current) => ({ ...current, [key]: value }));
-    setSaved(false);
+    const nextAlarm = { ...alarm, [key]: value };
+    const nextFrom = key === "from" ? null : fromPlace;
+    const nextTo = key === "to" ? null : toPlace;
+    setAlarm(nextAlarm);
     if (key === "from") setFromPlace(null);
     if (key === "to") setToPlace(null);
+    setSaved(false);
+    persistDraft({ editingId, alarm: nextAlarm, fromPlace: nextFrom, toPlace: nextTo });
   };
 
   const confirmPlace = (field: "from" | "to", place: ConfirmedPlace | null) => {
-    if (field === "from") setFromPlace(place);
-    else setToPlace(place);
-    if (!place) return;
-    setAlarm((current) => ({ ...current, [field]: place.name }));
+    const nextFrom = field === "from" ? place : fromPlace;
+    const nextTo = field === "to" ? place : toPlace;
+    const nextAlarm = place ? { ...alarm, [field]: place.name } : alarm;
+    setFromPlace(nextFrom);
+    setToPlace(nextTo);
+    if (place) setAlarm(nextAlarm);
     setSaved(false);
+    persistDraft({ editingId, alarm: nextAlarm, fromPlace: nextFrom, toPlace: nextTo });
   };
 
   const toggleDay = (day: string, checked: boolean) => {
