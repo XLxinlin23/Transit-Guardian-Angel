@@ -4,7 +4,7 @@ import { Focus, Maximize2, Minimize2, X } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import type { MapPoint } from "./RouteLeafletMap";
+import type { MapPoint, MapSegment } from "./RouteLeafletMap";
 
 const RouteLeafletMap = lazy(() => import("./RouteLeafletMap"));
 
@@ -14,6 +14,7 @@ function MapSkeleton() {
 
 type RouteMapProps = {
   stations: MapPoint[];
+  segments?: MapSegment[] | undefined;
   title?: string | undefined;
   badge?: string | undefined;
   footer?: string | undefined;
@@ -21,12 +22,15 @@ type RouteMapProps = {
   transferNames?: string[] | undefined;
 };
 
-export function RouteMap({ stations, title = "Route map", badge, footer, currentIndex, transferNames }: RouteMapProps) {
+export function RouteMap({ stations, segments, title = "Route map", badge, footer, currentIndex, transferNames }: RouteMapProps) {
   const [expanded, setExpanded] = useState(false);
   const mapRef = useRef<LeafletMap | null>(null);
   const routeBounds = useMemo<LatLngBoundsExpression>(
-    () => stations.map((station) => [station.lat, station.lng] as [number, number]),
-    [stations],
+    () =>
+      (segments?.length ? segments.flatMap((segment) => segment.points) : stations).map(
+        (point) => [point.lat, point.lng] as [number, number],
+      ),
+    [segments, stations],
   );
 
   const fitRoute = () => {
@@ -47,7 +51,7 @@ export function RouteMap({ stations, title = "Route map", badge, footer, current
     return () => window.cancelAnimationFrame(frame);
   }, [expanded, routeBounds]);
 
-  if (stations.length < 2) return null;
+  if (!segments?.length && stations.length < 2) return null;
 
   return (
     <div className={expanded ? "relative" : "glass-panel relative rounded-3xl p-4"}>
@@ -82,7 +86,7 @@ export function RouteMap({ stations, title = "Route map", badge, footer, current
       >
         <ClientOnly fallback={<MapSkeleton />}>
           <Suspense fallback={<MapSkeleton />}>
-            <RouteLeafletMap mapRef={mapRef} stations={stations} currentIndex={currentIndex} transferNames={transferNames} />
+            <RouteLeafletMap mapRef={mapRef} stations={stations} segments={segments} currentIndex={currentIndex} transferNames={transferNames} />
           </Suspense>
         </ClientOnly>
 
