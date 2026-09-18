@@ -125,7 +125,10 @@ async function accessLegs(
 
   if (straight <= options.walkLimit || !key) return [walkLeg];
 
-  const hop = await findBusHop(key, from, to).catch(() => null);
+  const hop = await findBusHop(key, from, to).catch((error) => {
+    console.error("bus hop lookup failed", error);
+    return null;
+  });
   if (!hop) return [walkLeg];
   if (options.preferWalk && hop.minutes >= walkLeg.minutes) return [walkLeg];
   if (hop.minutes >= walkLeg.minutes) return [walkLeg];
