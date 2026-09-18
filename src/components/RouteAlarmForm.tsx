@@ -516,7 +516,7 @@ export function RouteAlarmForm() {
         )}
 
         <Button className="mt-6 h-11 w-full rounded-xl" disabled={!canSave || syncing} onClick={saveAlarm}>
-          <Check /> {syncing ? "Saving…" : editingExisting ? "Save route" : "Save route"}
+          <Check /> {syncing ? "Saving…" : "Save route"}
         </Button>
         <p className="mt-2 text-center text-[11px] text-muted-foreground">
           Saves this trip to your Saved alarms list above.
