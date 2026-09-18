@@ -241,16 +241,19 @@ export function RouteAlarmForm() {
     setToPlace(entry.toPlace);
     setSaved(true);
     setSettingsOpen(false);
+    persistDraft({ editingId: entry.id, alarm: entry.alarm, fromPlace: entry.fromPlace, toPlace: entry.toPlace });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const startNewAlarm = () => {
-    setEditingId(newAlarmId());
+    const id = newAlarmId();
+    setEditingId(id);
     setAlarm(BLANK_ALARM);
     setFromPlace(null);
     setToPlace(null);
     setSaved(false);
     setSettingsOpen(false);
+    persistDraft({ editingId: id, alarm: BLANK_ALARM, fromPlace: null, toPlace: null });
   };
 
   const removeAlarm = async (id: string) => {
