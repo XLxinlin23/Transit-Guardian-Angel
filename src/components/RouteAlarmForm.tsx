@@ -41,15 +41,24 @@ export function RouteAlarmForm() {
   const saveRemote = useServerFn(saveCommuteSchedule);
   const loadRemote = useServerFn(getCommuteSchedule);
 
+  const [fromPlace, setFromPlace] = useState<ConfirmedPlace | null>(null);
+  const [toPlace, setToPlace] = useState<ConfirmedPlace | null>(null);
+
+  const persistDraft = (draft: { from: string; to: string; fromPlace: ConfirmedPlace | null; toPlace: ConfirmedPlace | null }) => {
+    window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+  };
+
   useEffect(() => {
     let draftFrom: string | undefined;
     let draftTo: string | undefined;
     const draftRaw = window.localStorage.getItem(DRAFT_STORAGE_KEY);
     if (draftRaw) {
       try {
-        const draft = JSON.parse(draftRaw) as { from?: string; to?: string };
+        const draft = JSON.parse(draftRaw) as { from?: string; to?: string; fromPlace?: ConfirmedPlace | null; toPlace?: ConfirmedPlace | null };
         if (typeof draft.from === "string") draftFrom = draft.from;
         if (typeof draft.to === "string") draftTo = draft.to;
+        if (draft.fromPlace) setFromPlace(draft.fromPlace);
+        if (draft.toPlace) setToPlace(draft.toPlace);
       } catch {
         window.localStorage.removeItem(DRAFT_STORAGE_KEY);
       }
