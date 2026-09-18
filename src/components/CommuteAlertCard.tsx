@@ -3,13 +3,27 @@ import { useServerFn } from "@tanstack/react-start";
 import { AlertTriangle, BellRing, Bus, CheckCircle2, CloudRain, RefreshCw, Route, Users } from "lucide-react";
 
 import { getCommuteBriefing } from "@/lib/commute.functions";
-import type { RouteAlarm, RoutePreference } from "@/lib/commute-settings";
+import type { PlacePoint, RouteAlarm, RoutePreference } from "@/lib/commute-settings";
 
-export function CommuteAlertCard({ alarm, preferences }: { alarm: RouteAlarm; preferences: RoutePreference[] }) {
+export function CommuteAlertCard({
+  alarm,
+  preferences,
+  fromPlace,
+  toPlace,
+}: {
+  alarm: RouteAlarm;
+  preferences: RoutePreference[];
+  fromPlace?: PlacePoint | null;
+  toPlace?: PlacePoint | null;
+}) {
   const fetchBriefing = useServerFn(getCommuteBriefing);
   const payload = {
     from: alarm.from,
     to: alarm.to,
+    fromLat: fromPlace?.lat ?? null,
+    fromLng: fromPlace?.lng ?? null,
+    toLat: toPlace?.lat ?? null,
+    toLng: toPlace?.lng ?? null,
     arriveBy: alarm.arriveBy,
     maxDelay: Number(alarm.maxDelay) || 0,
     preferences,
