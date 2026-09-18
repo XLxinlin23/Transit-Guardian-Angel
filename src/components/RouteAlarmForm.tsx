@@ -96,10 +96,6 @@ export function RouteAlarmForm() {
   }, [loadRemote]);
 
   useEffect(() => {
-    window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ from: alarm.from, to: alarm.to }));
-  }, [alarm.from, alarm.to]);
-
-  useEffect(() => {
     const load = () => {
       const stored = window.localStorage.getItem(PREFERENCE_STORAGE_KEY);
       if (!stored) return;
