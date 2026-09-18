@@ -110,7 +110,6 @@ export function PlacePicker({ value, onValueChange, confirmed, onConfirm, placeh
       lng: item.lng,
     };
     onConfirm(place);
-    onValueChange(item.name);
     setOpen(false);
     setResults([]);
   };
