@@ -1,7 +1,7 @@
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { CloudRain, RefreshCw, Sun, Umbrella } from "lucide-react";
-import { useState } from "react";
+import { CloudRain, Crosshair, RefreshCw, Sun, Umbrella } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import { getWeather } from "../lib/singapore.functions";
 
@@ -9,6 +9,10 @@ const WET = /rain|shower|thunder/i;
 
 export function WeatherCard({ defaultArea = "Tampines" }: { defaultArea?: string }) {
   const [area, setArea] = useState(defaultArea);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locationNote, setLocationNote] = useState<string | null>(null);
+  const userPicked = useRef(false);
   const fetchWeather = useServerFn(getWeather);
 
   const { data, isFetching, isError, refetch } = useQuery({
@@ -17,7 +21,49 @@ export function WeatherCard({ defaultArea = "Tampines" }: { defaultArea?: string
     refetchInterval: 10 * 60_000,
   });
 
-  const selected = data?.areas.find((a) => a.name === area) ?? data?.areas[0];
+  function locate(manual = false) {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      if (manual) setLocationNote("Location isn’t available on this device.");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        userPicked.current = false;
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocating(false);
+      },
+      () => {
+        setLocating(false);
+        setLocationNote("Location off — showing " + area + ". You can type another area.");
+      },
+      { timeout: 8000, maximumAge: 5 * 60_000 },
+    );
+  }
+
+  useEffect(() => {
+    locate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Pick the nearest forecast area to the device location.
+  useEffect(() => {
+    if (!coords || !data?.areas.length || userPicked.current) return;
+    let best = data.areas[0]!;
+    let bestDist = Number.POSITIVE_INFINITY;
+    for (const a of data.areas) {
+      const d = (a.lat - coords.lat) ** 2 + (a.lng - coords.lng) ** 2;
+      if (d < bestDist) {
+        bestDist = d;
+        best = a;
+      }
+    }
+    setArea(best.name);
+    setLocationNote("Nearest area to you: " + best.name);
+  }, [coords, data]);
+
+  const match = data?.areas.find((a) => a.name.toLowerCase() === area.trim().toLowerCase());
+  const selected = match ?? data?.areas[0];
   const wet = selected ? WET.test(selected.forecast) : false;
 
   return (
