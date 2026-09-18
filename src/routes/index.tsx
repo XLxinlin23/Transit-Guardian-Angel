@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { BellRing, Bus, Home, SlidersHorizontal } from "lucide-react";
+import { BellRing, Bus, Home, Settings, SlidersHorizontal } from "lucide-react";
+import { SettingsSheet } from "../components/SettingsSheet";
+import { ThemeProvider } from "../lib/theme";
 import { useEffect, useState } from "react";
 import { BusArrivalCard } from "../components/BusArrivalCard";
 import { MrtStatusCard } from "../components/MrtStatusCard";
@@ -28,14 +30,17 @@ type Tab = "home" | "preference" | "arrivals" | "alerts";
 
 function Index() {
   return (
-    <TripProvider>
-      <IndexShell />
-    </TripProvider>
+    <ThemeProvider>
+      <TripProvider>
+        <IndexShell />
+      </TripProvider>
+    </ThemeProvider>
   );
 }
 
 function IndexShell() {
   const [tab, setTab] = useState<Tab>("home");
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -57,7 +62,22 @@ function IndexShell() {
             <p className="truncate font-display text-base font-semibold text-brand-deep">Wayline</p>
             <p className="truncate text-xs text-muted-foreground">Smart commute alarms</p>
           </div>
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            aria-label="Open settings"
+            className="ml-auto grid size-11 shrink-0 place-items-center rounded-xl bg-surface-strong text-primary shadow-sm transition-colors hover:bg-primary/15"
+          >
+            <Settings className="size-5" />
+          </button>
         </header>
+
+        <SettingsSheet
+          open={settingsOpen}
+          active={tab}
+          onSelect={(key) => setTab(key)}
+          onClose={() => setSettingsOpen(false)}
+        />
 
         {tab === "home" && <HomeView />}
         {tab === "preference" && <PreferenceView />}
