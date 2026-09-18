@@ -285,6 +285,49 @@ export function RouteAlarmForm() {
   );
 }
 
+type EndpointState = { station: string | null; note: string | null; loading: boolean };
+
+/** Accepts an MRT station name, bus stop name/code or postal code and maps it to the nearest station. */
+function useEndpoint(value: string, resolve: (options: { data: { query: string } }) => Promise<{ label: string; lat: number; lng: number } | null>): EndpointState {
+  const [state, setState] = useState<EndpointState>({ station: null, note: null, loading: false });
+
+  useEffect(() => {
+    const query = value.trim();
+    if (query.length < 2) {
+      setState({ station: null, note: null, loading: false });
+      return;
+    }
+    const direct = findStation(query);
+    if (direct) {
+      setState({ station: direct.name, note: null, loading: false });
+      return;
+    }
+    let cancelled = false;
+    setState((current) => ({ ...current, loading: true }));
+    const timer = window.setTimeout(() => {
+      resolve({ data: { query } })
+        .then((place) => {
+          if (cancelled) return;
+          const near = place ? nearestStation(place.lat, place.lng) : null;
+          setState(
+            near && place
+              ? { station: near.name, note: `${place.label} · nearest station ${near.name}`, loading: false }
+              : { station: null, note: null, loading: false },
+          );
+        })
+        .catch(() => {
+          if (!cancelled) setState({ station: null, note: null, loading: false });
+        });
+    }, 500);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [value, resolve]);
+
+  return state;
+}
+
 function defaultDays(repeat: RepeatOption): string[] {
   if (repeat === "weekdays") return ["Mon", "Tue", "Wed", "Thu", "Fri"];
   if (repeat === "weekends") return ["Sat", "Sun"];
