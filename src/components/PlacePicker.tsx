@@ -15,7 +15,13 @@ export type ConfirmedPlace = {
 };
 
 export function placeLine(place: ConfirmedPlace): string {
-  return [place.name, place.address && place.address !== place.name ? place.address : null]
+  // OneMap addresses repeat the building name — drop the duplicate so the line reads cleanly.
+  const address = place.address
+    .replace(new RegExp(place.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "ig"), " ")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\bSINGAPORE (\d{6})\b/i, "Singapore $1")
+    .trim();
+  return [place.name, address && address.toLowerCase() !== place.name.toLowerCase() ? address : null]
     .filter(Boolean)
     .join(", ");
 }
