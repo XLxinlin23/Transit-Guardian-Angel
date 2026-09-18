@@ -198,7 +198,7 @@ export function RouteAlarmForm() {
     const entry: SavedRouteAlarm = { id: editingId, alarm: next, fromPlace, toPlace };
     const exists = alarms.some((item) => item.id === editingId);
     persistAlarms(exists ? alarms.map((item) => (item.id === editingId ? entry : item)) : [...alarms, entry]);
-    setAlarm(next);
+    setAlarmField("active", true);
     setSaved(true);
     setSyncing(true);
     try {
