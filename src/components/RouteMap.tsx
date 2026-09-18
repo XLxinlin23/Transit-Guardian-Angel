@@ -93,7 +93,7 @@ export function RouteMap() {
             <animate attributeName="opacity" values="0.55;0.1;0.55" dur="2.4s" repeatCount="indefinite" />
           </circle>
           <circle cx={current.x} cy={current.y} r="8" className="fill-primary stroke-surface-strong" strokeWidth="3" />
-          <text x={current.x + 16} y={current.y - 8} className="fill-primary font-semibold" fontSize="12">
+          <text x={current.x - 22} y={current.y + 34} className="fill-primary font-semibold" fontSize="12">
             {current.name}
           </text>
         </svg>
