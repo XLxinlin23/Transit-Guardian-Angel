@@ -1,8 +1,12 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertTriangle, BellRing, Home, SlidersHorizontal } from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
+import { BellRing, Home, SlidersHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
+import { BusArrivalCard } from "../components/BusArrivalCard";
+import { MrtStatusCard } from "../components/MrtStatusCard";
+import { RouteMap } from "../components/RouteMap";
 import { RouteAlarmForm } from "../components/RouteAlarmForm";
 import { RoutePreferencePanel } from "../components/RoutePreferencePanel";
+import { WeatherCard } from "../components/WeatherCard";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -37,17 +41,12 @@ function Index() {
       </div>
 
       <main className="relative mx-auto min-h-screen w-full max-w-md px-4 pb-28 pt-5">
-        <header className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand font-display text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20">WL</div>
-            <div className="min-w-0 leading-tight">
-              <p className="truncate font-display text-base font-semibold text-brand-deep">Wayline</p>
-              <p className="truncate text-xs text-muted-foreground">Smart commute alarms</p>
-            </div>
+        <header className="flex items-center gap-3">
+          <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand font-display text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20">WL</div>
+          <div className="min-w-0 leading-tight">
+            <p className="truncate font-display text-base font-semibold text-brand-deep">Wayline</p>
+            <p className="truncate text-xs text-muted-foreground">Smart commute alarms</p>
           </div>
-          <Link to="/dashboard" className="glass-control shrink-0 rounded-xl px-3 py-2 text-xs font-semibold text-primary">
-            Dashboard
-          </Link>
         </header>
 
         {tab === "home" && <HomeView />}
@@ -74,21 +73,21 @@ function PreferenceView() {
 
 function AlertsView() {
   return (
-    <div className="pt-8">
+    <div className="pt-6">
       <p className="text-xs font-semibold uppercase text-success">Monitoring active</p>
       <h1 className="mt-2 font-display text-3xl font-bold text-brand-deep">Disruption alert</h1>
-      <p className="mt-2 text-sm text-muted-foreground">One line, only when the morning plan is at risk.</p>
-      <section className="glass-panel mt-6 rounded-3xl p-5">
-        <div className="flex items-center justify-between gap-3"><span className="inline-flex items-center gap-2 text-sm font-semibold text-success"><span className="status-pulse size-2 rounded-full bg-success" />Clear</span><span className="text-xs text-muted-foreground">Checked now</span></div>
-        <p className="mt-5 font-display text-xl font-semibold leading-snug text-brand-deep">No disruption is affecting your active route alarms.</p>
-      </section>
-      <section className="mt-4 rounded-2xl border border-warning/20 bg-warning-soft p-4">
-        <div className="flex items-start gap-3"><AlertTriangle className="mt-0.5 size-5 shrink-0 text-warning" /><div><p className="text-sm font-semibold text-brand-deep">When it matters</p><p className="mt-1 text-sm text-muted-foreground">“Leave now via DTL — EWL delay puts arrival at 09:02.”</p></div></div>
-      </section>
-      <div className="mt-6 space-y-3">
-        <p className="px-1 text-xs font-semibold uppercase text-muted-foreground">Recent checks</p>
-        {['Today · 07:25','Yesterday · 07:25','Monday · 07:25'].map((time) => <div key={time} className="glass-control flex items-center justify-between rounded-2xl px-4 py-3"><span className="text-sm text-brand-deep">{time}</span><span className="text-xs font-semibold text-success">No impact</span></div>)}
+      <p className="mt-2 text-sm text-muted-foreground">Live checks for your route alarm — one line, only when it matters.</p>
+
+      <div className="mt-5 space-y-3.5">
+        <MrtStatusCard />
+        <WeatherCard />
+        <BusArrivalCard />
+        <RouteMap />
       </div>
+
+      <p className="mt-5 text-center text-[11px] text-muted-foreground">
+        Train and bus data © LTA DataMall · Weather © data.gov.sg
+      </p>
     </div>
   );
 }

@@ -7,9 +7,10 @@ import { getBusArrivals } from "../lib/singapore.functions";
 
 const LOAD_LABEL: Record<string, string> = { SEA: "Seats", SDA: "Standing", LSD: "Full" };
 
-export function BusArrivalCard({ defaultStop = "75009" }: { defaultStop?: string }) {
+export function BusArrivalCard({ defaultStop = "75009", compactServices = 6 }: { defaultStop?: string; compactServices?: number }) {
   const [stop, setStop] = useState(defaultStop);
   const [input, setInput] = useState(defaultStop);
+  const [showAll, setShowAll] = useState(false);
   const fetchArrivals = useServerFn(getBusArrivals);
 
   const { data, isFetching, isError, refetch } = useQuery({
@@ -68,7 +69,7 @@ export function BusArrivalCard({ defaultStop = "75009" }: { defaultStop?: string
         <p className="mt-4 text-sm text-muted-foreground">No buses arriving at stop {data.busStopCode}.</p>
       ) : (
         <ul className="mt-4 divide-y divide-border/70">
-          {(data?.services ?? []).map((s) => (
+          {(showAll ? data?.services ?? [] : (data?.services ?? []).slice(0, compactServices)).map((s) => (
             <li key={s.serviceNo} className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 py-3">
               <span className="rounded-lg bg-primary/10 px-2.5 py-1 font-display text-sm font-bold text-primary">
                 {s.serviceNo}
@@ -90,6 +91,15 @@ export function BusArrivalCard({ defaultStop = "75009" }: { defaultStop?: string
             </li>
           ))}
         </ul>
+      )}
+      {data && data.services.length > compactServices && (
+        <button
+          type="button"
+          onClick={() => setShowAll((v) => !v)}
+          className="mt-4 w-full rounded-xl bg-secondary py-2 text-xs font-semibold text-brand-deep"
+        >
+          {showAll ? "Show fewer services" : `Show all ${data.services.length} services`}
+        </button>
       )}
     </section>
   );
