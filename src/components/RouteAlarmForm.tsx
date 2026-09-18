@@ -1,6 +1,20 @@
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { AlarmClock, BellRing, Bus, CalendarDays, Check, ChevronDown, CloudRain, MapPin, Navigation, ShieldAlert, Users } from "lucide-react";
+import {
+  AlarmClock,
+  BellRing,
+  Bus,
+  CalendarDays,
+  Check,
+  ChevronDown,
+  CloudRain,
+  MapPin,
+  Navigation,
+  Plus,
+  ShieldAlert,
+  Trash2,
+  Users,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -10,101 +24,101 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { getCommuteSchedule, saveCommuteSchedule } from "@/lib/commute.functions";
+import { deleteCommuteSchedule, listCommuteSchedules, saveCommuteSchedule } from "@/lib/commute.functions";
 import {
-  ALARM_STORAGE_KEY,
-  DRAFT_STORAGE_KEY,
+  ALARMS_STORAGE_KEY,
   DEFAULT_ALARM,
   REPEAT_LABELS,
   WEEKDAYS,
+  newAlarmId,
   type RepeatOption,
   DEFAULT_PREFERENCES,
   PREFERENCE_LABELS,
   PREFERENCE_STORAGE_KEY,
+  type PlacePoint,
   type RoutePreference,
   type RouteAlarm,
+  type SavedRouteAlarm,
 } from "@/lib/commute-settings";
 import { getDeviceId } from "@/lib/device-id";
-import { planJourney, type Journey, type TravelMode } from "@/lib/journey.functions";
+import { planJourney, type Journey } from "@/lib/journey.functions";
 import { PlacePicker, placeLine, type ConfirmedPlace } from "./PlacePicker";
 import { CommuteAlertCard } from "./CommuteAlertCard";
 import { RouteMap } from "./RouteMap";
 import { MODE_COLORS, MODE_LABELS } from "@/lib/travel-modes";
 
+const BLANK_ALARM: RouteAlarm = { ...DEFAULT_ALARM, from: "", to: "", active: false };
+
 export function RouteAlarmForm() {
-  const [alarm, setAlarm] = useState<RouteAlarm>(DEFAULT_ALARM);
+  const [alarms, setAlarms] = useState<SavedRouteAlarm[]>([]);
+  const [editingId, setEditingId] = useState<string>(() => newAlarmId());
+  const [alarm, setAlarm] = useState<RouteAlarm>(BLANK_ALARM);
+  const [fromPlace, setFromPlace] = useState<PlacePoint | null>(null);
+  const [toPlace, setToPlace] = useState<PlacePoint | null>(null);
   const [saved, setSaved] = useState(false);
   const [preferences, setPreferences] = useState<RoutePreference[]>(DEFAULT_PREFERENCES);
   const [syncing, setSyncing] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
   const saveRemote = useServerFn(saveCommuteSchedule);
-  const loadRemote = useServerFn(getCommuteSchedule);
+  const listRemote = useServerFn(listCommuteSchedules);
+  const deleteRemote = useServerFn(deleteCommuteSchedule);
 
-  const [fromPlace, setFromPlace] = useState<ConfirmedPlace | null>(null);
-  const [toPlace, setToPlace] = useState<ConfirmedPlace | null>(null);
-
-  const persistDraft = (draft: { from: string; to: string; fromPlace: ConfirmedPlace | null; toPlace: ConfirmedPlace | null }) => {
-    window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+  const persistAlarms = (next: SavedRouteAlarm[]) => {
+    setAlarms(next);
+    window.localStorage.setItem(ALARMS_STORAGE_KEY, JSON.stringify(next));
   };
 
+  // Load the saved list from this device, then top it up from the backend.
   useEffect(() => {
-    let draftFrom: string | undefined;
-    let draftTo: string | undefined;
-    const draftRaw = window.localStorage.getItem(DRAFT_STORAGE_KEY);
-    if (draftRaw) {
-      try {
-        const draft = JSON.parse(draftRaw) as { from?: string; to?: string; fromPlace?: ConfirmedPlace | null; toPlace?: ConfirmedPlace | null };
-        if (typeof draft.from === "string") draftFrom = draft.from;
-        if (typeof draft.to === "string") draftTo = draft.to;
-        if (draft.fromPlace) setFromPlace(draft.fromPlace);
-        if (draft.toPlace) setToPlace(draft.toPlace);
-      } catch {
-        window.localStorage.removeItem(DRAFT_STORAGE_KEY);
-      }
-    }
-    if (draftFrom !== undefined || draftTo !== undefined) {
-      setAlarm((current) => ({
-        ...current,
-        from: draftFrom ?? current.from,
-        to: draftTo ?? current.to,
-      }));
-    }
-    const stored = window.localStorage.getItem(ALARM_STORAGE_KEY);
+    let local: SavedRouteAlarm[] = [];
+    const stored = window.localStorage.getItem(ALARMS_STORAGE_KEY);
     if (stored) {
       try {
-        const parsed = JSON.parse(stored) as RouteAlarm;
-        setAlarm({
-          ...DEFAULT_ALARM,
-          ...parsed,
-          from: draftFrom ?? parsed.from ?? DEFAULT_ALARM.from,
-          to: draftTo ?? parsed.to ?? DEFAULT_ALARM.to,
-        });
-        setSaved(true);
+        const parsed = JSON.parse(stored) as SavedRouteAlarm[];
+        if (Array.isArray(parsed)) local = parsed;
       } catch {
-        window.localStorage.removeItem(ALARM_STORAGE_KEY);
+        window.localStorage.removeItem(ALARMS_STORAGE_KEY);
       }
     }
-    loadRemote({ data: { deviceId: getDeviceId() } })
-      .then((row) => {
-        if (!row) return;
-        setAlarm({
-          from: draftFrom ?? row.origin,
-          to: draftTo ?? row.destination,
-          arriveBy: row.arriveBy,
-          maxDelay: String(row.maxDelay),
-          repeat: row.repeatOption as RepeatOption,
-          days: row.travelDays,
-          active: row.active,
-          notifyLeadMinutes: String(row.notifyLeadMinutes),
-          notifyWeather: row.notifyWeather,
-          notifyCrowd: row.notifyCrowd,
-          notifyBus: row.notifyBus,
-          busStopCode: row.busStopCode ?? "",
-        });
-        setSaved(true);
+    if (local.length) setAlarms(local);
+
+    listRemote({ data: { deviceId: getDeviceId() } })
+      .then((rows) => {
+        if (!rows?.length) return;
+        const remote: SavedRouteAlarm[] = rows.map((row) => ({
+          id: row.alarmId,
+          alarm: {
+            from: row.origin,
+            to: row.destination,
+            arriveBy: row.arriveBy,
+            maxDelay: String(row.maxDelay),
+            repeat: row.repeatOption as RepeatOption,
+            days: row.travelDays,
+            active: row.active,
+            notifyLeadMinutes: String(row.notifyLeadMinutes),
+            notifyWeather: row.notifyWeather,
+            notifyCrowd: row.notifyCrowd,
+            notifyBus: row.notifyBus,
+            busStopCode: row.busStopCode ?? "",
+          },
+          fromPlace:
+            typeof row.fromLat === "number" && typeof row.fromLng === "number"
+              ? { name: row.origin, address: row.origin, postal: null, lat: row.fromLat, lng: row.fromLng }
+              : null,
+          toPlace:
+            typeof row.toLat === "number" && typeof row.toLng === "number"
+              ? { name: row.destination, address: row.destination, postal: null, lat: row.toLat, lng: row.toLng }
+              : null,
+        }));
+        const byId = new Map(remote.map((item) => [item.id, item]));
+        for (const item of local) byId.set(item.id, item);
+        const merged = [...byId.values()];
+        setAlarms(merged);
+        window.localStorage.setItem(ALARMS_STORAGE_KEY, JSON.stringify(merged));
       })
       .catch(() => undefined);
-  }, [loadRemote]);
+  }, [listRemote]);
 
   useEffect(() => {
     const load = () => {
@@ -149,29 +163,23 @@ export function RouteAlarmForm() {
   const typedBoth = Boolean(alarm.from.trim() && alarm.to.trim());
   const bothConfirmed = Boolean(fromPlace && toPlace);
   const looking = journeyQuery.isFetching;
-  const preferenceSummary = (preferences.length ? preferences : DEFAULT_PREFERENCES).map((value) => PREFERENCE_LABELS[value]).join(" · ");
+  const preferenceSummary = (preferences.length ? preferences : DEFAULT_PREFERENCES)
+    .map((value) => PREFERENCE_LABELS[value])
+    .join(" · ");
 
   const update = <Key extends keyof RouteAlarm>(key: Key, value: RouteAlarm[Key]) => {
     setAlarm((current) => ({ ...current, [key]: value }));
     setSaved(false);
-    if (key === "from" || key === "to") {
-      const next = { ...alarm, [key]: value };
-      persistDraft({ from: next.from, to: next.to, fromPlace: key === "from" ? null : fromPlace, toPlace: key === "to" ? null : toPlace });
-    }
+    if (key === "from") setFromPlace(null);
+    if (key === "to") setToPlace(null);
   };
 
   const confirmPlace = (field: "from" | "to", place: ConfirmedPlace | null) => {
     if (field === "from") setFromPlace(place);
     else setToPlace(place);
     if (!place) return;
-    const next = { from: field === "from" ? place.name : alarm.from, to: field === "to" ? place.name : alarm.to };
-    setAlarm((current) => ({ ...current, ...next }));
+    setAlarm((current) => ({ ...current, [field]: place.name }));
     setSaved(false);
-    persistDraft({
-      ...next,
-      fromPlace: field === "from" ? place : fromPlace,
-      toPlace: field === "to" ? place : toPlace,
-    });
   };
 
   const toggleDay = (day: string, checked: boolean) => {
@@ -179,9 +187,40 @@ export function RouteAlarmForm() {
     update("days", days);
   };
 
+  const editAlarm = (entry: SavedRouteAlarm) => {
+    setEditingId(entry.id);
+    setAlarm(entry.alarm);
+    setFromPlace(entry.fromPlace);
+    setToPlace(entry.toPlace);
+    setSaved(true);
+    setSettingsOpen(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const startNewAlarm = () => {
+    setEditingId(newAlarmId());
+    setAlarm(BLANK_ALARM);
+    setFromPlace(null);
+    setToPlace(null);
+    setSaved(false);
+    setSettingsOpen(false);
+  };
+
+  const removeAlarm = async (id: string) => {
+    persistAlarms(alarms.filter((item) => item.id !== id));
+    if (id === editingId) startNewAlarm();
+    try {
+      await deleteRemote({ data: { deviceId: getDeviceId(), alarmId: id } });
+    } catch {
+      /* removed on device; backend clears on next sync */
+    }
+  };
+
   const saveAlarm = async () => {
     const next = { ...alarm, active: true };
-    window.localStorage.setItem(ALARM_STORAGE_KEY, JSON.stringify(next));
+    const entry: SavedRouteAlarm = { id: editingId, alarm: next, fromPlace, toPlace };
+    const exists = alarms.some((item) => item.id === editingId);
+    persistAlarms(exists ? alarms.map((item) => (item.id === editingId ? entry : item)) : [...alarms, entry]);
     setAlarm(next);
     setSaved(true);
     setSyncing(true);
@@ -189,8 +228,14 @@ export function RouteAlarmForm() {
       await saveRemote({
         data: {
           deviceId: getDeviceId(),
+          alarmId: editingId,
+          label: `${next.from} → ${next.to}`.slice(0, 60),
           origin: next.from,
           destination: next.to,
+          fromLat: fromPlace?.lat ?? null,
+          fromLng: fromPlace?.lng ?? null,
+          toLat: toPlace?.lat ?? null,
+          toLng: toPlace?.lng ?? null,
           travelDays: next.repeat === "custom" ? next.days : defaultDays(next.repeat),
           repeatOption: next.repeat,
           arriveBy: next.arriveBy,
@@ -213,6 +258,7 @@ export function RouteAlarmForm() {
 
   const canSave = alarm.from.trim() && alarm.to.trim() && alarm.arriveBy && (alarm.repeat !== "custom" || alarm.days.length > 0);
   const repeatSummary = alarm.repeat === "custom" ? alarm.days.join(", ") : REPEAT_LABELS[alarm.repeat];
+  const editingExisting = alarms.some((item) => item.id === editingId);
   const settingsSummary = [
     `${alarm.notifyLeadMinutes} min before`,
     alarm.notifyWeather ? "weather" : null,
@@ -224,9 +270,57 @@ export function RouteAlarmForm() {
 
   return (
     <div className="pt-7">
-      <p className="text-xs font-semibold uppercase text-primary">Route alarm</p>
+      <p className="text-xs font-semibold uppercase text-primary">Route alarms</p>
       <h1 className="mt-2 font-display text-3xl font-bold text-brand-deep">Arrive on time</h1>
-      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Set the destination and deadline. Wayline watches disruptions and tells you when to leave.</p>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+        Save as many trips as you like. Wayline watches disruptions and tells you when to leave.
+      </p>
+
+      {alarms.length > 0 && (
+        <section className="glass-panel mt-5 rounded-3xl p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-display text-base font-semibold text-brand-deep">Saved alarms</h2>
+            <button
+              type="button"
+              onClick={startNewAlarm}
+              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10"
+            >
+              <Plus className="size-4" /> New
+            </button>
+          </div>
+          <ul className="mt-3 space-y-2">
+            {alarms.map((entry) => {
+              const active = entry.id === editingId;
+              return (
+                <li
+                  key={entry.id}
+                  className={`flex items-center gap-2 rounded-2xl border px-3 py-2.5 ${
+                    active ? "border-primary bg-primary/10" : "border-border bg-background/60"
+                  }`}
+                >
+                  <button type="button" onClick={() => editAlarm(entry)} className="min-w-0 flex-1 text-left">
+                    <p className="truncate text-sm font-semibold text-brand-deep">
+                      {entry.alarm.from} → {entry.alarm.to}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      Arrive by {entry.alarm.arriveBy} ·{" "}
+                      {entry.alarm.repeat === "custom" ? entry.alarm.days.join(", ") : REPEAT_LABELS[entry.alarm.repeat]}
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeAlarm(entry.id)}
+                    aria-label={`Delete alarm ${entry.alarm.from} to ${entry.alarm.to}`}
+                    className="grid size-8 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-secondary"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       {saved && alarm.active && (
         <section className="mt-5 rounded-2xl border border-success/20 bg-success-soft/70 p-4">
@@ -241,6 +335,21 @@ export function RouteAlarmForm() {
       )}
 
       <section className="glass-panel mt-5 rounded-3xl p-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="font-display text-base font-semibold text-brand-deep">
+            {editingExisting ? "Edit alarm" : "New alarm"}
+          </h2>
+          {editingExisting && (
+            <button
+              type="button"
+              onClick={startNewAlarm}
+              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10"
+            >
+              <Plus className="size-4" /> Add another
+            </button>
+          )}
+        </div>
+
         <div className="space-y-5">
           <Field icon={Navigation} label="From">
             <PlacePicker
@@ -355,59 +464,60 @@ export function RouteAlarmForm() {
             {looking ? "Working out the best way door to door…" : "We could not build a route between those two points yet."}
           </p>
         )}
+      </section>
 
-        <div className="mt-6 border-t border-border/70 pt-5">
-          <button
-            type="button"
-            onClick={() => setSettingsOpen((open) => !open)}
-            aria-expanded={settingsOpen}
-            className="flex w-full items-center justify-between gap-3 text-left"
-          >
-            <span className="flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
-              <BellRing className="size-4 text-primary" /> Alert settings
-            </span>
-            <span className="flex items-center gap-2">
-              {!settingsOpen && (
-                <span className="max-w-[13rem] truncate text-[11px] font-medium normal-case text-muted-foreground">
-                  {settingsSummary}
-                </span>
-              )}
-              <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform duration-200 ${settingsOpen ? "rotate-180" : ""}`} />
-            </span>
-          </button>
-          {settingsOpen && (
-            <div className="mt-3 space-y-3">
-              <Field icon={BellRing} label="Remind me before departure">
-                <Select value={alarm.notifyLeadMinutes} onValueChange={(value) => update("notifyLeadMinutes", value)}>
-                  <SelectTrigger aria-label="Remind me before departure" className="h-11 bg-background/70"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {[5, 10, 15, 20, 30, 45].map((minutes) => <SelectItem key={minutes} value={String(minutes)}>{minutes} min before</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Toggle icon={CloudRain} label="Weather impact" checked={alarm.notifyWeather} onChange={(value) => update("notifyWeather", value)} />
-              <Toggle icon={Users} label="MRT crowd levels" checked={alarm.notifyCrowd} onChange={(value) => update("notifyCrowd", value)} />
-              <Toggle icon={Bus} label="Bus arrivals" checked={alarm.notifyBus} onChange={(value) => update("notifyBus", value)} />
-              {alarm.notifyBus && (
-                <Input
-                  value={alarm.busStopCode}
-                  onChange={(event) => update("busStopCode", event.target.value)}
-                  placeholder="Bus stop code, e.g. 75009"
-                  aria-label="Bus stop code"
-                  className="h-11 bg-background/70"
-                />
-              )}
-            </div>
-          )}
-        </div>
+      <section className="glass-panel mt-4 rounded-3xl p-5">
+        <button
+          type="button"
+          onClick={() => setSettingsOpen((open) => !open)}
+          aria-expanded={settingsOpen}
+          className="flex w-full items-center justify-between gap-3 text-left"
+        >
+          <span className="flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
+            <BellRing className="size-4 text-primary" /> Alert settings
+          </span>
+          <span className="flex items-center gap-2">
+            {!settingsOpen && (
+              <span className="max-w-[13rem] truncate text-[11px] font-medium normal-case text-muted-foreground">
+                {settingsSummary}
+              </span>
+            )}
+            <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform duration-200 ${settingsOpen ? "rotate-180" : ""}`} />
+          </span>
+        </button>
+        {settingsOpen && (
+          <div className="mt-4 space-y-3">
+            <Field icon={BellRing} label="Remind me before departure">
+              <Select value={alarm.notifyLeadMinutes} onValueChange={(value) => update("notifyLeadMinutes", value)}>
+                <SelectTrigger aria-label="Remind me before departure" className="h-11 bg-background/70"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {[5, 10, 15, 20, 30, 45].map((minutes) => <SelectItem key={minutes} value={String(minutes)}>{minutes} min before</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Toggle icon={CloudRain} label="Weather impact" checked={alarm.notifyWeather} onChange={(value) => update("notifyWeather", value)} />
+            <Toggle icon={Users} label="MRT crowd levels" checked={alarm.notifyCrowd} onChange={(value) => update("notifyCrowd", value)} />
+            <Toggle icon={Bus} label="Bus arrivals" checked={alarm.notifyBus} onChange={(value) => update("notifyBus", value)} />
+            {alarm.notifyBus && (
+              <Input
+                value={alarm.busStopCode}
+                onChange={(event) => update("busStopCode", event.target.value)}
+                placeholder="Bus stop code, e.g. 75009"
+                aria-label="Bus stop code"
+                className="h-11 bg-background/70"
+              />
+            )}
+          </div>
+        )}
 
-        <Button className="mt-6 h-11 w-full rounded-xl" disabled={!canSave || syncing} onClick={saveAlarm}>
-          <BellRing /> {syncing ? "Saving…" : saved ? "Update route alarm" : "Save route alarm"}
+        <Button className="mt-5 h-11 w-full rounded-xl" disabled={!canSave || syncing} onClick={saveAlarm}>
+          <BellRing /> {syncing ? "Saving…" : editingExisting ? "Update route alarm" : "Save route alarm"}
         </Button>
       </section>
 
-      {saved && alarm.active && preview && <CommuteAlertCard alarm={alarm} preferences={preferences} />}
-
+      {saved && alarm.active && (
+        <CommuteAlertCard alarm={alarm} preferences={preferences} fromPlace={fromPlace} toPlace={toPlace} />
+      )}
 
       <section className="mt-4 rounded-2xl border border-primary/15 bg-primary/5 p-4">
         <p className="text-sm font-semibold text-brand-deep">Adapts before every trip</p>
