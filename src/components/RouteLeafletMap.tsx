@@ -4,6 +4,8 @@ import type { LatLngBoundsExpression, LatLngExpression, Map as LeafletMap } from
 import type { RefObject } from "react";
 import { AttributionControl, CircleMarker, MapContainer, Polyline, TileLayer, Tooltip } from "react-leaflet";
 
+import { MODE_COLORS } from "@/lib/travel-modes";
+
 /** Swap this for a keyed provider URL if usage ever grows beyond light demo traffic. */
 const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const TILE_ATTRIBUTION = '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>';
@@ -15,22 +17,34 @@ const SURFACE = "#FFFFFF";
 
 export type MapPoint = { name: string; lat: number; lng: number };
 
+export type MapSegment = {
+  mode: keyof typeof MODE_COLORS;
+  badge: string;
+  points: MapPoint[];
+};
+
 type RouteLeafletMapProps = {
   mapRef: RefObject<LeafletMap | null>;
   stations: MapPoint[];
+  /** Colour-coded multimodal segments; when present they replace the plain station line. */
+  segments?: MapSegment[] | undefined;
   /** Index of the last station already passed; omit for a plain route preview. */
   currentIndex?: number | undefined;
   /** Stations where the commuter changes line, highlighted on the route. */
   transferNames?: string[] | undefined;
 };
 
-export default function RouteLeafletMap({ mapRef, stations, currentIndex, transferNames = [] }: RouteLeafletMapProps) {
+export default function RouteLeafletMap({ mapRef, stations, segments, currentIndex, transferNames = [] }: RouteLeafletMapProps) {
+  const multimodal = Boolean(segments?.length);
+  const allPoints: MapPoint[] = multimodal ? segments!.flatMap((segment) => segment.points) : stations;
+  const bounds: LatLngBoundsExpression = allPoints.map((point) => [point.lat, point.lng] as [number, number]);
   const line: LatLngExpression[] = stations.map((s) => [s.lat, s.lng]);
-  const bounds: LatLngBoundsExpression = stations.map((s) => [s.lat, s.lng] as [number, number]);
   const travelled: LatLngExpression[] =
     currentIndex === undefined ? [] : stations.slice(0, currentIndex + 1).map((s) => [s.lat, s.lng]);
   const current = currentIndex === undefined ? null : stations[currentIndex] ?? null;
   const transfers = new Set(transferNames);
+  const first = allPoints[0];
+  const last = allPoints[allPoints.length - 1];
 
   return (
     <MapContainer
@@ -51,35 +65,85 @@ export default function RouteLeafletMap({ mapRef, stations, currentIndex, transf
       <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
       <AttributionControl position="bottomright" prefix={false} />
 
-      <Polyline positions={line} pathOptions={{ color: currentIndex === undefined ? BRAND : MUTED, weight: 7, opacity: 0.85, lineCap: "round", lineJoin: "round" }} />
-      {travelled.length > 1 && (
-        <Polyline positions={travelled} pathOptions={{ color: BRAND, weight: 7, opacity: 0.95, lineCap: "round", lineJoin: "round" }} />
+      {multimodal ? (
+        segments!.map((segment, index) => (
+          <Polyline
+            key={`${segment.mode}-${segment.badge}-${index}`}
+            positions={segment.points.map((point) => [point.lat, point.lng] as LatLngExpression)}
+            pathOptions={{
+              color: MODE_COLORS[segment.mode],
+              weight: segment.mode === "walk" ? 5 : 7,
+              opacity: 0.9,
+              lineCap: "round",
+              lineJoin: "round",
+              ...(segment.mode === "walk" ? { dashArray: "2 9" } : {}),
+            }}
+          />
+        ))
+      ) : (
+        <>
+          <Polyline positions={line} pathOptions={{ color: currentIndex === undefined ? BRAND : MUTED, weight: 7, opacity: 0.85, lineCap: "round", lineJoin: "round" }} />
+          {travelled.length > 1 && (
+            <Polyline positions={travelled} pathOptions={{ color: BRAND, weight: 7, opacity: 0.95, lineCap: "round", lineJoin: "round" }} />
+          )}
+        </>
       )}
 
-      {stations.map((s, i) => {
-        const isEnd = i === 0 || i === stations.length - 1;
-        const isTransfer = transfers.has(s.name);
-        const passed = currentIndex !== undefined && i <= currentIndex;
-        return (
-          <CircleMarker
-            key={`${s.name}-${i}`}
-            center={[s.lat, s.lng]}
-            radius={isEnd ? 6 : isTransfer ? 5.5 : 4}
-            pathOptions={{
-              color: isEnd ? SUCCESS : isTransfer || passed || currentIndex === undefined ? BRAND : MUTED,
-              weight: isEnd || isTransfer ? 3.5 : 2.5,
-              fillColor: SURFACE,
-              fillOpacity: 1,
-            }}
-          >
-            {(isEnd || isTransfer) && (
-              <Tooltip direction={i === 0 ? "left" : "right"} offset={[i === 0 ? -8 : 8, 0]} permanent className="wayline-tooltip">
-                {s.name}
-              </Tooltip>
-            )}
+      {multimodal
+        ? segments!.map((segment, index) => {
+            const point = segment.points[0]!;
+            return (
+              <CircleMarker
+                key={`node-${index}`}
+                center={[point.lat, point.lng]}
+                radius={index === 0 ? 6 : 5}
+                pathOptions={{ color: MODE_COLORS[segment.mode], weight: 3, fillColor: SURFACE, fillOpacity: 1 }}
+              >
+                <Tooltip direction="top" offset={[0, -8]} className="wayline-tooltip">
+                  {point.name}
+                </Tooltip>
+              </CircleMarker>
+            );
+          })
+        : stations.map((s, i) => {
+            const isEnd = i === 0 || i === stations.length - 1;
+            const isTransfer = transfers.has(s.name);
+            const passed = currentIndex !== undefined && i <= currentIndex;
+            return (
+              <CircleMarker
+                key={`${s.name}-${i}`}
+                center={[s.lat, s.lng]}
+                radius={isEnd ? 6 : isTransfer ? 5.5 : 4}
+                pathOptions={{
+                  color: isEnd ? SUCCESS : isTransfer || passed || currentIndex === undefined ? BRAND : MUTED,
+                  weight: isEnd || isTransfer ? 3.5 : 2.5,
+                  fillColor: SURFACE,
+                  fillOpacity: 1,
+                }}
+              >
+                {(isEnd || isTransfer) && (
+                  <Tooltip direction={i === 0 ? "left" : "right"} offset={[i === 0 ? -8 : 8, 0]} permanent className="wayline-tooltip">
+                    {s.name}
+                  </Tooltip>
+                )}
+              </CircleMarker>
+            );
+          })}
+
+      {multimodal && first && last && (
+        <>
+          <CircleMarker center={[first.lat, first.lng]} radius={7} pathOptions={{ color: SUCCESS, weight: 3.5, fillColor: SURFACE, fillOpacity: 1 }}>
+            <Tooltip direction="left" offset={[-8, 0]} permanent className="wayline-tooltip">
+              {first.name}
+            </Tooltip>
           </CircleMarker>
-        );
-      })}
+          <CircleMarker center={[last.lat, last.lng]} radius={7} pathOptions={{ color: SUCCESS, weight: 3.5, fillColor: SURFACE, fillOpacity: 1 }}>
+            <Tooltip direction="right" offset={[8, 0]} permanent className="wayline-tooltip">
+              {last.name}
+            </Tooltip>
+          </CircleMarker>
+        </>
+      )}
 
       {current && (
         <>
