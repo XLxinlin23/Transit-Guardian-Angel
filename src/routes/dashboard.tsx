@@ -59,7 +59,7 @@ function Dashboard() {
         </div>
 
         <p className="mt-6 text-center text-[11px] text-muted-foreground">
-          Train and bus data © LTA DataMall · Weather © data.gov.sg · Map © OpenStreetMap contributors
+          Train and bus data © LTA DataMall · Weather © data.gov.sg
         </p>
       </main>
     </div>

@@ -1,13 +1,14 @@
 import "leaflet/dist/leaflet.css";
 
-import type { LatLngBoundsExpression, LatLngExpression } from "leaflet";
-import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip } from "react-leaflet";
+import type { LatLngBoundsExpression, LatLngExpression, Map as LeafletMap } from "leaflet";
+import type { RefObject } from "react";
+import { AttributionControl, CircleMarker, MapContainer, Polyline, TileLayer, Tooltip } from "react-leaflet";
 
 import { CURRENT, CURRENT_STATION, STATIONS } from "../lib/route-data";
 
 /** Swap this for a keyed provider URL if usage ever grows beyond light demo traffic. */
 const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
-const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+const TILE_ATTRIBUTION = '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>';
 
 const BRAND = "#1473E6";
 const MUTED = "#9DB2C8";
@@ -18,23 +19,29 @@ const line: LatLngExpression[] = STATIONS.map((s) => [s.lat, s.lng]);
 const travelled: LatLngExpression[] = STATIONS.slice(0, CURRENT + 1).map((s) => [s.lat, s.lng]);
 const bounds: LatLngBoundsExpression = STATIONS.map((s) => [s.lat, s.lng] as [number, number]);
 
-export default function RouteLeafletMap({ interactive = false }: { interactive?: boolean }) {
+type RouteLeafletMapProps = {
+  mapRef: RefObject<LeafletMap | null>;
+};
+
+export default function RouteLeafletMap({ mapRef }: RouteLeafletMapProps) {
   return (
     <MapContainer
+      ref={mapRef}
       bounds={bounds}
       boundsOptions={{ padding: [26, 26] }}
       className="size-full"
       minZoom={10}
-      maxZoom={16}
-      zoomControl={interactive}
-      dragging={interactive}
-      scrollWheelZoom={interactive}
-      doubleClickZoom={interactive}
-      touchZoom={interactive}
-      keyboard={interactive}
-      attributionControl
+      maxZoom={18}
+      zoomControl
+      dragging
+      scrollWheelZoom
+      doubleClickZoom
+      touchZoom
+      keyboard
+      attributionControl={false}
     >
-      <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
+      <TileLayer url={TILE_URL} />
+      <AttributionControl position="bottomright" prefix={false} attribution={TILE_ATTRIBUTION} />
 
       <Polyline positions={line} pathOptions={{ color: MUTED, weight: 7, opacity: 0.8, lineCap: "round", lineJoin: "round" }} />
       <Polyline positions={travelled} pathOptions={{ color: BRAND, weight: 7, opacity: 0.95, lineCap: "round", lineJoin: "round" }} />

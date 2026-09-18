@@ -197,6 +197,34 @@
   font-family: var(--font-sans);
 }
 
+.wayline-map .leaflet-control-zoom {
+  border: 0;
+  box-shadow: 0 8px 24px color-mix(in oklab, var(--brand-deep) 14%, transparent);
+  margin-left: 12px;
+  margin-top: 12px;
+}
+
+.wayline-map .leaflet-control-zoom a {
+  align-items: center;
+  background: var(--surface-strong);
+  border-bottom-color: var(--border);
+  color: var(--brand-deep);
+  display: flex;
+  font-family: var(--font-sans);
+  height: 34px;
+  justify-content: center;
+  line-height: 34px;
+  width: 34px;
+}
+
+.wayline-map .leaflet-control-zoom-in {
+  border-radius: 8px 8px 0 0;
+}
+
+.wayline-map .leaflet-control-zoom-out {
+  border-radius: 0 0 8px 8px;
+}
+
 .wayline-map .leaflet-control-attribution {
   background: color-mix(in oklab, white 82%, transparent);
   color: color-mix(in oklab, var(--brand-deep) 65%, white);
