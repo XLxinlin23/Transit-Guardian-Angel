@@ -1,23 +1,59 @@
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { Bus, RefreshCw } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { getBusArrivals } from "../lib/singapore.functions";
+import { searchBusStops, type BusStop } from "../lib/bus-stops.functions";
 
 const LOAD_LABEL: Record<string, string> = { SEA: "Seats", SDA: "Standing", LSD: "Full" };
 
-export function BusArrivalCard({ defaultStop = "75009", compactServices = 6 }: { defaultStop?: string; compactServices?: number }) {
-  const [stop, setStop] = useState(defaultStop);
-  const [input, setInput] = useState(defaultStop);
+export function BusArrivalCard({
+  defaultStop = "75009",
+  compactServices = 6,
+  stopCode,
+  stopName,
+  onStopChange,
+}: {
+  defaultStop?: string;
+  compactServices?: number;
+  stopCode?: string | undefined;
+  stopName?: string | undefined;
+  onStopChange?: ((stop: { code: string; name: string }) => void) | undefined;
+}) {
+  const [internalStop, setInternalStop] = useState(defaultStop);
+  const stop = stopCode ?? internalStop;
+  const [query, setQuery] = useState("");
+  const [debounced, setDebounced] = useState("");
   const [showAll, setShowAll] = useState(false);
   const fetchArrivals = useServerFn(getBusArrivals);
+  const findStops = useServerFn(searchBusStops);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(query.trim()), 350);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const { data: matches } = useQuery({
+    queryKey: ["bus-stop-search", debounced],
+    queryFn: () => findStops({ data: { query: debounced } }),
+    enabled: debounced.length >= 2,
+    staleTime: 5 * 60_000,
+  });
 
   const { data, isFetching, isError, refetch } = useQuery({
     queryKey: ["bus-arrivals", stop],
     queryFn: () => fetchArrivals({ data: { busStopCode: stop } }),
     refetchInterval: 30_000,
   });
+
+  const select = (s: BusStop) => {
+    setQuery("");
+    setDebounced("");
+    setShowAll(false);
+    setInternalStop(s.code);
+    onStopChange?.({ code: s.code, name: s.name });
+  };
 
   return (
     <section className="glass-panel rounded-3xl p-5">
@@ -36,28 +72,37 @@ export function BusArrivalCard({ defaultStop = "75009", compactServices = 6 }: {
         </button>
       </div>
 
-      <form
-        className="mt-4 flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (input.trim().length >= 3) setStop(input.trim());
-        }}
-      >
+      <p className="mt-2 truncate text-sm text-muted-foreground">
+        {stopName ? `${stopName} · Stop ${stop}` : `Stop ${stop}`}
+      </p>
+
+      <div className="relative mt-3">
         <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          inputMode="numeric"
-          aria-label="Bus stop code"
-          placeholder="Bus stop code"
-          className="min-w-0 flex-1 rounded-xl border border-border bg-background px-3 py-2 text-sm text-brand-deep outline-none focus:border-primary"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Search bus stop by name or code"
+          placeholder="Search bus stop name or code"
+          className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-brand-deep outline-none placeholder:text-muted-foreground focus:border-primary"
         />
-        <button
-          type="submit"
-          className="shrink-0 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-        >
-          Check
-        </button>
-      </form>
+        {debounced.length >= 2 && matches?.stops.length ? (
+          <ul className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-border bg-background shadow-lg">
+            {matches.stops.map((s) => (
+              <li key={s.code}>
+                <button
+                  type="button"
+                  onClick={() => select(s)}
+                  className="block w-full px-3 py-2 text-left hover:bg-secondary"
+                >
+                  <span className="block truncate text-sm font-semibold text-brand-deep">{s.name}</span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {s.road} · Stop {s.code}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
 
       {data && !data.configured ? (
         <p className="mt-4 text-sm text-muted-foreground">
