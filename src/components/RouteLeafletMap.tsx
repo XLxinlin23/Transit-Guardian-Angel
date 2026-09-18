@@ -5,8 +5,9 @@ import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip } from "react-
 
 import { CURRENT, CURRENT_STATION, STATIONS } from "../lib/route-data";
 
-const TILE_URL = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
-const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; CARTO';
+/** Swap this for a keyed provider URL if usage ever grows beyond light demo traffic. */
+const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
 const BRAND = "#1473E6";
 const MUTED = "#9DB2C8";
