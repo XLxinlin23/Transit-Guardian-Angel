@@ -3,7 +3,6 @@ import { BellRing, Home, SlidersHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BusArrivalCard } from "../components/BusArrivalCard";
 import { MrtStatusCard } from "../components/MrtStatusCard";
-import { RouteMap } from "../components/RouteMap";
 import { RouteAlarmForm } from "../components/RouteAlarmForm";
 import { RoutePreferencePanel } from "../components/RoutePreferencePanel";
 import { WeatherCard } from "../components/WeatherCard";
@@ -82,7 +81,6 @@ function AlertsView() {
         <MrtStatusCard />
         <WeatherCard />
         <BusArrivalCard />
-        <RouteMap />
       </div>
 
       <p className="mt-5 text-center text-[11px] text-muted-foreground">

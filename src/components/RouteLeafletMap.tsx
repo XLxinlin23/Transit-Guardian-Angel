@@ -4,8 +4,6 @@ import type { LatLngBoundsExpression, LatLngExpression, Map as LeafletMap } from
 import type { RefObject } from "react";
 import { AttributionControl, CircleMarker, MapContainer, Polyline, TileLayer, Tooltip } from "react-leaflet";
 
-import { CURRENT, CURRENT_STATION, STATIONS } from "../lib/route-data";
-
 /** Swap this for a keyed provider URL if usage ever grows beyond light demo traffic. */
 const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const TILE_ATTRIBUTION = '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>';
@@ -15,15 +13,25 @@ const MUTED = "#9DB2C8";
 const SUCCESS = "#18A875";
 const SURFACE = "#FFFFFF";
 
-const line: LatLngExpression[] = STATIONS.map((s) => [s.lat, s.lng]);
-const travelled: LatLngExpression[] = STATIONS.slice(0, CURRENT + 1).map((s) => [s.lat, s.lng]);
-const bounds: LatLngBoundsExpression = STATIONS.map((s) => [s.lat, s.lng] as [number, number]);
+export type MapPoint = { name: string; lat: number; lng: number };
 
 type RouteLeafletMapProps = {
   mapRef: RefObject<LeafletMap | null>;
+  stations: MapPoint[];
+  /** Index of the last station already passed; omit for a plain route preview. */
+  currentIndex?: number | undefined;
+  /** Stations where the commuter changes line, highlighted on the route. */
+  transferNames?: string[] | undefined;
 };
 
-export default function RouteLeafletMap({ mapRef }: RouteLeafletMapProps) {
+export default function RouteLeafletMap({ mapRef, stations, currentIndex, transferNames = [] }: RouteLeafletMapProps) {
+  const line: LatLngExpression[] = stations.map((s) => [s.lat, s.lng]);
+  const bounds: LatLngBoundsExpression = stations.map((s) => [s.lat, s.lng] as [number, number]);
+  const travelled: LatLngExpression[] =
+    currentIndex === undefined ? [] : stations.slice(0, currentIndex + 1).map((s) => [s.lat, s.lng]);
+  const current = currentIndex === undefined ? null : stations[currentIndex] ?? null;
+  const transfers = new Set(transferNames);
+
   return (
     <MapContainer
       ref={mapRef}
@@ -43,26 +51,29 @@ export default function RouteLeafletMap({ mapRef }: RouteLeafletMapProps) {
       <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
       <AttributionControl position="bottomright" prefix={false} />
 
-      <Polyline positions={line} pathOptions={{ color: MUTED, weight: 7, opacity: 0.8, lineCap: "round", lineJoin: "round" }} />
-      <Polyline positions={travelled} pathOptions={{ color: BRAND, weight: 7, opacity: 0.95, lineCap: "round", lineJoin: "round" }} />
+      <Polyline positions={line} pathOptions={{ color: currentIndex === undefined ? BRAND : MUTED, weight: 7, opacity: 0.85, lineCap: "round", lineJoin: "round" }} />
+      {travelled.length > 1 && (
+        <Polyline positions={travelled} pathOptions={{ color: BRAND, weight: 7, opacity: 0.95, lineCap: "round", lineJoin: "round" }} />
+      )}
 
-      {STATIONS.map((s, i) => {
-        const isEnd = i === 0 || i === STATIONS.length - 1;
-        const passed = i <= CURRENT;
+      {stations.map((s, i) => {
+        const isEnd = i === 0 || i === stations.length - 1;
+        const isTransfer = transfers.has(s.name);
+        const passed = currentIndex !== undefined && i <= currentIndex;
         return (
           <CircleMarker
-            key={s.code}
+            key={`${s.name}-${i}`}
             center={[s.lat, s.lng]}
-            radius={isEnd ? 6 : 4}
+            radius={isEnd ? 6 : isTransfer ? 5.5 : 4}
             pathOptions={{
-              color: isEnd ? SUCCESS : passed ? BRAND : MUTED,
-              weight: isEnd ? 3.5 : 2.5,
+              color: isEnd ? SUCCESS : isTransfer || passed || currentIndex === undefined ? BRAND : MUTED,
+              weight: isEnd || isTransfer ? 3.5 : 2.5,
               fillColor: SURFACE,
               fillOpacity: 1,
             }}
           >
-            {isEnd && (
-              <Tooltip direction="right" offset={[8, 0]} permanent className="wayline-tooltip">
+            {(isEnd || isTransfer) && (
+              <Tooltip direction={i === 0 ? "left" : "right"} offset={[i === 0 ? -8 : 8, 0]} permanent className="wayline-tooltip">
                 {s.name}
               </Tooltip>
             )}
@@ -70,20 +81,16 @@ export default function RouteLeafletMap({ mapRef }: RouteLeafletMapProps) {
         );
       })}
 
-      <CircleMarker
-        center={[CURRENT_STATION.lat, CURRENT_STATION.lng]}
-        radius={14}
-        pathOptions={{ stroke: false, fillColor: BRAND, fillOpacity: 0.18 }}
-      />
-      <CircleMarker
-        center={[CURRENT_STATION.lat, CURRENT_STATION.lng]}
-        radius={7}
-        pathOptions={{ color: SURFACE, weight: 3, fillColor: BRAND, fillOpacity: 1 }}
-      >
-        <Tooltip direction="top" offset={[0, -10]} permanent className="wayline-tooltip wayline-tooltip-current">
-          {CURRENT_STATION.name}
-        </Tooltip>
-      </CircleMarker>
+      {current && (
+        <>
+          <CircleMarker center={[current.lat, current.lng]} radius={14} pathOptions={{ stroke: false, fillColor: BRAND, fillOpacity: 0.18 }} />
+          <CircleMarker center={[current.lat, current.lng]} radius={7} pathOptions={{ color: SURFACE, weight: 3, fillColor: BRAND, fillOpacity: 1 }}>
+            <Tooltip direction="top" offset={[0, -10]} permanent className="wayline-tooltip wayline-tooltip-current">
+              {current.name}
+            </Tooltip>
+          </CircleMarker>
+        </>
+      )}
     </MapContainer>
   );
 }

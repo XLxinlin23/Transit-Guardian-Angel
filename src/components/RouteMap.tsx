@@ -1,21 +1,33 @@
 import { ClientOnly } from "@tanstack/react-router";
 import type { LatLngBoundsExpression, Map as LeafletMap } from "leaflet";
 import { Focus, Maximize2, Minimize2, X } from "lucide-react";
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { CURRENT_STATION, STATIONS, STOPS_REMAINING } from "../lib/route-data";
+import type { MapPoint } from "./RouteLeafletMap";
 
 const RouteLeafletMap = lazy(() => import("./RouteLeafletMap"));
-const routeBounds: LatLngBoundsExpression = STATIONS.map((station) => [station.lat, station.lng] as [number, number]);
 
 function MapSkeleton() {
   return <div className="size-full animate-pulse bg-secondary/60" />;
 }
 
-export function RouteMap() {
+type RouteMapProps = {
+  stations: MapPoint[];
+  title?: string | undefined;
+  badge?: string | undefined;
+  footer?: string | undefined;
+  currentIndex?: number | undefined;
+  transferNames?: string[] | undefined;
+};
+
+export function RouteMap({ stations, title = "Route map", badge, footer, currentIndex, transferNames }: RouteMapProps) {
   const [expanded, setExpanded] = useState(false);
   const mapRef = useRef<LeafletMap | null>(null);
+  const routeBounds = useMemo<LatLngBoundsExpression>(
+    () => stations.map((station) => [station.lat, station.lng] as [number, number]),
+    [stations],
+  );
 
   const fitRoute = () => {
     const map = mapRef.current;
@@ -33,15 +45,19 @@ export function RouteMap() {
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [expanded]);
+  }, [expanded, routeBounds]);
+
+  if (stations.length < 2) return null;
 
   return (
     <div className={expanded ? "relative" : "glass-panel relative rounded-3xl p-4"}>
       <div className="flex items-center justify-between gap-3">
-        <h2 className="font-display text-base font-semibold text-brand-deep">Route map</h2>
-        <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-          <span className="status-pulse size-2 rounded-full bg-primary" /> You are here
-        </span>
+        <h2 className="font-display text-base font-semibold text-brand-deep">{title}</h2>
+        {badge && (
+          <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+            <span className="status-pulse size-2 rounded-full bg-primary" /> {badge}
+          </span>
+        )}
       </div>
 
       {expanded && (
@@ -66,7 +82,7 @@ export function RouteMap() {
       >
         <ClientOnly fallback={<MapSkeleton />}>
           <Suspense fallback={<MapSkeleton />}>
-            <RouteLeafletMap mapRef={mapRef} />
+            <RouteLeafletMap mapRef={mapRef} stations={stations} currentIndex={currentIndex} transferNames={transferNames} />
           </Suspense>
         </ClientOnly>
 
@@ -108,10 +124,7 @@ export function RouteMap() {
         </Button>
       </div>
 
-      <p className="mt-3 text-xs text-muted-foreground">
-        Near {CURRENT_STATION.name} · {STOPS_REMAINING} stops to Raffles Place
-      </p>
-
+      {footer && <p className="mt-3 text-xs text-muted-foreground">{footer}</p>}
     </div>
   );
 }

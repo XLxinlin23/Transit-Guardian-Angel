@@ -1,6 +1,6 @@
 import { AlarmClock, BellRing, CalendarDays, Check, MapPin, Navigation, ShieldAlert } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -13,12 +13,19 @@ import {
   REPEAT_LABELS,
   WEEKDAYS,
   type RepeatOption,
+  DEFAULT_PREFERENCES,
+  PREFERENCE_LABELS,
+  PREFERENCE_STORAGE_KEY,
+  type RoutePreference,
   type RouteAlarm,
 } from "@/lib/commute-settings";
+import { LINE_NAMES, planRoute } from "@/lib/mrt-network";
+import { RouteMap } from "./RouteMap";
 
 export function RouteAlarmForm() {
   const [alarm, setAlarm] = useState<RouteAlarm>(DEFAULT_ALARM);
   const [saved, setSaved] = useState(false);
+  const [preferences, setPreferences] = useState<RoutePreference[]>(DEFAULT_PREFERENCES);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(ALARM_STORAGE_KEY);
@@ -30,6 +37,33 @@ export function RouteAlarmForm() {
       window.localStorage.removeItem(ALARM_STORAGE_KEY);
     }
   }, []);
+
+  useEffect(() => {
+    const load = () => {
+      const stored = window.localStorage.getItem(PREFERENCE_STORAGE_KEY);
+      if (!stored) return;
+      try {
+        const parsed = JSON.parse(stored) as RoutePreference[];
+        if (Array.isArray(parsed) && parsed.length) setPreferences(parsed);
+      } catch {
+        /* ignore malformed preferences */
+      }
+    };
+    load();
+    window.addEventListener("focus", load);
+    window.addEventListener("storage", load);
+    return () => {
+      window.removeEventListener("focus", load);
+      window.removeEventListener("storage", load);
+    };
+  }, []);
+
+  const preview = useMemo(
+    () => (alarm.from.trim() && alarm.to.trim() ? planRoute(alarm.from, alarm.to, preferences) : null),
+    [alarm.from, alarm.to, preferences],
+  );
+  const typedBoth = Boolean(alarm.from.trim() && alarm.to.trim());
+  const preferenceSummary = (preferences.length ? preferences : DEFAULT_PREFERENCES).map((value) => PREFERENCE_LABELS[value]).join(" · ");
 
   const update = <Key extends keyof RouteAlarm>(key: Key, value: RouteAlarm[Key]) => {
     setAlarm((current) => ({ ...current, [key]: value }));
@@ -121,6 +155,36 @@ export function RouteAlarmForm() {
           <BellRing /> {saved ? "Update route alarm" : "Save route alarm"}
         </Button>
       </section>
+
+      {preview && (
+        <section className="mt-4 space-y-3">
+          <RouteMap
+            stations={preview.stations}
+            title="Route preview"
+            badge={preferenceSummary}
+            transferNames={preview.legs.slice(1).map((leg) => leg.stations[0]!.name)}
+            footer={`About ${preview.minutes} min · ${preview.stops} stops · ${preview.transfers === 0 ? "no change" : `${preview.transfers} change${preview.transfers > 1 ? "s" : ""}`} · assumes no disruptions`}
+          />
+          <ol className="glass-panel space-y-2 rounded-2xl p-4">
+            {preview.legs.map((leg, index) => (
+              <li key={`${leg.line}-${index}`} className="flex items-start gap-3 text-sm">
+                <span className="mt-0.5 rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">{leg.line}</span>
+                <span className="min-w-0 text-muted-foreground">
+                  <span className="font-semibold text-brand-deep">{leg.stations[0]!.name} → {leg.stations[leg.stations.length - 1]!.name}</span>
+                  <br />
+                  {LINE_NAMES[leg.line]} · {leg.stations.length - 1} stops
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
+      {typedBoth && !preview && (
+        <p className="mt-4 rounded-2xl border border-border bg-background/70 p-4 text-sm text-muted-foreground">
+          We could not match those to MRT stations yet. Try a station name such as Tampines or Raffles Place.
+        </p>
+      )}
 
       <section className="mt-4 rounded-2xl border border-primary/15 bg-primary/5 p-4">
         <p className="text-sm font-semibold text-brand-deep">Adapts before every trip</p>
