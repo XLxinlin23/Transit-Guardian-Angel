@@ -75,7 +75,7 @@ async function findBusHop(
         const walkOut = targetByCode.get(stopEntry.code);
         if (walkOut === undefined) continue;
         const rides = i - startAt;
-        const minutes = walkMinutes(origin.metres) + 5 + Math.round(rides * 2.2) + walkMinutes(walkOut);
+        const minutes = walkMinutes(origin.metres) + 4 + Math.round(rides * 1.8) + walkMinutes(walkOut);
         if (best && minutes >= best.minutes) continue;
         const toStop = byCode.get(stopEntry.code);
         if (!toStop) continue;
@@ -151,7 +151,7 @@ async function accessLegs(
     from: hop.fromStop.name,
     to: hop.toStop.name,
     detail: `Bus ${hop.service} · ${hop.rides} stop${hop.rides > 1 ? "s" : ""}`,
-    minutes: 5 + Math.round(hop.rides * 2.2),
+    minutes: 4 + Math.round(hop.rides * 1.8),
     points: hop.path.map((stop) => ({ lat: stop.lat, lng: stop.lng, name: stop.name })),
   });
   if (hop.walkOut > 60) {
@@ -191,7 +191,7 @@ export const planJourney = createServerFn({ method: "GET" })
     const key = process.env["LTA_ACCOUNT_KEY"] ?? "";
     const preferWalk = data.preferences.includes("walking") === false;
     const leastWalking = data.preferences.includes("walking");
-    const walkLimit = leastWalking ? 500 : 1000;
+    const walkLimit = leastWalking ? 400 : 700;
 
     const fromStation = nearestStation(data.from.lat, data.from.lng);
     const toStation = nearestStation(data.to.lat, data.to.lng);
