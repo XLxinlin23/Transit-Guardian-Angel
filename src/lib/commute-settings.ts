@@ -8,6 +8,11 @@ export type RouteAlarm = {
   repeat: RepeatOption;
   days: string[];
   active: boolean;
+  notifyLeadMinutes: string;
+  notifyWeather: boolean;
+  notifyCrowd: boolean;
+  notifyBus: boolean;
+  busStopCode: string;
 };
 
 export type RoutePreference = "speed" | "cost" | "walking" | "sheltered" | "transfers" | "crowd";
@@ -22,6 +27,11 @@ export const DEFAULT_ALARM: RouteAlarm = {
   repeat: "weekdays",
   days: ["Mon", "Tue", "Wed", "Thu", "Fri"],
   active: false,
+  notifyLeadMinutes: "20",
+  notifyWeather: true,
+  notifyCrowd: true,
+  notifyBus: false,
+  busStopCode: "",
 };
 
 export const DEFAULT_PREFERENCES: RoutePreference[] = ["speed"];
