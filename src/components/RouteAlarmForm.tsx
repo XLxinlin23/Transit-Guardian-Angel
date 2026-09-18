@@ -514,6 +514,13 @@ export function RouteAlarmForm() {
             {looking ? "Working out the best way door to door…" : "We could not build a route between those two points yet."}
           </p>
         )}
+
+        <Button className="mt-6 h-11 w-full rounded-xl" disabled={!canSave || syncing} onClick={saveAlarm}>
+          <Check /> {syncing ? "Saving…" : editingExisting ? "Save route" : "Save route"}
+        </Button>
+        <p className="mt-2 text-center text-[11px] text-muted-foreground">
+          Saves this trip to your Saved alarms list above.
+        </p>
       </section>
 
       <section className="glass-panel mt-4 rounded-3xl p-5">
@@ -560,8 +567,13 @@ export function RouteAlarmForm() {
           </div>
         )}
 
-        <Button className="mt-5 h-11 w-full rounded-xl" disabled={!canSave || syncing} onClick={saveAlarm}>
-          <BellRing /> {syncing ? "Saving…" : editingExisting ? "Update route alarm" : "Save route alarm"}
+        <Button
+          variant="outline"
+          className="mt-5 h-11 w-full rounded-xl border-primary/30 text-primary"
+          disabled={!canSave || syncing}
+          onClick={saveAlarm}
+        >
+          <BellRing /> {syncing ? "Saving…" : "Update alarm settings"}
         </Button>
       </section>
 
