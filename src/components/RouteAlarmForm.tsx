@@ -230,12 +230,24 @@ export function RouteAlarmForm() {
       <section className="glass-panel mt-5 rounded-3xl p-5">
         <div className="space-y-5">
           <Field icon={Navigation} label="From">
-            <Input value={alarm.from} onChange={(event) => update("from", event.target.value)} placeholder="Where are you departing from?" aria-label="From" className="h-11 bg-background/70" />
-            {fromPoint.note && <p className="mt-1.5 text-xs text-muted-foreground">{fromPoint.note}</p>}
+            <PlacePicker
+              value={alarm.from}
+              onValueChange={(value) => update("from", value)}
+              confirmed={fromPlace}
+              onConfirm={(place) => confirmPlace("from", place)}
+              placeholder="Where are you departing from?"
+              ariaLabel="From"
+            />
           </Field>
           <Field icon={MapPin} label="To">
-            <Input value={alarm.to} onChange={(event) => update("to", event.target.value)} placeholder="Where are you going?" aria-label="To" className="h-11 bg-background/70" />
-            {toPoint.note && <p className="mt-1.5 text-xs text-muted-foreground">{toPoint.note}</p>}
+            <PlacePicker
+              value={alarm.to}
+              onValueChange={(value) => update("to", value)}
+              confirmed={toPlace}
+              onConfirm={(place) => confirmPlace("to", place)}
+              placeholder="Where are you going?"
+              ariaLabel="To"
+            />
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field icon={AlarmClock} label="Reach by">
