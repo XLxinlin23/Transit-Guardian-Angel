@@ -34,7 +34,7 @@ export default function RouteLeafletMap({ interactive = false }: { interactive?:
       keyboard={interactive}
       attributionControl
     >
-      <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} subdomains={["a", "b", "c", "d"]} />
+      <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
 
       <Polyline positions={line} pathOptions={{ color: MUTED, weight: 7, opacity: 0.8, lineCap: "round", lineJoin: "round" }} />
       <Polyline positions={travelled} pathOptions={{ color: BRAND, weight: 7, opacity: 0.95, lineCap: "round", lineJoin: "round" }} />
