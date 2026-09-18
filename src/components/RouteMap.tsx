@@ -36,7 +36,7 @@ export function RouteMap() {
   }, [expanded]);
 
   return (
-    <div className="glass-panel relative rounded-3xl p-4">
+    <div className={expanded ? "relative" : "glass-panel relative rounded-3xl p-4"}>
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-display text-base font-semibold text-brand-deep">Route map</h2>
         <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
@@ -47,7 +47,7 @@ export function RouteMap() {
       {expanded && (
         <button
           type="button"
-          aria-label="Close route map"
+          aria-label="Fullscreen map backdrop"
           className="fixed inset-0 z-40 cursor-default bg-brand-deep/40 backdrop-blur-sm"
           onClick={() => setExpanded(false)}
         />
