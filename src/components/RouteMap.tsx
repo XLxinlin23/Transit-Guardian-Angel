@@ -14,11 +14,11 @@ function MapSkeleton() {
 
 type RouteMapProps = {
   stations: MapPoint[];
-  title?: string;
-  badge?: string;
-  footer?: string;
-  currentIndex?: number;
-  transferNames?: string[];
+  title?: string | undefined;
+  badge?: string | undefined;
+  footer?: string | undefined;
+  currentIndex?: number | undefined;
+  transferNames?: string[] | undefined;
 };
 
 export function RouteMap({ stations, title = "Route map", badge, footer, currentIndex, transferNames }: RouteMapProps) {

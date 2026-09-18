@@ -19,9 +19,9 @@ type RouteLeafletMapProps = {
   mapRef: RefObject<LeafletMap | null>;
   stations: MapPoint[];
   /** Index of the last station already passed; omit for a plain route preview. */
-  currentIndex?: number;
+  currentIndex?: number | undefined;
   /** Stations where the commuter changes line, highlighted on the route. */
-  transferNames?: string[];
+  transferNames?: string[] | undefined;
 };
 
 export default function RouteLeafletMap({ mapRef, stations, currentIndex, transferNames = [] }: RouteLeafletMapProps) {
