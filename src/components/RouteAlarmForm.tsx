@@ -88,11 +88,16 @@ export function RouteAlarmForm() {
     };
   }, []);
 
+  const resolve = useServerFn(resolvePlace);
+  const fromPoint = useEndpoint(alarm.from, resolve);
+  const toPoint = useEndpoint(alarm.to, resolve);
+
   const preview = useMemo(
-    () => (alarm.from.trim() && alarm.to.trim() ? planRoute(alarm.from, alarm.to, preferences) : null),
-    [alarm.from, alarm.to, preferences],
+    () => (fromPoint.station && toPoint.station ? planRoute(fromPoint.station, toPoint.station, preferences) : null),
+    [fromPoint.station, toPoint.station, preferences],
   );
   const typedBoth = Boolean(alarm.from.trim() && alarm.to.trim());
+  const looking = fromPoint.loading || toPoint.loading;
   const preferenceSummary = (preferences.length ? preferences : DEFAULT_PREFERENCES).map((value) => PREFERENCE_LABELS[value]).join(" · ");
 
   const update = <Key extends keyof RouteAlarm>(key: Key, value: RouteAlarm[Key]) => {
