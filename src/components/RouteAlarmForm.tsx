@@ -27,20 +27,15 @@ import { Switch } from "@/components/ui/switch";
 import { deleteCommuteSchedule, listCommuteSchedules, saveCommuteSchedule } from "@/lib/commute.functions";
 import {
   ALARMS_STORAGE_KEY,
-  DEFAULT_ALARM,
-  DRAFT_STORAGE_KEY,
   REPEAT_LABELS,
   WEEKDAYS,
-  newAlarmId,
   type RepeatOption,
   DEFAULT_PREFERENCES,
   PREFERENCE_LABELS,
-  PREFERENCE_STORAGE_KEY,
-  type PlacePoint,
-  type RoutePreference,
   type RouteAlarm,
   type SavedRouteAlarm,
 } from "@/lib/commute-settings";
+import { useTrip } from "@/lib/trip-store";
 import { getDeviceId } from "@/lib/device-id";
 import { planJourney, type Journey } from "@/lib/journey.functions";
 import { PlacePicker, placeLine, type ConfirmedPlace } from "./PlacePicker";
@@ -400,6 +395,12 @@ export function RouteAlarmForm() {
                 Destination confirmed: {placeLine(toPlace)}
               </p>
             )}
+            <p className="rounded-xl border border-primary/25 bg-primary/5 px-3 py-2 text-xs font-semibold text-brand-deep">
+              {preview.reason}
+              {preview.alternatives > 1 && (
+                <span className="font-medium text-muted-foreground"> · best of {preview.alternatives} options</span>
+              )}
+            </p>
             <RouteMap
               stations={[]}
               segments={segments}
@@ -453,6 +454,13 @@ export function RouteAlarmForm() {
         <p className="mt-2 text-center text-[11px] text-muted-foreground">
           Saves this trip to your Saved alarms list above.
         </p>
+        <button
+          type="button"
+          onClick={clearCurrentTrip}
+          className="mt-3 w-full rounded-xl py-2 text-xs font-semibold text-muted-foreground hover:bg-secondary"
+        >
+          Clear trip
+        </button>
       </section>
 
       <section className="glass-panel mt-4 rounded-3xl p-5">
