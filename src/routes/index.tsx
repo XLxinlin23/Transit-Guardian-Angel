@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { BellRing, Home, SlidersHorizontal } from "lucide-react";
+import { BellRing, Bus, Home, SlidersHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BusArrivalCard } from "../components/BusArrivalCard";
 import { MrtStatusCard } from "../components/MrtStatusCard";
 import { RouteAlarmForm } from "../components/RouteAlarmForm";
 import { RoutePreferencePanel } from "../components/RoutePreferencePanel";
+import { NearbyBusStopsCard } from "../components/NearbyBusStopsCard";
 import { WeatherCard } from "../components/WeatherCard";
 
 export const Route = createFileRoute("/")({
@@ -21,7 +22,7 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-type Tab = "home" | "preference" | "alerts";
+type Tab = "home" | "preference" | "arrivals" | "alerts";
 
 function Index() {
   const [tab, setTab] = useState<Tab>("home");
@@ -50,12 +51,14 @@ function Index() {
 
         {tab === "home" && <HomeView />}
         {tab === "preference" && <PreferenceView />}
+        {tab === "arrivals" && <ArrivalsView />}
         {tab === "alerts" && <AlertsView />}
       </main>
 
-      <nav className="glass-control fixed inset-x-4 bottom-4 z-20 mx-auto grid max-w-[408px] grid-cols-3 rounded-2xl p-1.5" aria-label="Primary navigation">
+      <nav className="glass-control fixed inset-x-4 bottom-4 z-20 mx-auto grid max-w-[408px] grid-cols-4 rounded-2xl p-1.5" aria-label="Primary navigation">
         <NavButton active={tab === "home"} icon={Home} label="Home" onClick={() => setTab("home")} />
         <NavButton active={tab === "preference"} icon={SlidersHorizontal} label="Preference" onClick={() => setTab("preference")} />
+        <NavButton active={tab === "arrivals"} icon={Bus} label="Bus & MRT Arrival" onClick={() => setTab("arrivals")} />
         <NavButton active={tab === "alerts"} icon={BellRing} label="Disruption Alert" onClick={() => setTab("alerts")} />
       </nav>
     </div>
@@ -80,12 +83,38 @@ function AlertsView() {
       <div className="mt-5 space-y-3.5">
         <MrtStatusCard />
         <WeatherCard />
-        <BusArrivalCard />
       </div>
 
       <p className="mt-5 text-center text-[11px] text-muted-foreground">
         Train and bus data © LTA DataMall · Weather © data.gov.sg
       </p>
+    </div>
+  );
+}
+
+function ArrivalsView() {
+  const [selected, setSelected] = useState<{ code: string; name: string } | null>(null);
+
+  return (
+    <div className="pt-6">
+      <p className="text-xs font-semibold uppercase text-primary">Live timings</p>
+      <h1 className="mt-2 font-display text-3xl font-bold text-brand-deep">Bus &amp; MRT arrival</h1>
+      <p className="mt-2 text-sm text-muted-foreground">Stops near you, tapped once for live arrivals.</p>
+
+      <div className="mt-5 space-y-3.5">
+        <NearbyBusStopsCard
+          selectedCode={selected?.code}
+          onSelect={(stop) => setSelected({ code: stop.code, name: stop.name })}
+        />
+        <BusArrivalCard
+          stopCode={selected?.code}
+          stopName={selected?.name}
+          onStopChange={(stop) => setSelected(stop)}
+        />
+        <MrtStatusCard />
+      </div>
+
+      <p className="mt-5 text-center text-[11px] text-muted-foreground">Train and bus data © LTA DataMall</p>
     </div>
   );
 }
