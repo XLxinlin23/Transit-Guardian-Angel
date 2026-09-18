@@ -95,6 +95,20 @@ export function RouteAlarmForm() {
     window.localStorage.setItem(ALARMS_STORAGE_KEY, JSON.stringify(next));
   };
 
+  const persistDraft = (draft: EditorDraft) => {
+    window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+  };
+
+  // Restore whatever was typed into the editor, even if it was never saved.
+  useEffect(() => {
+    const draft = readDraft();
+    if (!draft) return;
+    setEditingId(draft.editingId);
+    setAlarm(draft.alarm);
+    setFromPlace(draft.fromPlace);
+    setToPlace(draft.toPlace);
+  }, []);
+
   // Load the saved list from this device, then top it up from the backend.
   useEffect(() => {
     let local: SavedRouteAlarm[] = [];
