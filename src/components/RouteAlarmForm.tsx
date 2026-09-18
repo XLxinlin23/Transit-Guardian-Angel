@@ -1,4 +1,5 @@
-import { AlarmClock, BellRing, CalendarDays, Check, MapPin, Navigation, ShieldAlert } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { AlarmClock, BellRing, Bus, CalendarDays, Check, CloudRain, MapPin, Navigation, ShieldAlert, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -7,6 +8,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { getCommuteSchedule, saveCommuteSchedule } from "@/lib/commute.functions";
 import {
   ALARM_STORAGE_KEY,
   DEFAULT_ALARM,
@@ -19,24 +22,50 @@ import {
   type RoutePreference,
   type RouteAlarm,
 } from "@/lib/commute-settings";
+import { getDeviceId } from "@/lib/device-id";
 import { LINE_NAMES, planRoute } from "@/lib/mrt-network";
+import { CommuteAlertCard } from "./CommuteAlertCard";
 import { RouteMap } from "./RouteMap";
 
 export function RouteAlarmForm() {
   const [alarm, setAlarm] = useState<RouteAlarm>(DEFAULT_ALARM);
   const [saved, setSaved] = useState(false);
   const [preferences, setPreferences] = useState<RoutePreference[]>(DEFAULT_PREFERENCES);
+  const [syncing, setSyncing] = useState(false);
+  const saveRemote = useServerFn(saveCommuteSchedule);
+  const loadRemote = useServerFn(getCommuteSchedule);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(ALARM_STORAGE_KEY);
-    if (!stored) return;
-    try {
-      setAlarm({ ...DEFAULT_ALARM, ...(JSON.parse(stored) as RouteAlarm) });
-      setSaved(true);
-    } catch {
-      window.localStorage.removeItem(ALARM_STORAGE_KEY);
+    if (stored) {
+      try {
+        setAlarm({ ...DEFAULT_ALARM, ...(JSON.parse(stored) as RouteAlarm) });
+        setSaved(true);
+      } catch {
+        window.localStorage.removeItem(ALARM_STORAGE_KEY);
+      }
     }
-  }, []);
+    loadRemote({ data: { deviceId: getDeviceId() } })
+      .then((row) => {
+        if (!row) return;
+        setAlarm({
+          from: row.origin,
+          to: row.destination,
+          arriveBy: row.arriveBy,
+          maxDelay: String(row.maxDelay),
+          repeat: row.repeatOption as RepeatOption,
+          days: row.travelDays,
+          active: row.active,
+          notifyLeadMinutes: String(row.notifyLeadMinutes),
+          notifyWeather: row.notifyWeather,
+          notifyCrowd: row.notifyCrowd,
+          notifyBus: row.notifyBus,
+          busStopCode: row.busStopCode ?? "",
+        });
+        setSaved(true);
+      })
+      .catch(() => undefined);
+  }, [loadRemote]);
 
   useEffect(() => {
     const load = () => {
