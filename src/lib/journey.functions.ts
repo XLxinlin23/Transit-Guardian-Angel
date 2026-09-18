@@ -213,8 +213,8 @@ export const planJourney = createServerFn({ method: "GET" })
       return { legs, minutes: legs.reduce((total, leg) => total + leg.minutes, 0) };
     }
 
-    const fromNode = STATION_INDEX[fromStation.name]!;
-    const toNode = STATION_INDEX[toStation.name]!;
+    const fromNode = STATION_INDEX.get(fromStation.name) ?? fromStation;
+    const toNode = STATION_INDEX.get(toStation.name) ?? toStation;
 
     const head = await accessLegs(
       key,
