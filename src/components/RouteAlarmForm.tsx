@@ -1,4 +1,5 @@
-import { AlarmClock, BellRing, CalendarDays, Check, MapPin, Navigation, ShieldAlert } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { AlarmClock, BellRing, Bus, CalendarDays, Check, CloudRain, MapPin, Navigation, ShieldAlert, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -7,6 +8,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { getCommuteSchedule, saveCommuteSchedule } from "@/lib/commute.functions";
 import {
   ALARM_STORAGE_KEY,
   DEFAULT_ALARM,
@@ -19,24 +22,50 @@ import {
   type RoutePreference,
   type RouteAlarm,
 } from "@/lib/commute-settings";
+import { getDeviceId } from "@/lib/device-id";
 import { LINE_NAMES, planRoute } from "@/lib/mrt-network";
+import { CommuteAlertCard } from "./CommuteAlertCard";
 import { RouteMap } from "./RouteMap";
 
 export function RouteAlarmForm() {
   const [alarm, setAlarm] = useState<RouteAlarm>(DEFAULT_ALARM);
   const [saved, setSaved] = useState(false);
   const [preferences, setPreferences] = useState<RoutePreference[]>(DEFAULT_PREFERENCES);
+  const [syncing, setSyncing] = useState(false);
+  const saveRemote = useServerFn(saveCommuteSchedule);
+  const loadRemote = useServerFn(getCommuteSchedule);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(ALARM_STORAGE_KEY);
-    if (!stored) return;
-    try {
-      setAlarm({ ...DEFAULT_ALARM, ...(JSON.parse(stored) as RouteAlarm) });
-      setSaved(true);
-    } catch {
-      window.localStorage.removeItem(ALARM_STORAGE_KEY);
+    if (stored) {
+      try {
+        setAlarm({ ...DEFAULT_ALARM, ...(JSON.parse(stored) as RouteAlarm) });
+        setSaved(true);
+      } catch {
+        window.localStorage.removeItem(ALARM_STORAGE_KEY);
+      }
     }
-  }, []);
+    loadRemote({ data: { deviceId: getDeviceId() } })
+      .then((row) => {
+        if (!row) return;
+        setAlarm({
+          from: row.origin,
+          to: row.destination,
+          arriveBy: row.arriveBy,
+          maxDelay: String(row.maxDelay),
+          repeat: row.repeatOption as RepeatOption,
+          days: row.travelDays,
+          active: row.active,
+          notifyLeadMinutes: String(row.notifyLeadMinutes),
+          notifyWeather: row.notifyWeather,
+          notifyCrowd: row.notifyCrowd,
+          notifyBus: row.notifyBus,
+          busStopCode: row.busStopCode ?? "",
+        });
+        setSaved(true);
+      })
+      .catch(() => undefined);
+  }, [loadRemote]);
 
   useEffect(() => {
     const load = () => {
@@ -75,11 +104,36 @@ export function RouteAlarmForm() {
     update("days", days);
   };
 
-  const saveAlarm = () => {
+  const saveAlarm = async () => {
     const next = { ...alarm, active: true };
     window.localStorage.setItem(ALARM_STORAGE_KEY, JSON.stringify(next));
     setAlarm(next);
     setSaved(true);
+    setSyncing(true);
+    try {
+      await saveRemote({
+        data: {
+          deviceId: getDeviceId(),
+          origin: next.from,
+          destination: next.to,
+          travelDays: next.repeat === "custom" ? next.days : defaultDays(next.repeat),
+          repeatOption: next.repeat,
+          arriveBy: next.arriveBy,
+          maxDelay: Number(next.maxDelay) || 0,
+          preferences,
+          active: true,
+          notifyLeadMinutes: Number(next.notifyLeadMinutes) || 0,
+          notifyWeather: next.notifyWeather,
+          notifyCrowd: next.notifyCrowd,
+          notifyBus: next.notifyBus,
+          busStopCode: next.busStopCode.trim() ? next.busStopCode.trim() : null,
+        },
+      });
+    } catch {
+      /* saved on device; sync retries on next save */
+    } finally {
+      setSyncing(false);
+    }
   };
 
   const canSave = alarm.from.trim() && alarm.to.trim() && alarm.arriveBy && (alarm.repeat !== "custom" || alarm.days.length > 0);
@@ -151,10 +205,38 @@ export function RouteAlarmForm() {
           )}
         </div>
 
-        <Button className="mt-6 h-11 w-full rounded-xl" disabled={!canSave} onClick={saveAlarm}>
-          <BellRing /> {saved ? "Update route alarm" : "Save route alarm"}
+        <div className="mt-6 border-t border-border/70 pt-5">
+          <p className="text-xs font-semibold uppercase text-muted-foreground">Alert settings</p>
+          <div className="mt-3 space-y-3">
+            <Field icon={BellRing} label="Remind me before departure">
+              <Select value={alarm.notifyLeadMinutes} onValueChange={(value) => update("notifyLeadMinutes", value)}>
+                <SelectTrigger aria-label="Remind me before departure" className="h-11 bg-background/70"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {[5, 10, 15, 20, 30, 45].map((minutes) => <SelectItem key={minutes} value={String(minutes)}>{minutes} min before</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Toggle icon={CloudRain} label="Weather impact" checked={alarm.notifyWeather} onChange={(value) => update("notifyWeather", value)} />
+            <Toggle icon={Users} label="MRT crowd levels" checked={alarm.notifyCrowd} onChange={(value) => update("notifyCrowd", value)} />
+            <Toggle icon={Bus} label="Bus arrivals" checked={alarm.notifyBus} onChange={(value) => update("notifyBus", value)} />
+            {alarm.notifyBus && (
+              <Input
+                value={alarm.busStopCode}
+                onChange={(event) => update("busStopCode", event.target.value)}
+                placeholder="Bus stop code, e.g. 75009"
+                aria-label="Bus stop code"
+                className="h-11 bg-background/70"
+              />
+            )}
+          </div>
+        </div>
+
+        <Button className="mt-6 h-11 w-full rounded-xl" disabled={!canSave || syncing} onClick={saveAlarm}>
+          <BellRing /> {syncing ? "Saving…" : saved ? "Update route alarm" : "Save route alarm"}
         </Button>
       </section>
+
+      {saved && alarm.active && preview && <CommuteAlertCard alarm={alarm} preferences={preferences} />}
 
       {preview && (
         <section className="mt-4 space-y-3">
@@ -191,6 +273,21 @@ export function RouteAlarmForm() {
         <p className="mt-1 text-sm leading-relaxed text-muted-foreground">If disruption changes the best route, Wayline recalculates using your preferences and alerts you earlier.</p>
       </section>
     </div>
+  );
+}
+
+function defaultDays(repeat: RepeatOption): string[] {
+  if (repeat === "weekdays") return ["Mon", "Tue", "Wed", "Thu", "Fri"];
+  if (repeat === "weekends") return ["Sat", "Sun"];
+  return [];
+}
+
+function Toggle({ icon: Icon, label, checked, onChange }: { icon: typeof MapPin; label: string; checked: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <Label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-xl border border-border bg-background/60 px-3">
+      <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground"><Icon className="size-4 text-primary" />{label}</span>
+      <Switch checked={checked} onCheckedChange={onChange} aria-label={label} />
+    </Label>
   );
 }
 

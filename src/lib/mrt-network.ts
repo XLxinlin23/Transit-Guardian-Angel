@@ -233,12 +233,18 @@ function weightsFor(preferences: RoutePreference[]): Weights {
   };
 }
 
-/** Shortest path weighted by the commuter's route preferences, assuming no disruptions. */
-export function planRoute(fromName: string, toName: string, preferences: RoutePreference[]): PlannedRoute | null {
+/** Shortest path weighted by the commuter's route preferences. Lines in `avoidLines` are heavily penalised. */
+export function planRoute(
+  fromName: string,
+  toName: string,
+  preferences: RoutePreference[],
+  avoidLines: string[] = [],
+): PlannedRoute | null {
   const from = findStation(fromName);
   const to = findStation(toName);
   if (!from || !to || from.name === to.name) return null;
 
+  const avoid = new Set(avoidLines);
   const weights = weightsFor(preferences);
   type NodeKey = string; // `${station}|${line}`
   const cost = new Map<NodeKey, number>();
@@ -270,6 +276,7 @@ export function planRoute(fromName: string, toName: string, preferences: RoutePr
       let hop = weights.useDistance ? distanceKm(a, b) * 2.2 : 2.2;
       if (weights.crowdFactor > 1 && CROWDED_LINES.has(edge.line)) hop *= weights.crowdFactor;
       if (weights.shelterFactor > 1 && LESS_SHELTERED_LINES.has(edge.line)) hop *= weights.shelterFactor;
+      if (avoid.has(edge.line)) hop *= 8;
       const transfer = edge.line === node.line ? 0 : weights.transferPenalty;
       const next = node.cost + hop + transfer;
       const key = `${edge.to}|${edge.line}`;
