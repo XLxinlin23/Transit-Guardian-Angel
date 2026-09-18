@@ -239,8 +239,8 @@
 }
 
 .wayline-map .leaflet-control-attribution {
-  background: color-mix(in oklab, white 82%, transparent);
-  color: color-mix(in oklab, var(--brand-deep) 65%, white);
+  background: var(--surface-strong);
+  color: var(--muted-foreground);
   font-size: 9px;
   padding: 1px 6px;
 }
