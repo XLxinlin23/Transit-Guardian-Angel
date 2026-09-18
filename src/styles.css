@@ -190,3 +190,35 @@
 @media (prefers-reduced-motion: no-preference) {
   .status-pulse { animation: status-pulse 2.6s ease-out infinite; }
 }
+
+/* Leaflet map chrome, tuned to the Wayline palette */
+.wayline-map .leaflet-container {
+  background: var(--color-secondary);
+  font-family: var(--font-sans);
+}
+
+.wayline-map .leaflet-control-attribution {
+  background: color-mix(in oklab, white 82%, transparent);
+  color: color-mix(in oklab, var(--brand-deep) 65%, white);
+  font-size: 9px;
+  padding: 1px 6px;
+}
+
+.wayline-map .leaflet-control-attribution a {
+  color: var(--brand);
+}
+
+.wayline-map .wayline-tooltip {
+  background: var(--surface-strong);
+  border: 1px solid color-mix(in oklab, var(--brand) 14%, white);
+  border-radius: 8px;
+  box-shadow: 0 8px 22px color-mix(in oklab, var(--brand-deep) 10%, transparent);
+  color: var(--brand-deep);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+}
+
+.wayline-map .wayline-tooltip::before { display: none; }
+
+.wayline-map .wayline-tooltip-current { color: var(--brand); }
