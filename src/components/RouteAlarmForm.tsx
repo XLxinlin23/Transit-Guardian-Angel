@@ -38,10 +38,28 @@ export function RouteAlarmForm() {
   const loadRemote = useServerFn(getCommuteSchedule);
 
   useEffect(() => {
+    let draftFrom: string | undefined;
+    let draftTo: string | undefined;
+    const draftRaw = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (draftRaw) {
+      try {
+        const draft = JSON.parse(draftRaw) as { from?: string; to?: string };
+        if (typeof draft.from === "string") draftFrom = draft.from;
+        if (typeof draft.to === "string") draftTo = draft.to;
+      } catch {
+        window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+      }
+    }
     const stored = window.localStorage.getItem(ALARM_STORAGE_KEY);
     if (stored) {
       try {
-        setAlarm({ ...DEFAULT_ALARM, ...(JSON.parse(stored) as RouteAlarm) });
+        const parsed = JSON.parse(stored) as RouteAlarm;
+        setAlarm({
+          ...DEFAULT_ALARM,
+          ...parsed,
+          from: draftFrom ?? parsed.from ?? DEFAULT_ALARM.from,
+          to: draftTo ?? parsed.to ?? DEFAULT_ALARM.to,
+        });
         setSaved(true);
       } catch {
         window.localStorage.removeItem(ALARM_STORAGE_KEY);
@@ -51,8 +69,8 @@ export function RouteAlarmForm() {
       .then((row) => {
         if (!row) return;
         setAlarm({
-          from: row.origin,
-          to: row.destination,
+          from: draftFrom ?? row.origin,
+          to: draftTo ?? row.destination,
           arriveBy: row.arriveBy,
           maxDelay: String(row.maxDelay),
           repeat: row.repeatOption as RepeatOption,

@@ -38,6 +38,7 @@ export const DEFAULT_PREFERENCES: RoutePreference[] = ["speed"];
 
 export const ALARM_STORAGE_KEY = "wayline-route-alarm";
 export const PREFERENCE_STORAGE_KEY = "wayline-route-preferences";
+export const DRAFT_STORAGE_KEY = "wayline-route-draft";
 
 export const REPEAT_LABELS: Record<RepeatOption, string> = {
   once: "Once",
