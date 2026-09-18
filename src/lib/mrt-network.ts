@@ -276,6 +276,7 @@ export function planRoute(
       let hop = weights.useDistance ? distanceKm(a, b) * 2.2 : 2.2;
       if (weights.crowdFactor > 1 && CROWDED_LINES.has(edge.line)) hop *= weights.crowdFactor;
       if (weights.shelterFactor > 1 && LESS_SHELTERED_LINES.has(edge.line)) hop *= weights.shelterFactor;
+      if (avoid.has(edge.line)) hop *= 8;
       const transfer = edge.line === node.line ? 0 : weights.transferPenalty;
       const next = node.cost + hop + transfer;
       const key = `${edge.to}|${edge.line}`;
