@@ -24,10 +24,12 @@ export type Journey = {
 };
 
 const LRT_LINES = new Set(["BP", "SE", "SW", "PE", "PW", "PTC", "STC"]);
-const WALK_METRES_PER_MIN = 80;
+const WALK_METRES_PER_MIN = 75;
+/** Straight-line distance underestimates real footpaths. */
+const WALK_DETOUR = 1.3;
 
 function walkMinutes(metres: number) {
-  return Math.max(1, Math.round(metres / WALK_METRES_PER_MIN));
+  return Math.max(1, Math.round((metres * WALK_DETOUR) / WALK_METRES_PER_MIN));
 }
 
 function stopsNear(stops: BusStopRecord[], lat: number, lng: number, radius: number, limit: number) {
