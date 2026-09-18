@@ -127,22 +127,16 @@ export function RouteAlarmForm() {
     };
   }, []);
 
-  const resolve = useServerFn(resolvePlace);
-  const fromPoint = useEndpoint(alarm.from, resolve);
-  const toPoint = useEndpoint(alarm.to, resolve);
-
   const planJourneyFn = useServerFn(planJourney);
-  const fromCoords = fromPoint.point;
-  const toCoords = toPoint.point;
   const journeyQuery = useQuery({
-    queryKey: ["journey", fromCoords?.lat, fromCoords?.lng, toCoords?.lat, toCoords?.lng, preferences.join(",")],
-    enabled: Boolean(fromCoords && toCoords),
+    queryKey: ["journey", fromPlace?.lat, fromPlace?.lng, toPlace?.lat, toPlace?.lng, preferences.join(",")],
+    enabled: Boolean(fromPlace && toPlace),
     staleTime: 5 * 60_000,
     queryFn: () =>
       planJourneyFn({
         data: {
-          from: { lat: fromCoords!.lat, lng: fromCoords!.lng, label: fromCoords!.label },
-          to: { lat: toCoords!.lat, lng: toCoords!.lng, label: toCoords!.label },
+          from: { lat: fromPlace!.lat, lng: fromPlace!.lng, label: fromPlace!.name },
+          to: { lat: toPlace!.lat, lng: toPlace!.lng, label: toPlace!.name },
           preferences,
         },
       }),
@@ -154,7 +148,8 @@ export function RouteAlarmForm() {
   );
   const modesUsed = useMemo(() => [...new Set(preview?.legs.map((leg) => leg.mode) ?? [])], [preview]);
   const typedBoth = Boolean(alarm.from.trim() && alarm.to.trim());
-  const looking = fromPoint.loading || toPoint.loading || journeyQuery.isFetching;
+  const bothConfirmed = Boolean(fromPlace && toPlace);
+  const looking = journeyQuery.isFetching;
   const preferenceSummary = (preferences.length ? preferences : DEFAULT_PREFERENCES).map((value) => PREFERENCE_LABELS[value]).join(" · ");
 
   const update = <Key extends keyof RouteAlarm>(key: Key, value: RouteAlarm[Key]) => {
@@ -162,7 +157,7 @@ export function RouteAlarmForm() {
     setSaved(false);
     if (key === "from" || key === "to") {
       const next = { ...alarm, [key]: value };
-      window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ from: next.from, to: next.to }));
+      persistDraft({ from: next.from, to: next.to, fromPlace: key === "from" ? null : fromPlace, toPlace: key === "to" ? null : toPlace });
     }
   };
 
