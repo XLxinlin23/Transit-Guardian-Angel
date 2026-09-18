@@ -69,7 +69,7 @@ export function BusArrivalCard({ defaultStop = "75009", compactServices = 6 }: {
         <p className="mt-4 text-sm text-muted-foreground">No buses arriving at stop {data.busStopCode}.</p>
       ) : (
         <ul className="mt-4 divide-y divide-border/70">
-          {(data?.services ?? []).map((s) => (
+          {(showAll ? data?.services ?? [] : (data?.services ?? []).slice(0, compactServices)).map((s) => (
             <li key={s.serviceNo} className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 py-3">
               <span className="rounded-lg bg-primary/10 px-2.5 py-1 font-display text-sm font-bold text-primary">
                 {s.serviceNo}
