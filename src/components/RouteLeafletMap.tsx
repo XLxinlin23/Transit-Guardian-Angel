@@ -55,7 +55,7 @@ export default function RouteLeafletMap({ interactive = false }: { interactive?:
             }}
           >
             {isEnd && (
-              <Tooltip direction={i === 0 ? "right" : "left"} offset={[i === 0 ? 8 : -8, 0]} permanent className="wayline-tooltip">
+              <Tooltip direction="right" offset={[8, 0]} permanent className="wayline-tooltip">
                 {s.name}
               </Tooltip>
             )}
