@@ -205,10 +205,38 @@ export function RouteAlarmForm() {
           )}
         </div>
 
-        <Button className="mt-6 h-11 w-full rounded-xl" disabled={!canSave} onClick={saveAlarm}>
-          <BellRing /> {saved ? "Update route alarm" : "Save route alarm"}
+        <div className="mt-6 border-t border-border/70 pt-5">
+          <p className="text-xs font-semibold uppercase text-muted-foreground">Alert settings</p>
+          <div className="mt-3 space-y-3">
+            <Field icon={BellRing} label="Remind me before departure">
+              <Select value={alarm.notifyLeadMinutes} onValueChange={(value) => update("notifyLeadMinutes", value)}>
+                <SelectTrigger aria-label="Remind me before departure" className="h-11 bg-background/70"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {[5, 10, 15, 20, 30, 45].map((minutes) => <SelectItem key={minutes} value={String(minutes)}>{minutes} min before</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Toggle icon={CloudRain} label="Weather impact" checked={alarm.notifyWeather} onChange={(value) => update("notifyWeather", value)} />
+            <Toggle icon={Users} label="MRT crowd levels" checked={alarm.notifyCrowd} onChange={(value) => update("notifyCrowd", value)} />
+            <Toggle icon={Bus} label="Bus arrivals" checked={alarm.notifyBus} onChange={(value) => update("notifyBus", value)} />
+            {alarm.notifyBus && (
+              <Input
+                value={alarm.busStopCode}
+                onChange={(event) => update("busStopCode", event.target.value)}
+                placeholder="Bus stop code, e.g. 75009"
+                aria-label="Bus stop code"
+                className="h-11 bg-background/70"
+              />
+            )}
+          </div>
+        </div>
+
+        <Button className="mt-6 h-11 w-full rounded-xl" disabled={!canSave || syncing} onClick={saveAlarm}>
+          <BellRing /> {syncing ? "Saving…" : saved ? "Update route alarm" : "Save route alarm"}
         </Button>
       </section>
+
+      {saved && alarm.active && preview && <CommuteAlertCard alarm={alarm} preferences={preferences} />}
 
       {preview && (
         <section className="mt-4 space-y-3">
@@ -245,6 +273,21 @@ export function RouteAlarmForm() {
         <p className="mt-1 text-sm leading-relaxed text-muted-foreground">If disruption changes the best route, Wayline recalculates using your preferences and alerts you earlier.</p>
       </section>
     </div>
+  );
+}
+
+function defaultDays(repeat: RepeatOption): string[] {
+  if (repeat === "weekdays") return ["Mon", "Tue", "Wed", "Thu", "Fri"];
+  if (repeat === "weekends") return ["Sat", "Sun"];
+  return [];
+}
+
+function Toggle({ icon: Icon, label, checked, onChange }: { icon: typeof MapPin; label: string; checked: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <Label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-xl border border-border bg-background/60 px-3">
+      <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground"><Icon className="size-4 text-primary" />{label}</span>
+      <Switch checked={checked} onCheckedChange={onChange} aria-label={label} />
+    </Label>
   );
 }
 
