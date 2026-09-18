@@ -17,7 +17,7 @@ const PATH = `M ${STATIONS.map((s) => `${s.x} ${s.y}`).join(" L ")}`;
 const CURRENT = 3;
 
 export function RouteMap() {
-  const current = STATIONS[CURRENT];
+  const current = STATIONS[CURRENT]!;
   const travelled = STATIONS.slice(0, CURRENT + 1);
 
   return (
