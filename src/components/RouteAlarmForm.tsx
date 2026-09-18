@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { getCommuteSchedule, saveCommuteSchedule } from "@/lib/commute.functions";
 import {
   ALARM_STORAGE_KEY,
+  DRAFT_STORAGE_KEY,
   DEFAULT_ALARM,
   REPEAT_LABELS,
   WEEKDAYS,
@@ -86,6 +87,10 @@ export function RouteAlarmForm() {
       })
       .catch(() => undefined);
   }, [loadRemote]);
+
+  useEffect(() => {
+    window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ from: alarm.from, to: alarm.to }));
+  }, [alarm.from, alarm.to]);
 
   useEffect(() => {
     const load = () => {
@@ -193,11 +198,11 @@ export function RouteAlarmForm() {
       <section className="glass-panel mt-5 rounded-3xl p-5">
         <div className="space-y-5">
           <Field icon={Navigation} label="From">
-            <Input value={alarm.from} onChange={(event) => update("from", event.target.value)} placeholder="Station, bus stop or postal code" aria-label="From" className="h-11 bg-background/70" />
+            <Input value={alarm.from} onChange={(event) => update("from", event.target.value)} placeholder="Where are you departing from?" aria-label="From" className="h-11 bg-background/70" />
             {fromPoint.note && <p className="mt-1.5 text-xs text-muted-foreground">{fromPoint.note}</p>}
           </Field>
           <Field icon={MapPin} label="To">
-            <Input value={alarm.to} onChange={(event) => update("to", event.target.value)} placeholder="Station, bus stop or postal code" aria-label="To" className="h-11 bg-background/70" />
+            <Input value={alarm.to} onChange={(event) => update("to", event.target.value)} placeholder="Where are you going?" aria-label="To" className="h-11 bg-background/70" />
             {toPoint.note && <p className="mt-1.5 text-xs text-muted-foreground">{toPoint.note}</p>}
           </Field>
           <div className="grid grid-cols-2 gap-3">
