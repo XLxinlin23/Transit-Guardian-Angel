@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertTriangle, BellRing, Check, ChevronRight, Home, RouteIcon, Settings2, SlidersHorizontal, TrainFront } from "lucide-react";
 import { useEffect, useState } from "react";
 import { RouteMap } from "../components/RouteMap";
@@ -36,7 +36,7 @@ function Index() {
       </div>
 
       <main className="relative mx-auto min-h-screen w-full max-w-md px-4 pb-28 pt-5">
-        <header className="flex items-center gap-3">
+        <header className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand font-display text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20">WL</div>
             <div className="min-w-0 leading-tight">
@@ -44,6 +44,9 @@ function Index() {
               <p className="truncate text-xs text-muted-foreground">EWL · Weekday · 07:40</p>
             </div>
           </div>
+          <Link to="/dashboard" className="glass-control shrink-0 rounded-xl px-3 py-2 text-xs font-semibold text-primary">
+            Dashboard
+          </Link>
         </header>
 
         {tab === "home" && <HomeView />}
