@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { BellRing, Bus, Home, SlidersHorizontal } from "lucide-react";
+import { BellRing, Bus, Home, Settings, SlidersHorizontal } from "lucide-react";
+import { SettingsSheet } from "../components/SettingsSheet";
+import { ThemeProvider } from "../lib/theme";
 import { useEffect, useState } from "react";
 import { BusArrivalCard } from "../components/BusArrivalCard";
 import { MrtStatusCard } from "../components/MrtStatusCard";
