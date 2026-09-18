@@ -1,4 +1,5 @@
 import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { AlarmClock, BellRing, Bus, CalendarDays, Check, ChevronDown, CloudRain, MapPin, Navigation, ShieldAlert, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -24,10 +25,12 @@ import {
   type RouteAlarm,
 } from "@/lib/commute-settings";
 import { getDeviceId } from "@/lib/device-id";
-import { LINE_NAMES, findStation, nearestStation, planRoute } from "@/lib/mrt-network";
+import { findStation, nearestStation } from "@/lib/mrt-network";
+import { planJourney, type Journey, type TravelMode } from "@/lib/journey.functions";
 import { resolvePlace } from "@/lib/places.functions";
 import { CommuteAlertCard } from "./CommuteAlertCard";
 import { RouteMap } from "./RouteMap";
+import { MODE_COLORS } from "./RouteLeafletMap";
 
 export function RouteAlarmForm() {
   const [alarm, setAlarm] = useState<RouteAlarm>(DEFAULT_ALARM);
@@ -119,12 +122,30 @@ export function RouteAlarmForm() {
   const fromPoint = useEndpoint(alarm.from, resolve);
   const toPoint = useEndpoint(alarm.to, resolve);
 
-  const preview = useMemo(
-    () => (fromPoint.station && toPoint.station ? planRoute(fromPoint.station, toPoint.station, preferences) : null),
-    [fromPoint.station, toPoint.station, preferences],
+  const planJourneyFn = useServerFn(planJourney);
+  const fromCoords = fromPoint.point;
+  const toCoords = toPoint.point;
+  const journeyQuery = useQuery({
+    queryKey: ["journey", fromCoords?.lat, fromCoords?.lng, toCoords?.lat, toCoords?.lng, preferences.join(",")],
+    enabled: Boolean(fromCoords && toCoords),
+    staleTime: 5 * 60_000,
+    queryFn: () =>
+      planJourneyFn({
+        data: {
+          from: { lat: fromCoords!.lat, lng: fromCoords!.lng, label: fromCoords!.label },
+          to: { lat: toCoords!.lat, lng: toCoords!.lng, label: toCoords!.label },
+          preferences,
+        },
+      }),
+  });
+  const preview: Journey | null = journeyQuery.data ?? null;
+  const segments = useMemo(
+    () => (preview ? preview.legs.map((leg) => ({ mode: leg.mode, badge: leg.badge, points: leg.points })) : []),
+    [preview],
   );
+  const modesUsed = useMemo(() => [...new Set(preview?.legs.map((leg) => leg.mode) ?? [])], [preview]);
   const typedBoth = Boolean(alarm.from.trim() && alarm.to.trim());
-  const looking = fromPoint.loading || toPoint.loading;
+  const looking = fromPoint.loading || toPoint.loading || journeyQuery.isFetching;
   const preferenceSummary = (preferences.length ? preferences : DEFAULT_PREFERENCES).map((value) => PREFERENCE_LABELS[value]).join(" · ");
 
   const update = <Key extends keyof RouteAlarm>(key: Key, value: RouteAlarm[Key]) => {
@@ -252,23 +273,36 @@ export function RouteAlarmForm() {
           )}
         </div>
 
-        {preview && (
+        {preview && segments.length > 0 && (
           <div className="mt-6 space-y-3 border-t border-border/70 pt-5">
             <RouteMap
-              stations={preview.stations}
+              stations={[]}
+              segments={segments}
               title="Route preview"
               badge={preferenceSummary}
-              transferNames={preview.legs.slice(1).map((leg) => leg.stations[0]!.name)}
-              footer={`About ${preview.minutes} min · ${preview.stops} stops · ${preview.transfers === 0 ? "no change" : `${preview.transfers} change${preview.transfers > 1 ? "s" : ""}`} · currently no disruption`}
+              footer={`About ${preview.minutes} min door to door · ${preview.legs.length} leg${preview.legs.length > 1 ? "s" : ""} · currently no disruption`}
             />
+            <div className="flex flex-wrap gap-3 px-1">
+              {modesUsed.map((mode) => (
+                <span key={mode} className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+                  <span className="h-1.5 w-5 rounded-full" style={{ backgroundColor: MODE_COLORS[mode] }} />
+                  {MODE_LABELS[mode]}
+                </span>
+              ))}
+            </div>
             <ol className="space-y-2 rounded-2xl border border-border/70 bg-background/60 p-4">
               {preview.legs.map((leg, index) => (
-                <li key={`${leg.line}-${index}`} className="flex items-start gap-3 text-sm">
-                  <span className="mt-0.5 rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">{leg.line}</span>
+                <li key={`${leg.badge}-${index}`} className="flex items-start gap-3 text-sm">
+                  <span
+                    className="mt-0.5 shrink-0 rounded-md px-2 py-0.5 text-[11px] font-bold text-white"
+                    style={{ backgroundColor: MODE_COLORS[leg.mode] }}
+                  >
+                    {leg.badge}
+                  </span>
                   <span className="min-w-0 text-muted-foreground">
-                    <span className="font-semibold text-brand-deep">{leg.stations[0]!.name} → {leg.stations[leg.stations.length - 1]!.name}</span>
+                    <span className="font-semibold text-brand-deep">{leg.from} → {leg.to}</span>
                     <br />
-                    {LINE_NAMES[leg.line]} · {leg.stations.length - 1} stops
+                    {leg.detail} · {leg.minutes} min
                   </span>
                 </li>
               ))}
@@ -278,7 +312,7 @@ export function RouteAlarmForm() {
 
         {typedBoth && !preview && (
           <p className="mt-6 border-t border-border/70 pt-5 text-sm text-muted-foreground">
-            {looking ? "Looking up those places…" : "We could not match those yet. Try an MRT station, a bus stop name or code, or a 6-digit postal code."}
+            {looking ? "Working out the best way door to door…" : "We could not match those yet. Try an MRT station, a bus stop name or code, or a 6-digit postal code."}
           </p>
         )}
 
@@ -343,21 +377,29 @@ export function RouteAlarmForm() {
   );
 }
 
-type EndpointState = { station: string | null; note: string | null; loading: boolean };
+const MODE_LABELS: Record<TravelMode, string> = { walk: "Walk", bus: "Bus", mrt: "MRT", lrt: "LRT" };
+
+type EndpointPoint = { lat: number; lng: number; label: string };
+type EndpointState = { station: string | null; note: string | null; loading: boolean; point: EndpointPoint | null };
 
 /** Accepts an MRT station name, bus stop name/code or postal code and maps it to the nearest station. */
 function useEndpoint(value: string, resolve: (options: { data: { query: string } }) => Promise<{ label: string; lat: number; lng: number } | null>): EndpointState {
-  const [state, setState] = useState<EndpointState>({ station: null, note: null, loading: false });
+  const [state, setState] = useState<EndpointState>({ station: null, note: null, loading: false, point: null });
 
   useEffect(() => {
     const query = value.trim();
     if (query.length < 2) {
-      setState({ station: null, note: null, loading: false });
+      setState({ station: null, note: null, loading: false, point: null });
       return;
     }
     const direct = findStation(query);
     if (direct) {
-      setState({ station: direct.name, note: null, loading: false });
+      setState({
+        station: direct.name,
+        note: null,
+        loading: false,
+        point: { lat: direct.lat, lng: direct.lng, label: `${direct.name} station` },
+      });
       return;
     }
     let cancelled = false;
@@ -368,13 +410,18 @@ function useEndpoint(value: string, resolve: (options: { data: { query: string }
           if (cancelled) return;
           const near = place ? nearestStation(place.lat, place.lng) : null;
           setState(
-            near && place
-              ? { station: near.name, note: `${place.label} · nearest station ${near.name}`, loading: false }
-              : { station: null, note: null, loading: false },
+            place
+              ? {
+                  station: near?.name ?? null,
+                  note: place.label,
+                  loading: false,
+                  point: { lat: place.lat, lng: place.lng, label: place.label },
+                }
+              : { station: null, note: null, loading: false, point: null },
           );
         })
         .catch(() => {
-          if (!cancelled) setState({ station: null, note: null, loading: false });
+          if (!cancelled) setState({ station: null, note: null, loading: false, point: null });
         });
     }, 500);
     return () => {
