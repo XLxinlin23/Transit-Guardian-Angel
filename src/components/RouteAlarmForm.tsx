@@ -1,4 +1,5 @@
 import { AlarmClock, BellRing, CalendarDays, Check, MapPin, Navigation, ShieldAlert } from "lucide-react";
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -129,7 +130,7 @@ export function RouteAlarmForm() {
   );
 }
 
-function Field({ icon: Icon, label, children }: { icon: typeof MapPin; label: string; children: React.ReactNode }) {
+function Field({ icon: Icon, label, children }: { icon: typeof MapPin; label: string; children: ReactNode }) {
   return (
     <div>
       <Label className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground"><Icon className="size-4 text-primary" />{label}</Label>
