@@ -154,7 +154,7 @@ export const getCommuteBriefing = createServerFn({ method: "POST" })
     const origin = findStation(data.from);
 
     const [disruption, weather, crowdMap, bus] = await Promise.all([
-      transit.fetchDisruption().catch(() => ({ configured: false, disrupted: false, lines: [] as string[] })),
+      transit.fetchDisruption().catch((): import("@/lib/transit.server").DisruptionInfo => ({ configured: false, disrupted: false, lines: [] })),
       data.notifyWeather && origin ? transit.fetchWeatherNear(origin.lat, origin.lng).catch(() => null) : null,
       data.notifyCrowd && routeLines[0] ? transit.fetchCrowd(routeLines[0]).catch(() => ({})) : {},
       data.notifyBus && data.busStopCode ? transit.fetchNextBus(data.busStopCode).catch(() => null) : null,
