@@ -92,6 +92,15 @@ export function BusArrivalCard({ defaultStop = "75009", compactServices = 6 }: {
           ))}
         </ul>
       )}
+      {data && data.services.length > compactServices && (
+        <button
+          type="button"
+          onClick={() => setShowAll((v) => !v)}
+          className="mt-4 w-full rounded-xl bg-secondary py-2 text-xs font-semibold text-brand-deep"
+        >
+          {showAll ? "Show fewer services" : `Show all ${data.services.length} services`}
+        </button>
+      )}
     </section>
   );
 }
