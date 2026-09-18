@@ -3,6 +3,7 @@ import { BellRing, Bus, Home, SlidersHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BusArrivalCard } from "../components/BusArrivalCard";
 import { MrtStatusCard } from "../components/MrtStatusCard";
+import { NearbyMrtStationsCard } from "../components/NearbyMrtStationsCard";
 import { RouteAlarmForm } from "../components/RouteAlarmForm";
 import { RoutePreferencePanel } from "../components/RoutePreferencePanel";
 import { NearbyBusStopsCard } from "../components/NearbyBusStopsCard";
@@ -58,7 +59,7 @@ function Index() {
       <nav className="glass-control fixed inset-x-4 bottom-4 z-20 mx-auto grid max-w-[408px] grid-cols-4 rounded-2xl p-1.5" aria-label="Primary navigation">
         <NavButton active={tab === "home"} icon={Home} label="Home" onClick={() => setTab("home")} />
         <NavButton active={tab === "preference"} icon={SlidersHorizontal} label="Preference" onClick={() => setTab("preference")} />
-        <NavButton active={tab === "arrivals"} icon={Bus} label="Bus & MRT Arrival" onClick={() => setTab("arrivals")} />
+        <NavButton active={tab === "arrivals"} icon={Bus} label="MRT & Bus Arrival" onClick={() => setTab("arrivals")} />
         <NavButton active={tab === "alerts"} icon={BellRing} label="Disruption Alert" onClick={() => setTab("alerts")} />
       </nav>
     </div>
@@ -98,10 +99,11 @@ function ArrivalsView() {
   return (
     <div className="pt-6">
       <p className="text-xs font-semibold uppercase text-primary">Live timings</p>
-      <h1 className="mt-2 font-display text-3xl font-bold text-brand-deep">Bus &amp; MRT arrival</h1>
-      <p className="mt-2 text-sm text-muted-foreground">Stops near you, tapped once for live arrivals.</p>
+      <h1 className="mt-2 font-display text-3xl font-bold text-brand-deep">MRT &amp; Bus arrival</h1>
+      <p className="mt-2 text-sm text-muted-foreground">Stations and stops near you, tapped once for live details.</p>
 
       <div className="mt-5 space-y-3.5">
+        <NearbyMrtStationsCard />
         <NearbyBusStopsCard
           selectedCode={selected?.code}
           onSelect={(stop) => setSelected({ code: stop.code, name: stop.name })}
@@ -111,7 +113,6 @@ function ArrivalsView() {
           stopName={selected?.name}
           onStopChange={(stop) => setSelected(stop)}
         />
-        <MrtStatusCard />
       </div>
 
       <p className="mt-5 text-center text-[11px] text-muted-foreground">Train and bus data © LTA DataMall</p>
