@@ -1,5 +1,5 @@
 import { useServerFn } from "@tanstack/react-start";
-import { AlarmClock, BellRing, Bus, CalendarDays, Check, CloudRain, MapPin, Navigation, ShieldAlert, Users } from "lucide-react";
+import { AlarmClock, BellRing, Bus, CalendarDays, Check, ChevronDown, CloudRain, MapPin, Navigation, ShieldAlert, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -33,6 +33,7 @@ export function RouteAlarmForm() {
   const [saved, setSaved] = useState(false);
   const [preferences, setPreferences] = useState<RoutePreference[]>(DEFAULT_PREFERENCES);
   const [syncing, setSyncing] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const saveRemote = useServerFn(saveCommuteSchedule);
   const loadRemote = useServerFn(getCommuteSchedule);
 
@@ -144,6 +145,14 @@ export function RouteAlarmForm() {
 
   const canSave = alarm.from.trim() && alarm.to.trim() && alarm.arriveBy && (alarm.repeat !== "custom" || alarm.days.length > 0);
   const repeatSummary = alarm.repeat === "custom" ? alarm.days.join(", ") : REPEAT_LABELS[alarm.repeat];
+  const settingsSummary = [
+    `${alarm.notifyLeadMinutes} min before`,
+    alarm.notifyWeather ? "weather" : null,
+    alarm.notifyCrowd ? "crowd" : null,
+    alarm.notifyBus ? (alarm.busStopCode.trim() ? `bus ${alarm.busStopCode.trim()}` : "bus") : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <div className="pt-7">
@@ -244,29 +253,48 @@ export function RouteAlarmForm() {
         )}
 
         <div className="mt-6 border-t border-border/70 pt-5">
-          <p className="text-xs font-semibold uppercase text-muted-foreground">Alert settings</p>
-          <div className="mt-3 space-y-3">
-            <Field icon={BellRing} label="Remind me before departure">
-              <Select value={alarm.notifyLeadMinutes} onValueChange={(value) => update("notifyLeadMinutes", value)}>
-                <SelectTrigger aria-label="Remind me before departure" className="h-11 bg-background/70"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {[5, 10, 15, 20, 30, 45].map((minutes) => <SelectItem key={minutes} value={String(minutes)}>{minutes} min before</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Toggle icon={CloudRain} label="Weather impact" checked={alarm.notifyWeather} onChange={(value) => update("notifyWeather", value)} />
-            <Toggle icon={Users} label="MRT crowd levels" checked={alarm.notifyCrowd} onChange={(value) => update("notifyCrowd", value)} />
-            <Toggle icon={Bus} label="Bus arrivals" checked={alarm.notifyBus} onChange={(value) => update("notifyBus", value)} />
-            {alarm.notifyBus && (
-              <Input
-                value={alarm.busStopCode}
-                onChange={(event) => update("busStopCode", event.target.value)}
-                placeholder="Bus stop code, e.g. 75009"
-                aria-label="Bus stop code"
-                className="h-11 bg-background/70"
-              />
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={() => setSettingsOpen((open) => !open)}
+            aria-expanded={settingsOpen}
+            className="flex w-full items-center justify-between gap-3 text-left"
+          >
+            <span className="flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
+              <BellRing className="size-4 text-primary" /> Alert settings
+            </span>
+            <span className="flex items-center gap-2">
+              {!settingsOpen && (
+                <span className="max-w-[13rem] truncate text-[11px] font-medium normal-case text-muted-foreground">
+                  {settingsSummary}
+                </span>
+              )}
+              <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform duration-200 ${settingsOpen ? "rotate-180" : ""}`} />
+            </span>
+          </button>
+          {settingsOpen && (
+            <div className="mt-3 space-y-3">
+              <Field icon={BellRing} label="Remind me before departure">
+                <Select value={alarm.notifyLeadMinutes} onValueChange={(value) => update("notifyLeadMinutes", value)}>
+                  <SelectTrigger aria-label="Remind me before departure" className="h-11 bg-background/70"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {[5, 10, 15, 20, 30, 45].map((minutes) => <SelectItem key={minutes} value={String(minutes)}>{minutes} min before</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Toggle icon={CloudRain} label="Weather impact" checked={alarm.notifyWeather} onChange={(value) => update("notifyWeather", value)} />
+              <Toggle icon={Users} label="MRT crowd levels" checked={alarm.notifyCrowd} onChange={(value) => update("notifyCrowd", value)} />
+              <Toggle icon={Bus} label="Bus arrivals" checked={alarm.notifyBus} onChange={(value) => update("notifyBus", value)} />
+              {alarm.notifyBus && (
+                <Input
+                  value={alarm.busStopCode}
+                  onChange={(event) => update("busStopCode", event.target.value)}
+                  placeholder="Bus stop code, e.g. 75009"
+                  aria-label="Bus stop code"
+                  className="h-11 bg-background/70"
+                />
+              )}
+            </div>
+          )}
         </div>
 
         <Button className="mt-6 h-11 w-full rounded-xl" disabled={!canSave || syncing} onClick={saveAlarm}>
