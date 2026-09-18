@@ -119,7 +119,7 @@ export function RouteAlarmForm() {
               <Select value={alarm.maxDelay} onValueChange={(value) => update("maxDelay", value)}>
                 <SelectTrigger aria-label="Maximum delay" className="h-11 bg-background/70"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {[5, 10, 15, 20, 30].map((minutes) => <SelectItem key={minutes} value={String(minutes)}>{minutes} min</SelectItem>)}
+                  {[0, 5, 10, 15, 20, 30].map((minutes) => <SelectItem key={minutes} value={String(minutes)}>{minutes} min</SelectItem>)}
                 </SelectContent>
               </Select>
             </Field>
@@ -163,7 +163,7 @@ export function RouteAlarmForm() {
             title="Route preview"
             badge={preferenceSummary}
             transferNames={preview.legs.slice(1).map((leg) => leg.stations[0]!.name)}
-            footer={`About ${preview.minutes} min · ${preview.stops} stops · ${preview.transfers === 0 ? "no change" : `${preview.transfers} change${preview.transfers > 1 ? "s" : ""}`} · assumes no disruptions`}
+            footer={`About ${preview.minutes} min · ${preview.stops} stops · ${preview.transfers === 0 ? "no change" : `${preview.transfers} change${preview.transfers > 1 ? "s" : ""}`} · currently no disruption`}
           />
           <ol className="glass-panel space-y-2 rounded-2xl p-4">
             {preview.legs.map((leg, index) => (
