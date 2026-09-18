@@ -135,6 +135,15 @@ async function accessLegs(
   if (options.preferWalk && hop.minutes >= walkLeg.minutes) return [walkLeg];
   if (hop.minutes >= walkLeg.minutes) return [walkLeg];
 
+  return hopToLegs(hop, from, to);
+}
+
+/** Turn a single-service bus hop into walk + bus + walk legs. */
+function hopToLegs(
+  hop: BusHop,
+  from: { lat: number; lng: number; name: string },
+  to: { lat: number; lng: number; name: string },
+): JourneyLeg[] {
   const legs: JourneyLeg[] = [];
   if (hop.walkIn > 60) {
     legs.push({
