@@ -8,6 +8,7 @@ import { RouteAlarmForm } from "../components/RouteAlarmForm";
 import { RoutePreferencePanel } from "../components/RoutePreferencePanel";
 import { NearbyBusStopsCard } from "../components/NearbyBusStopsCard";
 import { WeatherCard } from "../components/WeatherCard";
+import { TripProvider } from "../lib/trip-store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -26,6 +27,14 @@ export const Route = createFileRoute("/")({
 type Tab = "home" | "preference" | "arrivals" | "alerts";
 
 function Index() {
+  return (
+    <TripProvider>
+      <IndexShell />
+    </TripProvider>
+  );
+}
+
+function IndexShell() {
   const [tab, setTab] = useState<Tab>("home");
 
   useEffect(() => {
