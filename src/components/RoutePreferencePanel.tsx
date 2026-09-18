@@ -1,13 +1,9 @@
 import { Banknote, Footprints, Gauge, ShieldCheck, TrainFront, Users } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import {
-  DEFAULT_PREFERENCES,
-  PREFERENCE_LABELS,
-  PREFERENCE_STORAGE_KEY,
-  type RoutePreference,
-} from "@/lib/commute-settings";
+import { PREFERENCE_LABELS, type RoutePreference } from "@/lib/commute-settings";
+import { useTrip } from "@/lib/trip-store";
 
 const OPTIONS: { value: RoutePreference; icon: typeof Gauge; detail: string }[] = [
   { value: "speed", icon: Gauge, detail: "Shortest travel time" },
@@ -19,28 +15,19 @@ const OPTIONS: { value: RoutePreference; icon: typeof Gauge; detail: string }[] 
 ];
 
 export function RoutePreferencePanel() {
-  const [selected, setSelected] = useState<RoutePreference[]>(DEFAULT_PREFERENCES);
+  const { preferences, setPreferences, fromPlace, toPlace } = useTrip();
+  const selected = preferences;
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    const stored = window.localStorage.getItem(PREFERENCE_STORAGE_KEY);
-    if (!stored) return;
-    try {
-      const values = JSON.parse(stored) as RoutePreference[];
-      if (values.length) setSelected(values);
-      setSaved(true);
-    } catch {
-      window.localStorage.removeItem(PREFERENCE_STORAGE_KEY);
-    }
-  }, []);
-
+  // Changing a priority re-ranks the saved trip immediately — nothing to re-enter.
   const toggle = (value: RoutePreference) => {
-    setSelected((current) => current.includes(value) ? current.filter((item) => item !== value) : [...current, value]);
+    const next = selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value];
+    setPreferences(next.length ? next : [value]);
     setSaved(false);
   };
 
   const save = () => {
-    window.localStorage.setItem(PREFERENCE_STORAGE_KEY, JSON.stringify(selected));
+    setPreferences(selected);
     setSaved(true);
   };
 
@@ -49,6 +36,12 @@ export function RoutePreferencePanel() {
       <p className="text-xs font-semibold uppercase text-primary">Route preference</p>
       <h1 className="mt-2 font-display text-3xl font-bold text-brand-deep">What matters most?</h1>
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Choose one or more priorities. Wayline balances them when recommending each trip.</p>
+
+      {fromPlace && toPlace && (
+        <p className="mt-3 rounded-xl border border-primary/25 bg-primary/5 px-3 py-2 text-xs font-semibold text-brand-deep">
+          Applied to {fromPlace.name} → {toPlace.name}
+        </p>
+      )}
 
       <section className="mt-6 grid grid-cols-2 gap-3">
         {OPTIONS.map(({ value, icon: Icon, detail }) => {
