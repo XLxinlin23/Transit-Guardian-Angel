@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertTriangle, BellRing, Check, ChevronRight, Home, RouteIcon, Settings2, SlidersHorizontal, TrainFront } from "lucide-react";
 import { useEffect, useState } from "react";
 import { RouteMap } from "../components/RouteMap";
