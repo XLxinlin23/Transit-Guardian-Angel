@@ -1,4 +1,4 @@
-- [ ] Replace fixed Home commute with a device-saved route alarm.
-- [ ] Replace the second tab with device-saved route priorities.
-- [ ] Remove fixed-route wording while preserving alerts, dashboard, and map access.
-- [ ] Verify persistence, custom days, mobile layout, and build health.
+- [x] Replace fixed Home commute with a device-saved route alarm.
+- [x] Replace the second tab with device-saved route priorities.
+- [x] Remove fixed-route wording while preserving alerts, dashboard, and map access.
+- [x] Verify persistence, custom days, mobile layout, and build health.
