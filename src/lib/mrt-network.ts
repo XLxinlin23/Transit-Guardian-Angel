@@ -173,6 +173,20 @@ export function findStation(query: string): NetworkStation | null {
   return partial;
 }
 
+/** Closest MRT station to an arbitrary coordinate (postal code, bus stop, building). */
+export function nearestStation(lat: number, lng: number): NetworkStation | null {
+  let best: NetworkStation | null = null;
+  let bestDistance = Infinity;
+  for (const station of STATION_INDEX.values()) {
+    const d = (station.lat - lat) ** 2 + (station.lng - lng) ** 2;
+    if (d < bestDistance) {
+      bestDistance = d;
+      best = station;
+    }
+  }
+  return best;
+}
+
 function distanceKm(a: NetworkStation, b: NetworkStation) {
   const R = 6371;
   const dLat = ((b.lat - a.lat) * Math.PI) / 180;
