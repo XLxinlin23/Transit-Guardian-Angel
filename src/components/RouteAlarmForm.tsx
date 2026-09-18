@@ -28,6 +28,7 @@ import { deleteCommuteSchedule, listCommuteSchedules, saveCommuteSchedule } from
 import {
   ALARMS_STORAGE_KEY,
   DEFAULT_ALARM,
+  DRAFT_STORAGE_KEY,
   REPEAT_LABELS,
   WEEKDAYS,
   newAlarmId,
@@ -49,6 +50,31 @@ import { MODE_COLORS, MODE_LABELS } from "@/lib/travel-modes";
 
 const BLANK_ALARM: RouteAlarm = { ...DEFAULT_ALARM, from: "", to: "", active: false };
 
+type EditorDraft = {
+  editingId: string;
+  alarm: RouteAlarm;
+  fromPlace: PlacePoint | null;
+  toPlace: PlacePoint | null;
+};
+
+function readDraft(): EditorDraft | null {
+  try {
+    const stored = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as EditorDraft;
+    if (!parsed || typeof parsed !== "object" || !parsed.alarm) return null;
+    return {
+      editingId: typeof parsed.editingId === "string" ? parsed.editingId : newAlarmId(),
+      alarm: { ...BLANK_ALARM, ...parsed.alarm },
+      fromPlace: parsed.fromPlace ?? null,
+      toPlace: parsed.toPlace ?? null,
+    };
+  } catch {
+    window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+    return null;
+  }
+}
+
 export function RouteAlarmForm() {
   const [alarms, setAlarms] = useState<SavedRouteAlarm[]>([]);
   const [editingId, setEditingId] = useState<string>(() => newAlarmId());
@@ -68,6 +94,20 @@ export function RouteAlarmForm() {
     setAlarms(next);
     window.localStorage.setItem(ALARMS_STORAGE_KEY, JSON.stringify(next));
   };
+
+  const persistDraft = (draft: EditorDraft) => {
+    window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+  };
+
+  // Restore whatever was typed into the editor, even if it was never saved.
+  useEffect(() => {
+    const draft = readDraft();
+    if (!draft) return;
+    setEditingId(draft.editingId);
+    setAlarm(draft.alarm);
+    setFromPlace(draft.fromPlace);
+    setToPlace(draft.toPlace);
+  }, []);
 
   // Load the saved list from this device, then top it up from the backend.
   useEffect(() => {
@@ -168,18 +208,25 @@ export function RouteAlarmForm() {
     .join(" · ");
 
   const update = <Key extends keyof RouteAlarm>(key: Key, value: RouteAlarm[Key]) => {
-    setAlarm((current) => ({ ...current, [key]: value }));
-    setSaved(false);
+    const nextAlarm = { ...alarm, [key]: value };
+    const nextFrom = key === "from" ? null : fromPlace;
+    const nextTo = key === "to" ? null : toPlace;
+    setAlarm(nextAlarm);
     if (key === "from") setFromPlace(null);
     if (key === "to") setToPlace(null);
+    setSaved(false);
+    persistDraft({ editingId, alarm: nextAlarm, fromPlace: nextFrom, toPlace: nextTo });
   };
 
   const confirmPlace = (field: "from" | "to", place: ConfirmedPlace | null) => {
-    if (field === "from") setFromPlace(place);
-    else setToPlace(place);
-    if (!place) return;
-    setAlarm((current) => ({ ...current, [field]: place.name }));
+    const nextFrom = field === "from" ? place : fromPlace;
+    const nextTo = field === "to" ? place : toPlace;
+    const nextAlarm = place ? { ...alarm, [field]: place.name } : alarm;
+    setFromPlace(nextFrom);
+    setToPlace(nextTo);
+    if (place) setAlarm(nextAlarm);
     setSaved(false);
+    persistDraft({ editingId, alarm: nextAlarm, fromPlace: nextFrom, toPlace: nextTo });
   };
 
   const toggleDay = (day: string, checked: boolean) => {
@@ -194,16 +241,19 @@ export function RouteAlarmForm() {
     setToPlace(entry.toPlace);
     setSaved(true);
     setSettingsOpen(false);
+    persistDraft({ editingId: entry.id, alarm: entry.alarm, fromPlace: entry.fromPlace, toPlace: entry.toPlace });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const startNewAlarm = () => {
-    setEditingId(newAlarmId());
+    const id = newAlarmId();
+    setEditingId(id);
     setAlarm(BLANK_ALARM);
     setFromPlace(null);
     setToPlace(null);
     setSaved(false);
     setSettingsOpen(false);
+    persistDraft({ editingId: id, alarm: BLANK_ALARM, fromPlace: null, toPlace: null });
   };
 
   const removeAlarm = async (id: string) => {
@@ -464,6 +514,13 @@ export function RouteAlarmForm() {
             {looking ? "Working out the best way door to door…" : "We could not build a route between those two points yet."}
           </p>
         )}
+
+        <Button className="mt-6 h-11 w-full rounded-xl" disabled={!canSave || syncing} onClick={saveAlarm}>
+          <Check /> {syncing ? "Saving…" : "Save route"}
+        </Button>
+        <p className="mt-2 text-center text-[11px] text-muted-foreground">
+          Saves this trip to your Saved alarms list above.
+        </p>
       </section>
 
       <section className="glass-panel mt-4 rounded-3xl p-5">
@@ -510,8 +567,13 @@ export function RouteAlarmForm() {
           </div>
         )}
 
-        <Button className="mt-5 h-11 w-full rounded-xl" disabled={!canSave || syncing} onClick={saveAlarm}>
-          <BellRing /> {syncing ? "Saving…" : editingExisting ? "Update route alarm" : "Save route alarm"}
+        <Button
+          variant="outline"
+          className="mt-5 h-11 w-full rounded-xl border-primary/30 text-primary"
+          disabled={!canSave || syncing}
+          onClick={saveAlarm}
+        >
+          <BellRing /> {syncing ? "Saving…" : "Update alarm settings"}
         </Button>
       </section>
 
