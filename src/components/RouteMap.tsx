@@ -4,8 +4,7 @@ import { Focus, Maximize2, Minimize2, X } from "lucide-react";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { CURRENT_STATION, STOPS_REMAINING } from "../lib/route-data";
-import { STATIONS } from "../lib/route-data";
+import { CURRENT_STATION, STATIONS, STOPS_REMAINING } from "../lib/route-data";
 
 const RouteLeafletMap = lazy(() => import("./RouteLeafletMap"));
 const routeBounds: LatLngBoundsExpression = STATIONS.map((station) => [station.lat, station.lng] as [number, number]);
@@ -37,7 +36,7 @@ export function RouteMap() {
   }, [expanded]);
 
   return (
-    <div className="glass-panel relative overflow-hidden rounded-3xl p-4">
+    <div className="glass-panel relative rounded-3xl p-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-display text-base font-semibold text-brand-deep">Route map</h2>
         <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">

@@ -40,8 +40,8 @@ export default function RouteLeafletMap({ mapRef }: RouteLeafletMapProps) {
       keyboard
       attributionControl={false}
     >
-      <TileLayer url={TILE_URL} />
-      <AttributionControl position="bottomright" prefix={false} attribution={TILE_ATTRIBUTION} />
+      <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
+      <AttributionControl position="bottomright" prefix={false} />
 
       <Polyline positions={line} pathOptions={{ color: MUTED, weight: 7, opacity: 0.8, lineCap: "round", lineJoin: "round" }} />
       <Polyline positions={travelled} pathOptions={{ color: BRAND, weight: 7, opacity: 0.95, lineCap: "round", lineJoin: "round" }} />
