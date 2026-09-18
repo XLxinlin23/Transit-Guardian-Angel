@@ -23,7 +23,8 @@ import {
   type RouteAlarm,
 } from "@/lib/commute-settings";
 import { getDeviceId } from "@/lib/device-id";
-import { LINE_NAMES, planRoute } from "@/lib/mrt-network";
+import { LINE_NAMES, findStation, nearestStation, planRoute } from "@/lib/mrt-network";
+import { resolvePlace } from "@/lib/places.functions";
 import { CommuteAlertCard } from "./CommuteAlertCard";
 import { RouteMap } from "./RouteMap";
 
@@ -87,11 +88,16 @@ export function RouteAlarmForm() {
     };
   }, []);
 
+  const resolve = useServerFn(resolvePlace);
+  const fromPoint = useEndpoint(alarm.from, resolve);
+  const toPoint = useEndpoint(alarm.to, resolve);
+
   const preview = useMemo(
-    () => (alarm.from.trim() && alarm.to.trim() ? planRoute(alarm.from, alarm.to, preferences) : null),
-    [alarm.from, alarm.to, preferences],
+    () => (fromPoint.station && toPoint.station ? planRoute(fromPoint.station, toPoint.station, preferences) : null),
+    [fromPoint.station, toPoint.station, preferences],
   );
   const typedBoth = Boolean(alarm.from.trim() && alarm.to.trim());
+  const looking = fromPoint.loading || toPoint.loading;
   const preferenceSummary = (preferences.length ? preferences : DEFAULT_PREFERENCES).map((value) => PREFERENCE_LABELS[value]).join(" · ");
 
   const update = <Key extends keyof RouteAlarm>(key: Key, value: RouteAlarm[Key]) => {
@@ -160,10 +166,12 @@ export function RouteAlarmForm() {
       <section className="glass-panel mt-5 rounded-3xl p-5">
         <div className="space-y-5">
           <Field icon={Navigation} label="From">
-            <Input value={alarm.from} onChange={(event) => update("from", event.target.value)} placeholder="Starting point" aria-label="From" className="h-11 bg-background/70" />
+            <Input value={alarm.from} onChange={(event) => update("from", event.target.value)} placeholder="Station, bus stop or postal code" aria-label="From" className="h-11 bg-background/70" />
+            {fromPoint.note && <p className="mt-1.5 text-xs text-muted-foreground">{fromPoint.note}</p>}
           </Field>
           <Field icon={MapPin} label="To">
-            <Input value={alarm.to} onChange={(event) => update("to", event.target.value)} placeholder="Destination" aria-label="To" className="h-11 bg-background/70" />
+            <Input value={alarm.to} onChange={(event) => update("to", event.target.value)} placeholder="Station, bus stop or postal code" aria-label="To" className="h-11 bg-background/70" />
+            {toPoint.note && <p className="mt-1.5 text-xs text-muted-foreground">{toPoint.note}</p>}
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field icon={AlarmClock} label="Reach by">
@@ -205,6 +213,36 @@ export function RouteAlarmForm() {
           )}
         </div>
 
+        {preview && (
+          <div className="mt-6 space-y-3 border-t border-border/70 pt-5">
+            <RouteMap
+              stations={preview.stations}
+              title="Route preview"
+              badge={preferenceSummary}
+              transferNames={preview.legs.slice(1).map((leg) => leg.stations[0]!.name)}
+              footer={`About ${preview.minutes} min · ${preview.stops} stops · ${preview.transfers === 0 ? "no change" : `${preview.transfers} change${preview.transfers > 1 ? "s" : ""}`} · currently no disruption`}
+            />
+            <ol className="space-y-2 rounded-2xl border border-border/70 bg-background/60 p-4">
+              {preview.legs.map((leg, index) => (
+                <li key={`${leg.line}-${index}`} className="flex items-start gap-3 text-sm">
+                  <span className="mt-0.5 rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">{leg.line}</span>
+                  <span className="min-w-0 text-muted-foreground">
+                    <span className="font-semibold text-brand-deep">{leg.stations[0]!.name} → {leg.stations[leg.stations.length - 1]!.name}</span>
+                    <br />
+                    {LINE_NAMES[leg.line]} · {leg.stations.length - 1} stops
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+
+        {typedBoth && !preview && (
+          <p className="mt-6 border-t border-border/70 pt-5 text-sm text-muted-foreground">
+            {looking ? "Looking up those places…" : "We could not match those yet. Try an MRT station, a bus stop name or code, or a 6-digit postal code."}
+          </p>
+        )}
+
         <div className="mt-6 border-t border-border/70 pt-5">
           <p className="text-xs font-semibold uppercase text-muted-foreground">Alert settings</p>
           <div className="mt-3 space-y-3">
@@ -238,35 +276,6 @@ export function RouteAlarmForm() {
 
       {saved && alarm.active && preview && <CommuteAlertCard alarm={alarm} preferences={preferences} />}
 
-      {preview && (
-        <section className="mt-4 space-y-3">
-          <RouteMap
-            stations={preview.stations}
-            title="Route preview"
-            badge={preferenceSummary}
-            transferNames={preview.legs.slice(1).map((leg) => leg.stations[0]!.name)}
-            footer={`About ${preview.minutes} min · ${preview.stops} stops · ${preview.transfers === 0 ? "no change" : `${preview.transfers} change${preview.transfers > 1 ? "s" : ""}`} · currently no disruption`}
-          />
-          <ol className="glass-panel space-y-2 rounded-2xl p-4">
-            {preview.legs.map((leg, index) => (
-              <li key={`${leg.line}-${index}`} className="flex items-start gap-3 text-sm">
-                <span className="mt-0.5 rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">{leg.line}</span>
-                <span className="min-w-0 text-muted-foreground">
-                  <span className="font-semibold text-brand-deep">{leg.stations[0]!.name} → {leg.stations[leg.stations.length - 1]!.name}</span>
-                  <br />
-                  {LINE_NAMES[leg.line]} · {leg.stations.length - 1} stops
-                </span>
-              </li>
-            ))}
-          </ol>
-        </section>
-      )}
-
-      {typedBoth && !preview && (
-        <p className="mt-4 rounded-2xl border border-border bg-background/70 p-4 text-sm text-muted-foreground">
-          We could not match those to MRT stations yet. Try a station name such as Tampines or Raffles Place.
-        </p>
-      )}
 
       <section className="mt-4 rounded-2xl border border-primary/15 bg-primary/5 p-4">
         <p className="text-sm font-semibold text-brand-deep">Adapts before every trip</p>
@@ -274,6 +283,49 @@ export function RouteAlarmForm() {
       </section>
     </div>
   );
+}
+
+type EndpointState = { station: string | null; note: string | null; loading: boolean };
+
+/** Accepts an MRT station name, bus stop name/code or postal code and maps it to the nearest station. */
+function useEndpoint(value: string, resolve: (options: { data: { query: string } }) => Promise<{ label: string; lat: number; lng: number } | null>): EndpointState {
+  const [state, setState] = useState<EndpointState>({ station: null, note: null, loading: false });
+
+  useEffect(() => {
+    const query = value.trim();
+    if (query.length < 2) {
+      setState({ station: null, note: null, loading: false });
+      return;
+    }
+    const direct = findStation(query);
+    if (direct) {
+      setState({ station: direct.name, note: null, loading: false });
+      return;
+    }
+    let cancelled = false;
+    setState((current) => ({ ...current, loading: true }));
+    const timer = window.setTimeout(() => {
+      resolve({ data: { query } })
+        .then((place) => {
+          if (cancelled) return;
+          const near = place ? nearestStation(place.lat, place.lng) : null;
+          setState(
+            near && place
+              ? { station: near.name, note: `${place.label} · nearest station ${near.name}`, loading: false }
+              : { station: null, note: null, loading: false },
+          );
+        })
+        .catch(() => {
+          if (!cancelled) setState({ station: null, note: null, loading: false });
+        });
+    }, 500);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [value, resolve]);
+
+  return state;
 }
 
 function defaultDays(repeat: RepeatOption): string[] {
