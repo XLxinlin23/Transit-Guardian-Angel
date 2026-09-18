@@ -7,9 +7,10 @@ import { getBusArrivals } from "../lib/singapore.functions";
 
 const LOAD_LABEL: Record<string, string> = { SEA: "Seats", SDA: "Standing", LSD: "Full" };
 
-export function BusArrivalCard({ defaultStop = "75009" }: { defaultStop?: string }) {
+export function BusArrivalCard({ defaultStop = "75009", compactServices = 6 }: { defaultStop?: string; compactServices?: number }) {
   const [stop, setStop] = useState(defaultStop);
   const [input, setInput] = useState(defaultStop);
+  const [showAll, setShowAll] = useState(false);
   const fetchArrivals = useServerFn(getBusArrivals);
 
   const { data, isFetching, isError, refetch } = useQuery({
