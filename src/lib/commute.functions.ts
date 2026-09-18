@@ -77,6 +77,44 @@ export const deleteCommuteSchedule = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Kept for older app builds still open on a phone: returns the first saved alarm. */
+export const getCommuteSchedule = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => z.object({ deviceId: z.string().min(8).max(64) }).parse(data))
+  .handler(async ({ data }): Promise<SavedSchedule | null> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin
+      .from("commute_schedules")
+      .select("*")
+      .eq("device_id", data.deviceId)
+      .order("created_at", { ascending: true })
+      .limit(1);
+    if (error) throw new Error(error.message);
+    const row: any = rows?.[0];
+    if (!row) return null;
+    return {
+      deviceId: row.device_id,
+      alarmId: row.alarm_id ?? "primary",
+      label: row.label ?? null,
+      origin: row.origin,
+      destination: row.destination,
+      fromLat: row.from_lat ?? null,
+      fromLng: row.from_lng ?? null,
+      toLat: row.to_lat ?? null,
+      toLng: row.to_lng ?? null,
+      travelDays: row.travel_days ?? [],
+      repeatOption: row.repeat_option,
+      arriveBy: row.arrive_by,
+      maxDelay: row.max_delay,
+      preferences: row.preferences ?? [],
+      active: row.active,
+      notifyLeadMinutes: row.notify_lead_minutes,
+      notifyWeather: row.notify_weather,
+      notifyCrowd: row.notify_crowd,
+      notifyBus: row.notify_bus,
+      busStopCode: row.bus_stop_code,
+    };
+  });
+
 export const listCommuteSchedules = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => z.object({ deviceId: z.string().min(8).max(64) }).parse(data))
   .handler(async ({ data }): Promise<SavedSchedule[]> => {
