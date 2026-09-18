@@ -45,10 +45,11 @@ export function RouteMap() {
       </div>
 
       {expanded && (
-        <button
+        <Button
           type="button"
+          variant="ghost"
           aria-label="Fullscreen map backdrop"
-          className="fixed inset-0 z-40 cursor-default bg-brand-deep/40 backdrop-blur-sm"
+          className="fixed inset-0 z-40 h-auto w-auto cursor-default rounded-none bg-brand-deep/40 p-0 backdrop-blur-sm hover:bg-brand-deep/40"
           onClick={() => setExpanded(false)}
         />
       )}
