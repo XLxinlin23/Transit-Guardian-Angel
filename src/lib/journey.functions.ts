@@ -279,7 +279,8 @@ function reasonFor(candidate: Candidate, preference: string): string {
     case "transfers":
       return `Fewest transfers · ${candidate.transfers} transfer${candidate.transfers === 1 ? "" : "s"}`;
     case "cost":
-      return `Lowest cost · ${candidate.transfers} transfer${candidate.transfers === 1 ? "" : "s"} · ${candidate.minutes} min`;
+      return `Lowest cost · $${candidate.fare.toFixed(2)} · ${candidate.minutes} min`;
+
     case "crowd":
       return `Lower crowding · ${candidate.minutes} min`;
     default:
