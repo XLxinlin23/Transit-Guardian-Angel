@@ -1,4 +1,5 @@
 import type { Journey, JourneyLeg } from "./journey.functions";
+import { stationsBetween } from "./mrt-network";
 
 /** A disruption we can reason about — either live from LTA or a clearly-labelled demo. */
 export type Incident = {
