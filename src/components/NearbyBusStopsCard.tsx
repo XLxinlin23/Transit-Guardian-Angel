@@ -64,7 +64,7 @@ export function NearbyBusStopsCard({
         >
           <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-success-soft text-success"><MapPin className="size-4" /></span>
           <span className="min-w-0 flex-1 text-left">
-            <span className="block truncate font-display text-base font-semibold text-brand-deep">Bus stops near you</span>
+            <span className="block truncate font-display text-base font-semibold text-brand-deep">{origin ? "Bus stops near your trip start" : "Bus stops near you"}</span>
             {!open && <span className="block truncate text-[11px] font-medium text-muted-foreground">{data?.stops.length ? `${data.stops.length} nearby stops` : "Tap to view nearby stops"}</span>}
           </span>
           <ChevronDown className={`size-4 shrink-0 text-success transition-transform ${open ? "rotate-180" : ""}`} />
@@ -72,8 +72,10 @@ export function NearbyBusStopsCard({
         {open && <Button type="button" variant="ghost" size="icon" onClick={locate} aria-label="Use my location" className="size-8 shrink-0 text-success"><Crosshair className={`size-4 ${isFetching ? "animate-pulse" : ""}`} /></Button>}
       </div>
 
-      {open && geoError && <p className="mt-3 text-sm text-muted-foreground">{geoError}</p>}
-      {open && !geoError && !coords && <p className="mt-3 text-sm text-muted-foreground">Finding your location…</p>}
+      {open && anchorNote && <p className="mt-3 text-xs font-semibold text-muted-foreground">{anchorNote}</p>}
+      {open && geoError && !origin && <p className="mt-3 text-sm text-muted-foreground">{geoError}</p>}
+      {open && !geoError && !anchor && <p className="mt-3 text-sm text-muted-foreground">Finding your location…</p>}
+
       {open && data && !data.configured && (
         <p className="mt-3 text-sm text-muted-foreground">Waiting for the LTA DataMall account key.</p>
       )}
