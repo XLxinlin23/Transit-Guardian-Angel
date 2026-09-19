@@ -1,5 +1,4 @@
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
 import {
   AlarmClock,
   AlertTriangle,
@@ -44,7 +43,8 @@ import {
 
 import { useTrip } from "@/lib/trip-store";
 import { getDeviceId } from "@/lib/device-id";
-import { compareJourneys, planJourney, type Journey } from "@/lib/journey.functions";
+import { type Journey } from "@/lib/journey.functions";
+import { useRouteStore } from "@/lib/route-state";
 import { PlacePicker, placeLine, type ConfirmedPlace } from "./PlacePicker";
 import { CommuteAlertCard } from "./CommuteAlertCard";
 import { JourneyStatusCard } from "./JourneyStatusCard";
@@ -151,73 +151,17 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
   }, [listRemote]);
 
 
-  const planJourneyFn = useServerFn(planJourney);
-  const journeyQuery = useQuery({
-    queryKey: ["journey", fromPlace?.lat, fromPlace?.lng, toPlace?.lat, toPlace?.lng, preferences.join(",")],
-    enabled: Boolean(fromPlace && toPlace),
-    staleTime: 5 * 60_000,
-    queryFn: () =>
-      planJourneyFn({
-        data: {
-          from: { lat: fromPlace!.lat, lng: fromPlace!.lng, label: fromPlace!.name },
-          to: { lat: toPlace!.lat, lng: toPlace!.lng, label: toPlace!.name },
-          preferences,
-        },
-      }),
-  });
-  const planResult = journeyQuery.data ?? null;
-  const recommendedJourney: Journey | null = planResult?.ok ? planResult.journey : null;
-  const planMessage = planResult && !planResult.ok ? planResult.message : null;
-  const preview: Journey | null = manualJourney ?? recommendedJourney;
+  // One shared route store — Preferences reads exactly the same values.
+  const store = useRouteStore();
+  const recommendedJourney: Journey | null = store.recommended?.journey ?? null;
+  const planMessage = store.planMessage;
+  const preview: Journey | null = store.selected?.journey ?? null;
 
-
-  const compareFn = useServerFn(compareJourneys);
-  const optionsQuery = useQuery({
-    queryKey: ["journey-options", fromPlace?.lat, fromPlace?.lng, toPlace?.lat, toPlace?.lng],
-    enabled: Boolean(fromPlace && toPlace && recommendedJourney),
-    staleTime: 5 * 60_000,
-    queryFn: () =>
-      compareFn({
-        data: {
-          from: { lat: fromPlace!.lat, lng: fromPlace!.lng, label: fromPlace!.name },
-          to: { lat: toPlace!.lat, lng: toPlace!.lng, label: toPlace!.name },
-        },
-      }),
-  });
-  // Show only options that differ from the recommended one, one card per shape.
-  const alternatives = useMemo(() => {
-    const rows = optionsQuery.data ?? [];
-    const previewKey = preview?.id ?? (preview ? `${preview.minutes}-${preview.walkMetres}-${preview.transfers}` : null);
-    const recommendedKey = recommendedJourney?.id ?? (recommendedJourney ? `${recommendedJourney.minutes}-${recommendedJourney.walkMetres}-${recommendedJourney.transfers}` : null);
-    const unique = new Map<string, { preference: string; journey: Journey; recommended: boolean }>();
-
-    if (manualJourney && recommendedJourney && recommendedKey !== previewKey) {
-      unique.set(recommendedKey ?? recommendedJourney.id, {
-        preference: preferences[0] ?? "speed",
-        journey: recommendedJourney,
-        recommended: true,
-      });
-    }
-
-    for (const { preference, journey } of rows) {
-      const key = journey.id ?? `${journey.minutes}-${journey.walkMetres}-${journey.transfers}`;
-      if (key === previewKey || unique.has(key)) continue;
-      unique.set(key, { preference, journey, recommended: key === recommendedKey });
-    }
-
-    const reach = toMinutes(alarm.arriveBy);
-    const baseDuration = recommendedJourney?.totalDurationMinutes ?? recommendedJourney?.minutes ?? 0;
-    const departureMinutes = reach === null ? null : reach - baseDuration;
-    const options = filterEligible([...unique.values()], {
-      arriveBy: alarm.arriveBy,
-      maxDelay: alarm.maxDelay,
-      departureMinutes,
-    });
-    if ((preferences[0] ?? "speed") === "walking") {
-      options.sort((a, b) => (a.journey.totalWalkingDistanceMetres ?? a.journey.walkMetres ?? 0) - (b.journey.totalWalkingDistanceMetres ?? b.journey.walkMetres ?? 0));
-    }
-    return options.slice(0, 4);
-  }, [alarm.arriveBy, alarm.maxDelay, manualJourney, optionsQuery.data, preferences, preview, recommendedJourney]);
+  // Everything except the route currently shown, newest ranking from the shared store.
+  const alternatives = useMemo(
+    () => store.routes.filter((route) => route.id !== store.selected?.id).slice(0, 4),
+    [store.routes, store.selected?.id],
+  );
 
   const segments = useMemo(
     () => (preview ? preview.legs.map((leg) => ({ mode: leg.mode, badge: leg.badge, points: leg.points })) : []),
@@ -226,7 +170,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
 
   const typedBoth = Boolean(alarm.from.trim() && alarm.to.trim());
   const bothConfirmed = Boolean(fromPlace && toPlace);
-  const looking = journeyQuery.isFetching;
+  const looking = store.loading;
   const preferenceSummary = PREFERENCE_LABELS[preferences[0] ?? "speed"];
 
   const update = <Key extends keyof RouteAlarm>(key: Key, value: RouteAlarm[Key]) => {
@@ -363,10 +307,20 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
   const departedAt = simulation?.departedAt ?? null;
   const rainDelay = simulation?.rain ? 5 : 0;
 
+  const watchAlternatives = useMemo(() => {
+    const rows = alternatives.map((route) => ({ preference: route.primaryPreference, journey: route.journey }));
+    const safer = store.disruptionRecommended;
+    if (!safer) return rows;
+    return [
+      { preference: safer.primaryPreference, journey: safer.journey },
+      ...rows.filter((row) => row.journey !== safer.journey),
+    ];
+  }, [alternatives, store.disruptionRecommended]);
+
   const disruption = useDisruptionWatch({
     journey: preview,
     baselineJourney: recommendedJourney,
-    alternatives,
+    alternatives: watchAlternatives,
     arriveBy: alarm.arriveBy,
     maxDelay: alarm.maxDelay,
     preference: preferences[0] ?? "speed",
@@ -679,7 +633,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
             <Button
               className="mt-6 h-11 w-full rounded-xl text-sm font-bold"
               disabled={!bothConfirmed || looking || pastReachBy}
-              onClick={() => journeyQuery.refetch()}
+              onClick={() => store.refetch()}
             >
               <Navigation /> {looking ? "Finding best route…" : "Find best route"}
             </Button>
@@ -827,37 +781,54 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                 <div className="mt-4 border-t border-border pt-4">
                   <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Other routes</h3>
                   <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                    {alternatives.map(({ preference, journey, recommended }) => {
-                      const label = PREFERENCE_LABELS[preference as keyof typeof PREFERENCE_LABELS] ?? preference;
-                      const metric = primaryMetric(journey, preference as never);
-                      const arrival = arrivalFromDeparture(journey, fixedDepartureMinutes);
-                      const status = arrivalStatus(arrival, alarm.arriveBy, alarm.maxDelay);
+                    {alternatives.map((route) => {
+                      const label = PREFERENCE_LABELS[route.primaryPreference] ?? route.primaryPreference;
+                      const metric = primaryMetric(route.journey, route.primaryPreference);
+                      const arrival = route.predictedArrivalClock;
+                      const status = route.status;
                       return (
                         <Button
-                          key={journey.id ?? `${preference}-${journey.minutes}`}
+                          key={route.id}
                           type="button"
                           variant="outline"
                           aria-label={`Use ${label} route`}
-                          onClick={() => setManualJourney(journey)}
-                          className="h-auto min-h-24 w-full items-start justify-start whitespace-normal rounded-xl border-border bg-card p-3 text-left shadow-none hover:border-primary/40 hover:bg-primary/5"
+                          onClick={() => setManualJourney(route.journey)}
+                          className={`h-auto min-h-24 w-full items-start justify-start whitespace-normal rounded-xl bg-card p-3 text-left shadow-none hover:bg-primary/5 ${
+                            route.isDisruptionRecommended
+                              ? "border-success"
+                              : route.isAffectedByDisruption
+                                ? "border-route-red/60"
+                                : "border-border hover:border-primary/40"
+                          }`}
                         >
                           <span className="min-w-0 flex-1">
                             <span className="flex flex-wrap items-center gap-1.5">
                               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
                                 {label}
                               </span>
-                              {recommended && (
+                              {route.isPrimaryPreferenceWinner && (
                                 <span className="rounded-full bg-success-soft px-2 py-0.5 text-[10px] font-bold uppercase text-success">Recommended</span>
                               )}
-                              {journey.fareEstimated !== false && (
+                              {route.isDisruptionRecommended && (
+                                <span className="rounded-full bg-success-soft px-2 py-0.5 text-[10px] font-bold uppercase text-success">Recommended during disruption</span>
+                              )}
+                              {route.isAffectedByDisruption && (
+                                <span className="rounded-full bg-route-red/10 px-2 py-0.5 text-[10px] font-bold uppercase text-route-red">Affected by disruption</span>
+                              )}
+                              {route.journey.fareEstimated !== false && (
                                 <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">Estimated</span>
                               )}
                             </span>
                             <span className="mt-1.5 block font-display text-xl font-bold text-brand-deep">{metric.primary}</span>
                             <span className="block text-[11px] font-semibold text-muted-foreground">{metric.support}</span>
+                            {route.isAffectedByDisruption && (
+                              <span className="mt-1 block text-[11px] font-semibold text-muted-foreground">
+                                Normal: {route.normalDepartureClock} → {route.normalArrivalClock} · {route.normalDurationMinutes} min
+                              </span>
+                            )}
                             <span className={`mt-1.5 inline-block rounded-md border px-2 py-0.5 text-[10px] font-bold ${STATUS_CLASS[status]}`}>
-                              {departureTime} → {arrival}
-                              {status === "within" ? " · within your delay limit" : status === "late" ? " · unable to meet arrival limit" : ""}
+                              {route.normalDepartureClock} → {arrival} · {route.predictedDurationMinutes} min
+                              {status === "within" ? " · within your delay limit" : route.overLimitMinutes > 0 ? ` · ${route.overLimitMinutes} min after your limit` : ""}
                             </span>
                           </span>
                         </Button>

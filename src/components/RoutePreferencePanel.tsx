@@ -1,5 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowLeft,
   Banknote,
@@ -13,7 +11,7 @@ import {
   TrainFront,
   Users,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   AlertDialog,
@@ -27,18 +25,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { PREFERENCE_LABELS, type RoutePreference } from "@/lib/commute-settings";
-import { compareJourneys, type Journey } from "@/lib/journey.functions";
-import { getTrainAlerts } from "@/lib/singapore.functions";
+import type { Journey } from "@/lib/journey.functions";
+import { useRouteStore } from "@/lib/route-state";
 import { useTrip } from "@/lib/trip-store";
-import {
-  arrivalFromDeparture,
-  arrivalStatus,
-  filterEligible,
-  journeyDateTimeLabel,
-  primaryMetric,
-  STATUS_CLASS,
-  toMinutes,
-} from "@/lib/journey-time";
+import { journeyDateTimeLabel, primaryMetric, STATUS_CLASS } from "@/lib/journey-time";
 import { JourneyTimeline, LegBadge, RouteLegend } from "./JourneySteps";
 import { RouteMap } from "./RouteMap";
 
@@ -50,19 +40,6 @@ const OPTIONS: { value: RoutePreference; icon: typeof Gauge; detail: string }[] 
   { value: "sheltered", icon: ShieldCheck, detail: "Less outdoor walking" },
   { value: "crowd", icon: Users, detail: "Avoid busier services" },
 ];
-
-type RouteGroup = {
-  journey: Journey;
-  preferences: RoutePreference[];
-};
-
-function shiftTime(hhmm: string, minusMinutes: number): string {
-  const [h = NaN, m = NaN] = hhmm.split(":").map(Number);
-  if (Number.isNaN(h) || Number.isNaN(m)) return "--:--";
-  let total = h * 60 + m - minusMinutes;
-  total = ((total % 1440) + 1440) % 1440;
-  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
-}
 
 export function RoutePreferencePanel({
   onBackToPlan,
@@ -86,70 +63,9 @@ export function RoutePreferencePanel({
     return () => window.cancelAnimationFrame(frame);
   }, [focusCompareRequest]);
 
-  const compare = useServerFn(compareJourneys);
-  const fetchTrainAlerts = useServerFn(getTrainAlerts);
-  const alertsQuery = useQuery({
-    queryKey: ["train-alerts"],
-    queryFn: () => fetchTrainAlerts(),
-    refetchInterval: 60_000,
-  });
-  const routesQuery = useQuery({
-    queryKey: ["journey-options", fromPlace?.lat, fromPlace?.lng, toPlace?.lat, toPlace?.lng],
-    enabled: Boolean(fromPlace && toPlace),
-    staleTime: 5 * 60_000,
-    queryFn: () => {
-      if (!fromPlace || !toPlace) return Promise.resolve([]);
-      return compare({
-        data: {
-          from: { lat: fromPlace.lat, lng: fromPlace.lng, label: fromPlace.name },
-          to: { lat: toPlace.lat, lng: toPlace.lng, label: toPlace.name },
-        },
-      });
-    },
-  });
-
-  const affectedLines = useMemo(
-    () => (alertsQuery.data?.line ?? "").split(/[\s,;/]+/).filter(Boolean).map((line) => line.toUpperCase()),
-    [alertsQuery.data?.line],
-  );
-  const isDisrupted = useMemo(
-    () => (journey: Journey) => {
-      if (alertsQuery.data?.status !== "disrupted") return false;
-      const lines = new Set(
-        journey.legs.filter((leg) => leg.mode === "mrt" || leg.mode === "lrt").map((leg) => leg.badge.toUpperCase()),
-      );
-      return !affectedLines.length || affectedLines.some((line) => lines.has(line));
-    },
-    [affectedLines, alertsQuery.data?.status],
-  );
-
-  const routes = useMemo<RouteGroup[]>(() => {
-    const grouped = new Map<string, RouteGroup>();
-    for (const option of routesQuery.data ?? []) {
-      const preference = option.preference as RoutePreference;
-      const current = grouped.get(option.journey.id);
-      if (current) current.preferences.push(preference);
-      else grouped.set(option.journey.id, { journey: option.journey, preferences: [preference] });
-    }
-    const all = [...grouped.values()];
-    const applied0 = all.find((group) => group.preferences.includes(applied))?.journey;
-    const reach = toMinutes(alarm.arriveBy);
-    const baseDuration = applied0?.totalDurationMinutes ?? applied0?.minutes ?? 0;
-    const departureMinutes = reach === null ? null : reach - baseDuration;
-    return filterEligible(all, {
-      arriveBy: alarm.arriveBy,
-      maxDelay: alarm.maxDelay,
-      departureMinutes,
-      isDisrupted,
-    });
-  }, [alarm.arriveBy, alarm.maxDelay, applied, isDisrupted, routesQuery.data]);
-
-  const fixedDepartureMinutes = useMemo(() => {
-    const reach = toMinutes(alarm.arriveBy);
-    const base = routes.find((group) => group.preferences.includes(applied))?.journey ?? routes[0]?.journey;
-    if (reach === null || !base) return null;
-    return reach - (base.totalDurationMinutes ?? base.minutes ?? 0);
-  }, [alarm.arriveBy, applied, routes]);
+  // Same shared store as Home — no separate copy of the route alternatives here.
+  const store = useRouteStore();
+  const routes = store.routes;
 
   const applyPreference = () => {
     setPreferences([pending]);
@@ -161,10 +77,11 @@ export function RoutePreferencePanel({
   const useRoute = () => {
     if (!pendingJourney) return;
     setManualJourney(pendingJourney);
-    const arrival = arrivalFromDeparture(pendingJourney, fixedDepartureMinutes);
-    const leaveAt = shiftTime(alarm.arriveBy, pendingJourney.totalDurationMinutes ?? pendingJourney.minutes);
+    const chosen = routes.find((route) => route.journey === pendingJourney);
     setPendingJourney(null);
-    setConfirmation(`Route selected. You will leave at ${leaveAt} and arrive by ${arrival}.`);
+    setConfirmation(
+      `Route selected. You will leave at ${chosen?.normalDepartureClock ?? store.departureClock} and arrive by ${chosen?.predictedArrivalClock ?? "--:--"}.`,
+    );
   };
 
   return (
@@ -225,35 +142,43 @@ export function RoutePreferencePanel({
 
         {!fromPlace || !toPlace ? (
           <div className="glass-panel mt-4 rounded-2xl p-5 text-sm text-muted-foreground">Plan and confirm a trip on Home to compare its routes.</div>
-        ) : routesQuery.isFetching && !routes.length ? (
+        ) : store.loading && !routes.length ? (
           <div className="glass-panel mt-4 rounded-2xl p-5 text-sm text-muted-foreground">Comparing routes…</div>
         ) : !routes.length ? (
           <div className="glass-panel mt-4 rounded-2xl p-5 text-sm text-muted-foreground">No routes are available for this trip yet.</div>
         ) : (
           <div className="mt-4 space-y-3">
-            {routes.map(({ journey, preferences: routePreferences }) => {
-              const open = expandedId === journey.id;
+            {routes.map((route) => {
+              const journey = route.journey;
+              const open = expandedId === route.id;
               const modes = journey.legs.filter((leg) => leg.mode !== "walk");
               const segments = journey.legs.map((leg) => ({ mode: leg.mode, badge: leg.badge, points: leg.points }));
-              const primaryPreference = routePreferences.includes(applied) ? applied : (routePreferences[0] ?? "speed");
-              const otherLabels = routePreferences.filter((value) => value !== primaryPreference).map((value) => PREFERENCE_LABELS[value]);
+              const primaryPreference = route.primaryPreference;
+              const otherLabels = route.preferences.filter((value) => value !== primaryPreference).map((value) => PREFERENCE_LABELS[value]);
               const metric = primaryMetric(journey, primaryPreference);
-              const leaveAt = shiftTime(alarm.arriveBy, journey.totalDurationMinutes ?? journey.minutes);
-              const arrival = arrivalFromDeparture(journey, fixedDepartureMinutes);
-              const status = arrivalStatus(arrival, alarm.arriveBy, alarm.maxDelay);
-              const disrupted = isDisrupted(journey);
-              const chosen = manualJourney?.id === journey.id;
+              const status = route.status;
+              const chosen = route.isManuallySelected;
+              const border = route.isDisruptionRecommended
+                ? "border-success"
+                : route.isAffectedByDisruption
+                  ? "border-route-red/60"
+                  : route.isPrimaryPreferenceWinner
+                    ? "border-primary/50"
+                    : "";
               return (
-                <article key={journey.id} className={`glass-panel rounded-2xl p-4 ${routePreferences.includes(applied) ? "border-primary/50" : ""}`}>
+                <article key={route.id} className={`glass-panel rounded-2xl p-4 ${border}`}>
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
                       {PREFERENCE_LABELS[primaryPreference]}
                     </span>
-                    {routePreferences.includes(applied) && !chosen && (
+                    {route.isPrimaryPreferenceWinner && !chosen && (
                       <span className="rounded-full bg-success-soft px-2 py-0.5 text-[10px] font-bold uppercase text-success">Recommended</span>
                     )}
                     {chosen && <span className="rounded-full bg-success-soft px-2 py-0.5 text-[10px] font-bold uppercase text-success">Chosen by you</span>}
-                    {disrupted && (
+                    {route.isDisruptionRecommended && (
+                      <span className="rounded-full bg-success-soft px-2 py-0.5 text-[10px] font-bold uppercase text-success">Recommended during disruption</span>
+                    )}
+                    {route.isAffectedByDisruption && (
                       <span className="rounded-full bg-route-red/10 px-2 py-0.5 text-[10px] font-bold uppercase text-route-red">Affected by disruption</span>
                     )}
                     {status === "late" && (
@@ -270,14 +195,33 @@ export function RoutePreferencePanel({
                     <p className="mt-1 text-[11px] text-muted-foreground">Also ranked best for {otherLabels.join(", ").toLowerCase()}.</p>
                   )}
 
-                  <p className={`mt-2 inline-block rounded-md border px-2 py-1 text-[11px] font-bold ${STATUS_CLASS[status]}`}>
-                    {leaveAt} → {arrival}
-                    {status === "within" ? " · within your delay limit" : status === "late" ? " · past your delay limit" : ""}
-                  </p>
+                  {route.isAffectedByDisruption ? (
+                    <div className="mt-2 space-y-1 rounded-xl border border-route-red/40 bg-route-red/5 px-3 py-2 text-[11px] font-semibold text-brand-deep">
+                      <p>Normal: {route.normalDepartureClock} → {route.normalArrivalClock} · {route.normalDurationMinutes} min</p>
+                      <p className="text-route-red">
+                        Updated: {route.normalDepartureClock} → {route.predictedArrivalClock} · {route.predictedDurationMinutes} min
+                      </p>
+                      <p className="text-route-red">
+                        {route.overLimitMinutes > 0
+                          ? `Arrives ${route.overLimitMinutes} min after your limit (${store.latestAcceptableClock})`
+                          : `Still within your limit (${store.latestAcceptableClock})`}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className={`mt-2 inline-block rounded-md border px-2 py-1 text-[11px] font-bold ${STATUS_CLASS[status]}`}>
+                      {route.normalDepartureClock} → {route.predictedArrivalClock} · {route.predictedDurationMinutes} min
+                      {status === "within" ? " · within your delay limit" : status === "late" ? " · past your delay limit" : ""}
+                    </p>
+                  )}
+                  {route.isDisruptionRecommended && store.incident && (
+                    <p className="mt-1.5 rounded-md border border-success/40 bg-success-soft px-2 py-1 text-[11px] font-bold text-success">
+                      Arrives within your delay limit · avoids the affected {store.incident.line} Line segment
+                    </p>
+                  )}
                   <p className="mt-1 text-[11px] text-muted-foreground">{journeyDateTimeLabel(alarm)}</p>
 
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-                    <Metric icon={Clock3} label="Duration" value={`${journey.totalDurationMinutes ?? journey.minutes} min`} />
+                    <Metric icon={Clock3} label="Duration" value={`${route.predictedDurationMinutes} min`} />
                     <Metric icon={Footprints} label="Walking" value={`${journey.totalWalkingDistanceMetres ?? journey.walkMetres} m · ${journey.totalWalkingTimeMinutes ?? journey.walkMinutes} min`} />
                     <Metric icon={TrainFront} label="Transfers" value={String(journey.numberOfTransfers ?? journey.transfers)} />
                     <Metric icon={Banknote} label="Fare" value={typeof journey.fare === "number" ? `$${journey.fare.toFixed(2)}` : "—"} />
@@ -292,7 +236,7 @@ export function RoutePreferencePanel({
                     type="button"
                     variant="outline"
                     className="mt-4 h-10 w-full rounded-xl border-primary text-primary"
-                    onClick={() => setExpandedId(open ? null : journey.id)}
+                    onClick={() => setExpandedId(open ? null : route.id)}
                     aria-expanded={open}
                   >
                     {open ? "Hide route details" : "View route details"}
