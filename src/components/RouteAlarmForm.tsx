@@ -103,6 +103,9 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
         const remote: SavedRouteAlarm[] = rows.map((row) => ({
           id: row.alarmId,
           alarm: {
+            dateMode: "today",
+            date: "",
+
             from: row.origin,
             to: row.destination,
             arriveBy: row.arriveBy,
