@@ -30,6 +30,15 @@ import { PREFERENCE_LABELS, type RoutePreference } from "@/lib/commute-settings"
 import { compareJourneys, type Journey } from "@/lib/journey.functions";
 import { getTrainAlerts } from "@/lib/singapore.functions";
 import { useTrip } from "@/lib/trip-store";
+import {
+  arrivalFromDeparture,
+  arrivalStatus,
+  filterEligible,
+  journeyDateTimeLabel,
+  primaryMetric,
+  STATUS_CLASS,
+  toMinutes,
+} from "@/lib/journey-time";
 import { JourneyTimeline, LegBadge, RouteLegend } from "./JourneySteps";
 import { RouteMap } from "./RouteMap";
 
@@ -62,7 +71,7 @@ export function RoutePreferencePanel({
   onBackToPlan?: () => void;
   focusCompareRequest?: number;
 }) {
-  const { preferences, setPreferences, fromPlace, toPlace, alarm, setManualJourney } = useTrip();
+  const { preferences, setPreferences, fromPlace, toPlace, alarm, manualJourney, setManualJourney } = useTrip();
   const applied = preferences[0] ?? "speed";
   const [pending, setPending] = useState<RoutePreference>(applied);
   const [confirmation, setConfirmation] = useState<string | null>(null);
@@ -99,6 +108,21 @@ export function RoutePreferencePanel({
     },
   });
 
+  const affectedLines = useMemo(
+    () => (alertsQuery.data?.line ?? "").split(/[\s,;/]+/).filter(Boolean).map((line) => line.toUpperCase()),
+    [alertsQuery.data?.line],
+  );
+  const isDisrupted = useMemo(
+    () => (journey: Journey) => {
+      if (alertsQuery.data?.status !== "disrupted") return false;
+      const lines = new Set(
+        journey.legs.filter((leg) => leg.mode === "mrt" || leg.mode === "lrt").map((leg) => leg.badge.toUpperCase()),
+      );
+      return !affectedLines.length || affectedLines.some((line) => lines.has(line));
+    },
+    [affectedLines, alertsQuery.data?.status],
+  );
+
   const routes = useMemo<RouteGroup[]>(() => {
     const grouped = new Map<string, RouteGroup>();
     for (const option of routesQuery.data ?? []) {
@@ -107,8 +131,25 @@ export function RoutePreferencePanel({
       if (current) current.preferences.push(preference);
       else grouped.set(option.journey.id, { journey: option.journey, preferences: [preference] });
     }
-    return [...grouped.values()];
-  }, [routesQuery.data]);
+    const all = [...grouped.values()];
+    const applied0 = all.find((group) => group.preferences.includes(applied))?.journey;
+    const reach = toMinutes(alarm.arriveBy);
+    const baseDuration = applied0?.totalDurationMinutes ?? applied0?.minutes ?? 0;
+    const departureMinutes = reach === null ? null : reach - baseDuration;
+    return filterEligible(all, {
+      arriveBy: alarm.arriveBy,
+      maxDelay: alarm.maxDelay,
+      departureMinutes,
+      isDisrupted,
+    });
+  }, [alarm.arriveBy, alarm.maxDelay, applied, isDisrupted, routesQuery.data]);
+
+  const fixedDepartureMinutes = useMemo(() => {
+    const reach = toMinutes(alarm.arriveBy);
+    const base = routes.find((group) => group.preferences.includes(applied))?.journey ?? routes[0]?.journey;
+    if (reach === null || !base) return null;
+    return reach - (base.totalDurationMinutes ?? base.minutes ?? 0);
+  }, [alarm.arriveBy, applied, routes]);
 
   const applyPreference = () => {
     setPreferences([pending]);
@@ -120,8 +161,10 @@ export function RoutePreferencePanel({
   const useRoute = () => {
     if (!pendingJourney) return;
     setManualJourney(pendingJourney);
+    const arrival = arrivalFromDeparture(pendingJourney, fixedDepartureMinutes);
+    const leaveAt = shiftTime(alarm.arriveBy, pendingJourney.totalDurationMinutes ?? pendingJourney.minutes);
     setPendingJourney(null);
-    setConfirmation("Route updated. This option is now marked Chosen by you on Home.");
+    setConfirmation(`Route selected. You will leave at ${leaveAt} and arrive by ${arrival}.`);
   };
 
   return (
@@ -165,6 +208,16 @@ export function RoutePreferencePanel({
         </p>
       )}
 
+      {manualJourney && (
+        <Button
+          variant="ghost"
+          className="mt-3 h-10 w-full text-sm font-bold text-primary"
+          onClick={() => { setManualJourney(null); setConfirmation("Back to your recommended route."); }}
+        >
+          Return to recommended route
+        </Button>
+      )}
+
       <section ref={compareRef} className="mt-9 scroll-mt-5 border-t border-border pt-7">
         <p className="text-xs font-semibold uppercase text-success">Route comparison</p>
         <h2 className="mt-2 font-display text-2xl font-bold text-brand-deep">Compare all routes</h2>
@@ -182,26 +235,52 @@ export function RoutePreferencePanel({
               const open = expandedId === journey.id;
               const modes = journey.legs.filter((leg) => leg.mode !== "walk");
               const segments = journey.legs.map((leg) => ({ mode: leg.mode, badge: leg.badge, points: leg.points }));
-              const labels = routePreferences.map((value) => PREFERENCE_LABELS[value]);
+              const primaryPreference = routePreferences.includes(applied) ? applied : (routePreferences[0] ?? "speed");
+              const otherLabels = routePreferences.filter((value) => value !== primaryPreference).map((value) => PREFERENCE_LABELS[value]);
+              const metric = primaryMetric(journey, primaryPreference);
               const leaveAt = shiftTime(alarm.arriveBy, journey.totalDurationMinutes ?? journey.minutes);
-              const routeLines = new Set(journey.legs.filter((leg) => leg.mode === "mrt" || leg.mode === "lrt").map((leg) => leg.badge.toUpperCase()));
-              const affectedLines = (alertsQuery.data?.line ?? "").split(/[\s,;/]+/).filter(Boolean).map((line) => line.toUpperCase());
-              const disrupted = alertsQuery.data?.status === "disrupted" && (!affectedLines.length || affectedLines.some((line) => routeLines.has(line)));
+              const arrival = arrivalFromDeparture(journey, fixedDepartureMinutes);
+              const status = arrivalStatus(arrival, alarm.arriveBy, alarm.maxDelay);
+              const disrupted = isDisrupted(journey);
+              const chosen = manualJourney?.id === journey.id;
               return (
                 <article key={journey.id} className={`glass-panel rounded-2xl p-4 ${routePreferences.includes(applied) ? "border-primary/50" : ""}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold text-brand-deep">{labels.join(" · ")}</p>
-                      <p className="mt-1 text-xs font-semibold text-muted-foreground">{leaveAt} → {alarm.arriveBy || "--:--"}</p>
-                    </div>
-                    <span className="shrink-0 rounded-lg bg-primary/10 px-2.5 py-1 text-sm font-bold text-primary">{journey.totalDurationMinutes ?? journey.minutes} min</span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+                      {PREFERENCE_LABELS[primaryPreference]}
+                    </span>
+                    {routePreferences.includes(applied) && !chosen && (
+                      <span className="rounded-full bg-success-soft px-2 py-0.5 text-[10px] font-bold uppercase text-success">Recommended</span>
+                    )}
+                    {chosen && <span className="rounded-full bg-success-soft px-2 py-0.5 text-[10px] font-bold uppercase text-success">Chosen by you</span>}
+                    {disrupted && (
+                      <span className="rounded-full bg-route-red/10 px-2 py-0.5 text-[10px] font-bold uppercase text-route-red">Affected by disruption</span>
+                    )}
+                    {status === "late" && (
+                      <span className="rounded-full bg-route-red/10 px-2 py-0.5 text-[10px] font-bold uppercase text-route-red">Unable to meet arrival limit</span>
+                    )}
+                    <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">
+                      {journey.fareEstimated === false ? "Live" : "Estimated"}
+                    </span>
                   </div>
 
+                  <p className="mt-2 font-display text-2xl font-bold text-brand-deep">{metric.primary}</p>
+                  <p className="text-xs font-semibold text-muted-foreground">{metric.support}</p>
+                  {otherLabels.length > 0 && (
+                    <p className="mt-1 text-[11px] text-muted-foreground">Also ranked best for {otherLabels.join(", ").toLowerCase()}.</p>
+                  )}
+
+                  <p className={`mt-2 inline-block rounded-md border px-2 py-1 text-[11px] font-bold ${STATUS_CLASS[status]}`}>
+                    {leaveAt} → {arrival}
+                    {status === "within" ? " · within your delay limit" : status === "late" ? " · past your delay limit" : ""}
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">{journeyDateTimeLabel(alarm)}</p>
+
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                    <Metric icon={Clock3} label="Duration" value={`${journey.totalDurationMinutes ?? journey.minutes} min`} />
                     <Metric icon={Footprints} label="Walking" value={`${journey.totalWalkingDistanceMetres ?? journey.walkMetres} m · ${journey.totalWalkingTimeMinutes ?? journey.walkMinutes} min`} />
                     <Metric icon={TrainFront} label="Transfers" value={String(journey.numberOfTransfers ?? journey.transfers)} />
                     <Metric icon={Banknote} label="Fare" value={typeof journey.fare === "number" ? `$${journey.fare.toFixed(2)}` : "—"} />
-                    <Metric icon={Clock3} label="Disruption" value={disrupted ? "Current disruption" : alertsQuery.data?.configured ? "None reported" : "Checking…"} />
                   </div>
 
                   <div className="mt-3 flex flex-wrap gap-1.5">
@@ -222,7 +301,7 @@ export function RoutePreferencePanel({
 
                   {open && (
                     <div className="mt-4 border-t border-border pt-4">
-                      <RouteMap stations={[]} segments={segments} embedded compact title={`${labels[0]} route map`} />
+                      <RouteMap stations={[]} segments={segments} embedded compact title="Route map" />
                       <div className="mt-3"><RouteLegend legs={journey.legs} /></div>
                       <div className="mt-3"><JourneyTimeline legs={journey.legs} /></div>
                       <Button className="mt-4 h-11 w-full rounded-xl" onClick={() => setPendingJourney(journey)}>Use this route</Button>

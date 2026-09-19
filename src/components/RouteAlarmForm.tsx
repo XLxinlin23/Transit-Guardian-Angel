@@ -52,6 +52,16 @@ import { useDisruptionWatch } from "@/lib/use-disruption";
 import { useSimulationOptional } from "@/lib/simulation";
 
 import { formatMinutes, parseTime } from "@/lib/disruption";
+import {
+  arrivalFromDeparture,
+  arrivalStatus,
+  filterEligible,
+  journeyDateTimeLabel,
+  primaryMetric,
+  reachByHasPassed,
+  STATUS_CLASS,
+  toMinutes,
+} from "@/lib/journey-time";
 import { RouteMap } from "./RouteMap";
 import { JourneyTimeline, RouteLegend } from "./JourneySteps";
 
@@ -193,12 +203,19 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
       unique.set(key, { preference, journey, recommended: key === recommendedKey });
     }
 
-    const options = [...unique.values()];
+    const reach = toMinutes(alarm.arriveBy);
+    const baseDuration = recommendedJourney?.totalDurationMinutes ?? recommendedJourney?.minutes ?? 0;
+    const departureMinutes = reach === null ? null : reach - baseDuration;
+    const options = filterEligible([...unique.values()], {
+      arriveBy: alarm.arriveBy,
+      maxDelay: alarm.maxDelay,
+      departureMinutes,
+    });
     if ((preferences[0] ?? "speed") === "walking") {
       options.sort((a, b) => (a.journey.totalWalkingDistanceMetres ?? a.journey.walkMetres ?? 0) - (b.journey.totalWalkingDistanceMetres ?? b.journey.walkMetres ?? 0));
     }
     return options.slice(0, 4);
-  }, [manualJourney, optionsQuery.data, preferences, preview, recommendedJourney]);
+  }, [alarm.arriveBy, alarm.maxDelay, manualJourney, optionsQuery.data, preferences, preview, recommendedJourney]);
 
   const segments = useMemo(
     () => (preview ? preview.legs.map((leg) => ({ mode: leg.mode, badge: leg.badge, points: leg.points })) : []),
@@ -324,7 +341,13 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
 
 
   const departureTime = recommendedJourney ? shiftTime(alarm.arriveBy, recommendedJourney.minutes) : "--:--";
-  const arrivalTime = assessment ? assessment.predictedArrival : alarm.arriveBy || "--:--";
+  const fixedDepartureMinutes = parseTime(departureTime);
+  const pastReachBy = reachByHasPassed(alarm);
+  const arrivalTime = assessment
+    ? assessment.predictedArrival
+    : preview
+      ? arrivalFromDeparture(preview, fixedDepartureMinutes)
+      : alarm.arriveBy || "--:--";
 
   // Minutes past the latest acceptable arrival for the route currently shown —
   // applies to any route on screen, disrupted or not.
@@ -492,6 +515,18 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                   />
                 )}
               </Field>
+              {pastReachBy && (
+                <div className="rounded-xl border border-route-orange/40 bg-warning-soft px-3 py-2.5">
+                  <p className="text-xs font-bold text-brand-deep">{alarm.arriveBy} has already passed today.</p>
+                  <button
+                    type="button"
+                    onClick={() => update("dateMode", "tomorrow")}
+                    className="mt-1.5 text-xs font-bold text-primary underline underline-offset-4"
+                  >
+                    Use tomorrow instead
+                  </button>
+                </div>
+              )}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3">
                 <Field icon={AlarmClock} label="Reach by">
                   <Input type="time" value={alarm.arriveBy} onChange={(event) => update("arriveBy", event.target.value)} aria-label="Reach by" className="h-11 bg-card" />
@@ -541,7 +576,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
 
             <Button
               className="mt-6 h-11 w-full rounded-xl text-sm font-bold"
-              disabled={!bothConfirmed || looking}
+              disabled={!bothConfirmed || looking || pastReachBy}
               onClick={() => journeyQuery.refetch()}
             >
               <Navigation /> {looking ? "Finding best route…" : "Find best route"}
@@ -589,7 +624,9 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                 </p>
               )}
 
-              <div className="mt-3 flex items-baseline gap-2">
+              <p className="mt-3 text-xs font-bold text-brand-deep">{journeyDateTimeLabel(alarm)}</p>
+
+              <div className="mt-2 flex items-baseline gap-2">
                 <p className="font-display text-2xl font-bold text-primary">{departureTime}</p>
                 <span className="text-sm text-muted-foreground">→</span>
                 <p className={`font-display text-2xl font-bold ${disruption.disrupted || routeLate ? "text-route-red" : "text-brand-deep"}`}>{arrivalTime}</p>
@@ -602,6 +639,16 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                     ? `Leave at ${departureTime} · expected arrival ${arrivalTime} (planned ${alarm.arriveBy})`
                     : `Leave at ${departureTime} to reach by ${arrivalTime}`}
               </p>
+
+              {disruption.disrupted && assessment && (
+                <dl className="mt-3 space-y-1 rounded-xl border border-route-red/30 bg-route-red/5 px-3 py-2.5 text-xs font-semibold text-brand-deep">
+                  <div className="flex justify-between gap-2"><dt>Original arrival</dt><dd>{alarm.arriveBy || "--:--"}</dd></div>
+                  <div className="flex justify-between gap-2"><dt>Updated arrival</dt><dd className="text-route-red">{assessment.predictedArrival}</dd></div>
+                  <div className="flex justify-between gap-2"><dt>Latest acceptable arrival</dt><dd>{latestAcceptableArrival}</dd></div>
+                  {lateBy > 0 && <p className="pt-1 text-route-red">This route exceeds your delay limit by {lateBy} min.</p>}
+                </dl>
+              )}
+
 
 
               <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
@@ -667,27 +714,42 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                 <div className="mt-4 border-t border-border pt-4">
                   <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Other routes</h3>
                   <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                    {alternatives.map(({ preference, journey, recommended }) => (
-                      <Button
-                        key={journey.id ?? `${preference}-${journey.minutes}`}
-                        type="button"
-                        variant="outline"
-                        aria-label={`Use ${PREFERENCE_LABELS[preference as keyof typeof PREFERENCE_LABELS] ?? preference} route`}
-                        onClick={() => setManualJourney(journey)}
-                        className="h-auto min-h-20 w-full items-start justify-start whitespace-normal rounded-xl border-success/25 bg-success-soft/35 p-3 text-left shadow-none hover:border-primary/40 hover:bg-primary/5"
-                      >
-                        <span className="min-w-0">
-                          <span className="block text-xs font-bold uppercase tracking-wide text-primary">
-                            {PREFERENCE_LABELS[preference as keyof typeof PREFERENCE_LABELS] ?? preference}{recommended ? " (Recommended)" : ""}
+                    {alternatives.map(({ preference, journey, recommended }) => {
+                      const label = PREFERENCE_LABELS[preference as keyof typeof PREFERENCE_LABELS] ?? preference;
+                      const metric = primaryMetric(journey, preference as never);
+                      const arrival = arrivalFromDeparture(journey, fixedDepartureMinutes);
+                      const status = arrivalStatus(arrival, alarm.arriveBy, alarm.maxDelay);
+                      return (
+                        <Button
+                          key={journey.id ?? `${preference}-${journey.minutes}`}
+                          type="button"
+                          variant="outline"
+                          aria-label={`Use ${label} route`}
+                          onClick={() => setManualJourney(journey)}
+                          className="h-auto min-h-24 w-full items-start justify-start whitespace-normal rounded-xl border-border bg-card p-3 text-left shadow-none hover:border-primary/40 hover:bg-primary/5"
+                        >
+                          <span className="min-w-0 flex-1">
+                            <span className="flex flex-wrap items-center gap-1.5">
+                              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+                                {label}
+                              </span>
+                              {recommended && (
+                                <span className="rounded-full bg-success-soft px-2 py-0.5 text-[10px] font-bold uppercase text-success">Recommended</span>
+                              )}
+                              {journey.fareEstimated !== false && (
+                                <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">Estimated</span>
+                              )}
+                            </span>
+                            <span className="mt-1.5 block font-display text-xl font-bold text-brand-deep">{metric.primary}</span>
+                            <span className="block text-[11px] font-semibold text-muted-foreground">{metric.support}</span>
+                            <span className={`mt-1.5 inline-block rounded-md border px-2 py-0.5 text-[10px] font-bold ${STATUS_CLASS[status]}`}>
+                              {departureTime} → {arrival}
+                              {status === "within" ? " · within your delay limit" : status === "late" ? " · unable to meet arrival limit" : ""}
+                            </span>
                           </span>
-                          <span className="mt-1 block text-sm font-bold text-brand-deep">{journey.minutes} min</span>
-                          <span className="block text-[11px] font-semibold text-muted-foreground">
-                            Walk {journey.totalWalkingDistanceMetres ?? journey.walkMetres ?? 0} m · {journey.totalWalkingTimeMinutes ?? journey.walkMinutes ?? 0} min · {journey.numberOfTransfers ?? journey.transfers ?? 0} transfer{(journey.numberOfTransfers ?? journey.transfers ?? 0) === 1 ? "" : "s"}
-                            {typeof journey.fare === "number" ? ` · $${journey.fare.toFixed(2)}` : ""}
-                          </span>
-                        </span>
-                      </Button>
-                    ))}
+                        </Button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
