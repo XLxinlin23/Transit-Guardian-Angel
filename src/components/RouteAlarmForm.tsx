@@ -474,7 +474,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                   />
                 )}
               </Field>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3">
                 <Field icon={AlarmClock} label="Reach by">
                   <Input type="time" value={alarm.arriveBy} onChange={(event) => update("arriveBy", event.target.value)} aria-label="Reach by" className="h-11 bg-card" />
                   <p className="mt-1.5 text-[11px] font-semibold text-muted-foreground">
