@@ -223,9 +223,14 @@ export type JourneyCandidate = {
   totalWalkingDistanceMetres: number;
   totalWalkingTimeMinutes: number;
   fare: number;
+  fareEstimated: boolean;
   numberOfTransfers: number;
+  /** 0 = not crowded, 1 = moderate, 2 = crowded. Null when no live data covers this route. */
+  crowdScore: number | null;
+  source: string;
   signature: string;
 };
+
 
 function pathMetres(points: Array<{ lat: number; lng: number }>): number {
   let total = 0;
