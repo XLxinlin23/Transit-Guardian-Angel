@@ -388,7 +388,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
   const departedClock = departedAt !== null ? formatMinutes(departedAt) : null;
   const departedLine = (() => {
     if (!departedClock || !metrics) return null;
-    const late = toMinutes(metrics.arrivalClock) > toMinutes(metrics.reachByClock);
+    const late = (toMinutes(metrics.arrivalClock) ?? 0) > (toMinutes(metrics.reachByClock) ?? 0);
     const tail = late ? `(after your ${metrics.reachByClock})` : `— before your ${metrics.reachByClock}`;
     return `Left at ${departedClock} · ${metrics.totalDurationMinutes} min journey · arriving about ${metrics.arrivalClock} ${tail}`;
   })();
