@@ -545,7 +545,9 @@ async function buildCandidates(data: PlanInput): Promise<JourneyCandidate[]> {
     if (fallback) candidates.push(fallback);
   }
 
+  await attachCrowd(candidates);
   return candidates;
+
 }
 
 function logCandidateMetrics(candidates: JourneyCandidate[]) {
