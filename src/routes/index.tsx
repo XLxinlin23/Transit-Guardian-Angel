@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { BellRing, Bus, Home, Settings, SlidersHorizontal } from "lucide-react";
+import { BellRing, Bus, Home, Navigation, Settings, SlidersHorizontal } from "lucide-react";
+import { GoogleDirectionsPanel } from "../components/GoogleDirectionsPanel";
 import { SettingsSheet } from "../components/SettingsSheet";
 import { ThemeProvider } from "../lib/theme";
 import { useEffect, useState } from "react";
