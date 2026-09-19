@@ -43,7 +43,7 @@ import { compareJourneys, planJourney, type Journey } from "@/lib/journey.functi
 import { PlacePicker, placeLine, type ConfirmedPlace } from "./PlacePicker";
 import { CommuteAlertCard } from "./CommuteAlertCard";
 import { RouteMap } from "./RouteMap";
-import { MODE_COLORS, MODE_LABELS } from "@/lib/travel-modes";
+import { JourneyTimeline, RouteLegend } from "./JourneySteps";
 
 export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => void }) {
   const {

@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PREFERENCE_LABELS, type RoutePreference } from "@/lib/commute-settings";
 import { compareJourneys } from "@/lib/journey.functions";
-import { MODE_COLORS } from "@/lib/travel-modes";
+import { LegBadge } from "./JourneySteps";
 import { useTrip } from "@/lib/trip-store";
 
 const OPTIONS: { value: RoutePreference; icon: typeof Gauge; detail: string }[] = [
@@ -102,13 +102,7 @@ export function RoutePreferencePanel({ onBackToPlan }: { onBackToPlan?: () => vo
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {modes.map((leg, index) => (
-                    <span
-                      key={`${leg.badge}-${index}`}
-                      className="rounded-md px-1.5 py-0.5 text-[10px] font-bold text-white"
-                      style={{ backgroundColor: MODE_COLORS[leg.mode] }}
-                    >
-                      {leg.badge}
-                    </span>
+                    <LegBadge key={`${leg.badge}-${index}`} mode={leg.mode} badge={leg.badge} size="sm" />
                   ))}
                   {!modes.length && <span className="text-[10px] font-semibold text-muted-foreground">Walk all the way</span>}
                 </div>
