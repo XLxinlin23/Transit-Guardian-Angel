@@ -80,8 +80,8 @@ function IndexShell() {
           onClose={() => setSettingsOpen(false)}
         />
 
-        {tab === "home" && <HomeView />}
-        {tab === "preference" && <PreferenceView />}
+        {tab === "home" && <RouteAlarmForm onSeeMoreRoutes={() => setTab("preference")} />}
+        {tab === "preference" && <RoutePreferencePanel />}
         {tab === "arrivals" && <ArrivalsView />}
         {tab === "alerts" && <AlertsView />}
       </main>
@@ -96,13 +96,7 @@ function IndexShell() {
   );
 }
 
-function HomeView() {
-  return <RouteAlarmForm />;
-}
 
-function PreferenceView() {
-  return <RoutePreferencePanel />;
-}
 
 function AlertsView() {
   return (

@@ -7,6 +7,8 @@ import {
   CalendarDays,
   Check,
   ChevronDown,
+  ChevronRight,
+
   CloudRain,
   MapPin,
   Navigation,
@@ -43,7 +45,7 @@ import { CommuteAlertCard } from "./CommuteAlertCard";
 import { RouteMap } from "./RouteMap";
 import { MODE_COLORS, MODE_LABELS } from "@/lib/travel-modes";
 
-export function RouteAlarmForm() {
+export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => void }) {
   const {
     editingId,
     alarm,
@@ -395,12 +397,21 @@ export function RouteAlarmForm() {
                 Destination confirmed: {placeLine(toPlace)}
               </p>
             )}
-            <p className="rounded-xl border border-primary/25 bg-primary/5 px-3 py-2 text-xs font-semibold text-brand-deep">
-              {preview.reason}
-              {preview.alternatives > 1 && (
-                <span className="font-medium text-muted-foreground"> · best of {preview.alternatives} options</span>
-              )}
-            </p>
+            <div className="rounded-xl border border-primary/25 bg-primary/5 px-3 py-2">
+              <p className="text-xs font-semibold text-brand-deep">
+                Recommended route · {preview.reason}
+                {preview.alternatives > 1 && (
+                  <span className="font-medium text-muted-foreground"> · best of {preview.alternatives} options</span>
+                )}
+              </p>
+              <p className="mt-1 flex flex-wrap gap-x-3 text-[11px] font-semibold text-muted-foreground">
+                <span>{preview.minutes} min total</span>
+                <span>Walk {preview.walkMinutes} min</span>
+                <span>{preview.transfers} transfer{preview.transfers === 1 ? "" : "s"}</span>
+                <span>Fare ${preview.fare.toFixed(2)}</span>
+              </p>
+            </div>
+
             <RouteMap
               stations={[]}
               segments={segments}
@@ -433,6 +444,16 @@ export function RouteAlarmForm() {
                 </li>
               ))}
             </ol>
+            {onSeeMoreRoutes && (
+              <button
+                type="button"
+                onClick={onSeeMoreRoutes}
+                className="flex w-full items-center justify-center gap-1 rounded-xl border border-primary/30 py-2.5 text-sm font-semibold text-primary hover:bg-primary/10"
+              >
+                See more routes… <ChevronRight className="size-4" />
+              </button>
+            )}
+
           </div>
         )}
 
