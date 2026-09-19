@@ -50,24 +50,18 @@ function IndexShell() {
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-background">
-        <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
-          <div className="absolute -left-32 -top-32 size-96 rounded-full bg-primary/18 blur-3xl" />
-          <div className="absolute -right-40 top-1/3 size-96 rounded-full bg-success/14 blur-3xl" />
-          <div className="absolute -left-24 bottom-0 size-80 rounded-full bg-destructive/8 blur-3xl" />
-        </div>
-
-      <main className="relative mx-auto min-h-screen w-full max-w-md px-4 pb-28 pt-5">
+      <main className="relative mx-auto min-h-screen w-full max-w-[1050px] px-4 pb-[120px] pt-5">
         <header className="flex items-center gap-3">
-          <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-primary to-success font-display text-sm font-bold text-primary-foreground shadow-lg shadow-primary/25">WL</div>
+          <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary font-display text-sm font-bold text-primary-foreground">WL</div>
           <div className="min-w-0 leading-tight">
-            <p className="truncate font-display text-base font-semibold text-brand-deep">Wayline</p>
-            <p className="truncate text-xs text-muted-foreground">Smart commute alarms</p>
+            <p className="truncate font-display text-base font-bold text-brand-deep">Wayline</p>
+            <p className="truncate text-xs text-muted-foreground">Plan your trip, compare routes, and get disruption alerts.</p>
           </div>
           <button
             type="button"
             onClick={() => setSettingsOpen(true)}
             aria-label="Open settings"
-            className="ml-auto grid size-11 shrink-0 place-items-center rounded-xl bg-surface-strong text-primary shadow-sm transition-colors hover:bg-primary/15"
+            className="ml-auto grid size-11 shrink-0 place-items-center rounded-xl border border-border bg-card text-primary transition-colors hover:bg-secondary"
           >
             <Settings className="size-5" />
           </button>
@@ -86,15 +80,16 @@ function IndexShell() {
         {tab === "alerts" && <AlertsView />}
       </main>
 
-      <nav className="glass-control fixed inset-x-4 bottom-4 z-20 mx-auto grid max-w-[408px] grid-cols-4 rounded-2xl p-1.5" aria-label="Primary navigation">
+      <nav className="glass-control fixed inset-x-4 bottom-4 z-20 mx-auto grid max-w-[440px] grid-cols-4 rounded-2xl p-1.5" aria-label="Primary navigation">
         <NavButton active={tab === "home"} icon={Home} label="Home" onClick={() => setTab("home")} />
-        <NavButton active={tab === "preference"} icon={SlidersHorizontal} label="Preference" onClick={() => setTab("preference")} />
-        <NavButton active={tab === "arrivals"} icon={Bus} label="MRT & Bus Arrival" onClick={() => setTab("arrivals")} />
-        <NavButton active={tab === "alerts"} icon={BellRing} label="Disruption Alert" onClick={() => setTab("alerts")} />
+        <NavButton active={tab === "preference"} icon={SlidersHorizontal} label="Preferences" onClick={() => setTab("preference")} />
+        <NavButton active={tab === "arrivals"} icon={Bus} label="Arrivals" onClick={() => setTab("arrivals")} />
+        <NavButton active={tab === "alerts"} icon={BellRing} label="Alerts" onClick={() => setTab("alerts")} />
       </nav>
     </div>
   );
 }
+
 
 
 
