@@ -78,6 +78,7 @@ function IndexShell() {
 
         {tab === "home" && <RouteAlarmForm onSeeMoreRoutes={() => { setCompareRequest((value) => value + 1); setTab("preference"); }} />}
         {tab === "preference" && <RoutePreferencePanel focusCompareRequest={compareRequest} onBackToPlan={() => setTab("home")} />}
+        {tab === "directions" && <GoogleDirectionsPanel />}
         {tab === "arrivals" && <ArrivalsView />}
         {tab === "alerts" && <AlertsView />}
       </main>
