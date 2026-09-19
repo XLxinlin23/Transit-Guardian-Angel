@@ -683,6 +683,19 @@ export const planJourney = createServerFn({ method: "GET" })
 
 export type JourneyOption = { preference: string; journey: Journey };
 
+/** True when any rail leg of this route rides straight through a closed stretch of track. */
+function crossesClosedSegment(legs: JourneyLeg[]): boolean {
+  const clean = (name: string) => name.toLowerCase().replace(/\s*(mrt|lrt)?\s*station$/i, "").trim();
+  return legs.some((leg) => {
+    if (leg.mode !== "mrt" && leg.mode !== "lrt") return false;
+    return CLOSED_SEGMENTS.some((segment) => {
+      if (leg.badge.toUpperCase() !== segment.line.toUpperCase()) return false;
+      const travelled = stationsBetween(segment.line, clean(leg.from), clean(leg.to));
+      return travelled.includes(segment.a) && travelled.includes(segment.b);
+    });
+  });
+}
+
 /** One best route per preference, so the user can compare side by side. */
 export const compareJourneys = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) =>
