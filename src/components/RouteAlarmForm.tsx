@@ -170,7 +170,6 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
     () => (preview ? preview.legs.map((leg) => ({ mode: leg.mode, badge: leg.badge, points: leg.points })) : []),
     [preview],
   );
-  const modesUsed = useMemo(() => [...new Set(preview?.legs.map((leg) => leg.mode) ?? [])], [preview]);
 
   const typedBoth = Boolean(alarm.from.trim() && alarm.to.trim());
   const bothConfirmed = Boolean(fromPlace && toPlace);
