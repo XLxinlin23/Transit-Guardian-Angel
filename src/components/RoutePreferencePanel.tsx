@@ -208,6 +208,16 @@ export function RoutePreferencePanel({
         </p>
       )}
 
+      {manualJourney && (
+        <Button
+          variant="ghost"
+          className="mt-3 h-10 w-full text-sm font-bold text-primary"
+          onClick={() => { setManualJourney(null); setConfirmation("Back to your recommended route."); }}
+        >
+          Return to recommended route
+        </Button>
+      )}
+
       <section ref={compareRef} className="mt-9 scroll-mt-5 border-t border-border pt-7">
         <p className="text-xs font-semibold uppercase text-success">Route comparison</p>
         <h2 className="mt-2 font-display text-2xl font-bold text-brand-deep">Compare all routes</h2>
