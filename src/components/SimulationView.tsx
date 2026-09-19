@@ -1,4 +1,4 @@
-import { AlertTriangle, BellRing, Clock, CloudRain, Footprints, PlayCircle, RotateCcw, ShieldAlert, TrainFront } from "lucide-react";
+import { AlertTriangle, BellRing, CheckCircle2, Clock, CloudRain, Footprints, PlayCircle, RotateCcw, ShieldAlert, TrainFront } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import { useSimulation } from "@/lib/simulation";
 
 type SimNotification = {
   at: number;
-  tone: "info" | "warn" | "alert" | "rain";
+  tone: "info" | "warn" | "alert" | "rain" | "arrived";
   title: string;
   body: string;
 };
@@ -121,6 +121,18 @@ export function SimulationView() {
               : arrival > reach
                 ? ` (${arrival - reach} min after ${alarm.arriveBy}, still within your ${maxDelay} min limit).`
                 : `, before your ${alarm.arriveBy}.`
+          }`,
+        });
+        list.push({
+          at: arrival,
+          tone: late ? "alert" : arrival > reach ? "warn" : "arrived",
+          title: `Destination reached · ${trip}`,
+          body: `You have arrived at ${alarm.to || "your destination"} at ${formatMinutes(arrival)}.${
+            late
+              ? ` That is ${arrival - latest} min past your latest ${formatMinutes(latest)}.`
+              : arrival > reach
+                ? ` ${arrival - reach} min after ${alarm.arriveBy}, within your ${maxDelay} min limit.`
+                : ` You made it by ${alarm.arriveBy}.`
           }`,
         });
       }
@@ -262,15 +274,19 @@ export function SimulationView() {
                   className={`rounded-xl border p-3 ${
                     event.tone === "alert"
                       ? "border-route-red/35 bg-route-red/10"
-                      : event.tone === "rain"
-                        ? "border-primary/35 bg-primary/10"
-                        : event.tone === "warn"
-                          ? "border-route-orange/35 bg-warning-soft"
-                          : "border-border bg-card"
+                      : event.tone === "arrived"
+                        ? "border-success/35 bg-success-soft"
+                        : event.tone === "rain"
+                          ? "border-primary/35 bg-primary/10"
+                          : event.tone === "warn"
+                            ? "border-route-orange/35 bg-warning-soft"
+                            : "border-border bg-card"
                   }`}
                 >
                   <div className="flex items-start gap-2">
-                    {event.tone === "rain" ? (
+                    {event.tone === "arrived" ? (
+                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />
+                    ) : event.tone === "rain" ? (
                       <CloudRain className="mt-0.5 size-4 shrink-0 text-primary" />
                     ) : event.tone === "info" ? (
                       <BellRing className="mt-0.5 size-4 shrink-0 text-primary" />
