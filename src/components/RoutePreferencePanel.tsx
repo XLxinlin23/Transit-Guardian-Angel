@@ -36,7 +36,10 @@ export function RoutePreferencePanel({ onBackToPlan }: { onBackToPlan?: () => vo
         },
       }),
   });
-  const options = routesQuery.data ?? [];
+  const options = [...(routesQuery.data ?? [])].sort((a, b) => {
+    if (!selected.includes("walking")) return 0;
+    return (a.journey.totalWalkingDistanceMetres ?? a.journey.walkMetres ?? 0) - (b.journey.totalWalkingDistanceMetres ?? b.journey.walkMetres ?? 0);
+  });
 
   // Changing a priority re-ranks the saved trip immediately — nothing to re-enter.
   const toggle = (value: RoutePreference) => {
@@ -96,8 +99,8 @@ export function RoutePreferencePanel({ onBackToPlan }: { onBackToPlan?: () => vo
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">{journey.reason}</p>
                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-semibold text-muted-foreground">
-                  <span>Walk {journey.walkMinutes} min</span>
-                  <span>{journey.transfers} transfer{journey.transfers === 1 ? "" : "s"}</span>
+                  <span>Walk {journey.totalWalkingDistanceMetres ?? journey.walkMetres ?? 0} m · {journey.totalWalkingTimeMinutes ?? journey.walkMinutes ?? 0} min</span>
+                  <span>{journey.numberOfTransfers ?? journey.transfers ?? 0} transfer{(journey.numberOfTransfers ?? journey.transfers ?? 0) === 1 ? "" : "s"}</span>
                   <span>Fare ${journey.fare.toFixed(2)}</span>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1.5">

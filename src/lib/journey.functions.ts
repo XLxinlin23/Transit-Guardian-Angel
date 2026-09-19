@@ -20,16 +20,22 @@ export type JourneyLeg = {
 };
 
 export type Journey = {
+  /** Stable ID derived from the route's actual sequence of legs. */
+  id: string;
   legs: JourneyLeg[];
   minutes: number;
+  totalDurationMinutes: number;
   /** Total walking distance across the whole trip. */
   walkMetres: number;
+  totalWalkingDistanceMetres: number;
   /** Total time spent on foot. */
   walkMinutes: number;
+  totalWalkingTimeMinutes: number;
   /** Estimated adult fare in SGD. */
   fare: number;
   /** Number of vehicle-to-vehicle changes. */
   transfers: number;
+  numberOfTransfers: number;
   /** One line explaining why this option won, e.g. "Fastest · 54 min". */
   reason: string;
   /** How many distinct options were compared. */
@@ -201,13 +207,14 @@ function hopToLegs(hop: BusHop, from: Point, to: Point): JourneyLeg[] {
   return legs;
 }
 
-type Candidate = {
+export type JourneyCandidate = {
+  id: string;
   legs: JourneyLeg[];
-  minutes: number;
-  walkMetres: number;
-  walkMinutes: number;
+  totalDurationMinutes: number;
+  totalWalkingDistanceMetres: number;
+  totalWalkingTimeMinutes: number;
   fare: number;
-  transfers: number;
+  numberOfTransfers: number;
   signature: string;
 };
 
@@ -228,14 +235,39 @@ function estimateFare(legs: JourneyLeg[]): number {
   return Math.round(fare * 100) / 100;
 }
 
-function toCandidate(legs: JourneyLeg[]): Candidate | null {
+function routeId(signature: string): string {
+  let hash = 2166136261;
+  for (let index = 0; index < signature.length; index += 1) {
+    hash ^= signature.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `route-${(hash >>> 0).toString(36)}`;
+}
+
+function toCandidate(legs: JourneyLeg[]): JourneyCandidate | null {
   if (!legs.length) return null;
   const changes = Math.max(0, legs.filter((leg) => leg.mode !== "walk").length - 1);
   const minutes = legs.reduce((total, leg) => total + leg.minutes, 0) + changes * 2;
   const walkMetres = legs.reduce((total, leg) => total + (leg.metres ?? 0), 0);
   const walkMinutes = legs.filter((leg) => leg.mode === "walk").reduce((total, leg) => total + leg.minutes, 0);
-  const signature = legs.map((leg) => `${leg.mode}:${leg.badge}:${leg.from}>${leg.to}`).join("|");
-  return { legs, minutes, walkMetres, walkMinutes, fare: estimateFare(legs), transfers: changes, signature };
+  const signature = legs
+    .map(
+      (leg) =>
+        `${leg.mode}:${leg.badge}:${leg.from}>${leg.to}:${leg.points
+          .map((point) => `${point.lat.toFixed(5)},${point.lng.toFixed(5)}`)
+          .join(">")}`,
+    )
+    .join("|");
+  return {
+    id: routeId(signature),
+    legs,
+    totalDurationMinutes: minutes,
+    totalWalkingDistanceMetres: walkMetres,
+    totalWalkingTimeMinutes: walkMinutes,
+    fare: estimateFare(legs),
+    numberOfTransfers: changes,
+    signature,
+  };
 }
 
 
@@ -248,43 +280,57 @@ function primaryPreference(preferences: string[]): string {
   return "speed";
 }
 
-function scoreFor(candidate: Candidate, preference: string): number {
+function scoreFor(candidate: JourneyCandidate, preference: string): number {
   switch (preference) {
-    case "walking":
-      return candidate.walkMetres * 10 + candidate.minutes;
     case "sheltered":
       // Sheltered = as little open-air walking as possible, with rail preferred over bus waits.
-      return candidate.walkMetres * 12 + candidate.transfers * 40 + candidate.minutes;
+      return candidate.totalWalkingDistanceMetres * 12 + candidate.numberOfTransfers * 40 + candidate.totalDurationMinutes;
     case "transfers":
-      return candidate.transfers * 1000 + candidate.minutes;
+      return candidate.numberOfTransfers * 1000 + candidate.totalDurationMinutes;
     case "cost":
-      return candidate.fare * 100 + candidate.minutes;
+      return candidate.fare * 100 + candidate.totalDurationMinutes;
 
     case "crowd":
-      return candidate.transfers * 80 + candidate.minutes;
+      return candidate.numberOfTransfers * 80 + candidate.totalDurationMinutes;
     default:
-      return candidate.minutes;
+      return candidate.totalDurationMinutes;
   }
 }
 
-function reasonFor(candidate: Candidate, preference: string): string {
-  const walk = candidate.walkMetres >= 1000
-    ? `${(candidate.walkMetres / 1000).toFixed(1)} km walking`
-    : `${Math.round(candidate.walkMetres)} m walking`;
+export function rankCandidates(candidates: JourneyCandidate[], preference: string): JourneyCandidate[] {
+  return [...candidates].sort((a, b) => {
+    if (preference === "walking") {
+      return (
+        a.totalWalkingDistanceMetres - b.totalWalkingDistanceMetres ||
+        a.totalDurationMinutes - b.totalDurationMinutes ||
+        a.id.localeCompare(b.id)
+      );
+    }
+    return scoreFor(a, preference) - scoreFor(b, preference) || a.id.localeCompare(b.id);
+  });
+}
+
+function reasonFor(candidate: JourneyCandidate, preference: string, next?: JourneyCandidate): string {
+  const walkingMetres = Math.round(candidate.totalWalkingDistanceMetres);
+  const walk = walkingMetres >= 1000
+    ? `${(walkingMetres / 1000).toFixed(1)} km walking`
+    : `${walkingMetres} m walking`;
   switch (preference) {
     case "walking":
-      return `Least walking · ${walk}`;
+      return next
+        ? `Least walking: ${walkingMetres} m, ${Math.max(0, Math.round(next.totalWalkingDistanceMetres - candidate.totalWalkingDistanceMetres))} m less than the next route.`
+        : "Only one route is available — least walking cannot be compared.";
     case "sheltered":
       return `Most sheltered · ${walk}`;
     case "transfers":
-      return `Fewest transfers · ${candidate.transfers} transfer${candidate.transfers === 1 ? "" : "s"}`;
+      return `Fewest transfers · ${candidate.numberOfTransfers} transfer${candidate.numberOfTransfers === 1 ? "" : "s"}`;
     case "cost":
-      return `Lowest cost · $${candidate.fare.toFixed(2)} · ${candidate.minutes} min`;
+      return `Lowest cost · $${candidate.fare.toFixed(2)} · ${candidate.totalDurationMinutes} min`;
 
     case "crowd":
-      return `Lower crowding · ${candidate.minutes} min`;
+      return `Lower crowding · ${candidate.totalDurationMinutes} min`;
     default:
-      return `Fastest · ${candidate.minutes} min`;
+      return `Fastest · ${candidate.totalDurationMinutes} min`;
   }
 }
 
@@ -299,14 +345,14 @@ type PlanInput = {
   to: { lat: number; lng: number; label: string };
 };
 
-async function buildCandidates(data: PlanInput): Promise<Candidate[]> {
+async function buildCandidates(data: PlanInput): Promise<JourneyCandidate[]> {
   const key = process.env["LTA_ACCOUNT_KEY"] ?? "";
   const lookupHop = hopCache(key);
 
   const origin: Point = { lat: data.from.lat, lng: data.from.lng, name: data.from.label };
   const destination: Point = { lat: data.to.lat, lng: data.to.lng, name: data.to.label };
 
-  const candidates: Candidate[] = [];
+  const candidates: JourneyCandidate[] = [];
   const add = (legs: JourneyLeg[]) => {
     const candidate = toCandidate(legs);
     if (!candidate) return;
@@ -379,19 +425,41 @@ async function buildCandidates(data: PlanInput): Promise<Candidate[]> {
   return candidates;
 }
 
-function pickJourney(candidates: Candidate[], preference: string): Journey | null {
+function logCandidateMetrics(candidates: JourneyCandidate[]) {
+  console.table(
+    candidates.map((candidate) => ({
+      id: candidate.id,
+      walkingDistanceMetres: Math.round(candidate.totalWalkingDistanceMetres),
+      walkingTimeMinutes: candidate.totalWalkingTimeMinutes,
+      durationMinutes: candidate.totalDurationMinutes,
+      transfers: candidate.numberOfTransfers,
+    })),
+  );
+}
+
+function pickJourney(candidates: JourneyCandidate[], preference: string): Journey | null {
   if (!candidates.length) return null;
-  const ranked = [...candidates].sort((a, b) => scoreFor(a, preference) - scoreFor(b, preference));
+  const ranked = rankCandidates(candidates, preference);
   const winner = ranked[0]!;
 
   const journey: Journey = {
+    id: winner.id,
     legs: winner.legs,
-    minutes: winner.minutes,
-    walkMetres: Math.round(winner.walkMetres),
-    walkMinutes: winner.walkMinutes,
+    minutes: winner.totalDurationMinutes,
+    totalDurationMinutes: winner.totalDurationMinutes,
+    walkMetres: Math.round(winner.totalWalkingDistanceMetres),
+    totalWalkingDistanceMetres: Math.round(winner.totalWalkingDistanceMetres),
+    walkMinutes: winner.totalWalkingTimeMinutes,
+    totalWalkingTimeMinutes: winner.totalWalkingTimeMinutes,
     fare: winner.fare,
-    transfers: winner.transfers,
-    reason: candidates.length < 2 ? "Only one route is currently available." : reasonFor(winner, preference),
+    transfers: winner.numberOfTransfers,
+    numberOfTransfers: winner.numberOfTransfers,
+    reason:
+      preference === "walking"
+        ? reasonFor(winner, preference, ranked[1])
+        : candidates.length < 2
+          ? "Only one route is currently available."
+          : reasonFor(winner, preference, ranked[1]),
     alternatives: candidates.length,
   };
 
@@ -416,6 +484,7 @@ export const planJourney = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }): Promise<Journey | null> => {
     const candidates = await buildCandidates(data);
+    if (process.env["NODE_ENV"] !== "production") logCandidateMetrics(candidates);
     return pickJourney(candidates, primaryPreference(data.preferences));
   });
 
@@ -429,6 +498,7 @@ export const compareJourneys = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<JourneyOption[]> => {
     const candidates = await buildCandidates(data);
     if (!candidates.length) return [];
+    if (process.env["NODE_ENV"] !== "production") logCandidateMetrics(candidates);
     const options: JourneyOption[] = [];
     for (const preference of PRIMARY_ORDER) {
       const journey = pickJourney(candidates, preference);
