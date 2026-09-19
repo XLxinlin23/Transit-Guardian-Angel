@@ -1,22 +1,28 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, BellRing, Bus, CarFront, CheckCircle2, CloudRain, RefreshCw, Route, Users } from "lucide-react";
+import { AlertTriangle, BellRing, Bus, CalendarDays, CarFront, CheckCircle2, CloudRain, RefreshCw, Route, Users } from "lucide-react";
 
 import { getCommuteBriefing } from "@/lib/commute.functions";
 import type { PlacePoint, RouteAlarm, RoutePreference } from "@/lib/commute-settings";
+import type { RouteMetrics } from "@/lib/route-metrics";
+import { nextRunLabel, recurrenceLabel, runsToday } from "@/lib/sg-time";
 
 export function CommuteAlertCard({
   alarm,
   preferences,
   fromPlace,
   toPlace,
+  metrics,
 }: {
   alarm: RouteAlarm;
   preferences: RoutePreference[];
   fromPlace?: PlacePoint | null;
   toPlace?: PlacePoint | null;
+  /** The one route-metrics object — no separate travel time is calculated here. */
+  metrics?: RouteMetrics | null;
 }) {
   const fetchBriefing = useServerFn(getCommuteBriefing);
+  const scheduledToday = runsToday(alarm);
   const payload = {
     from: alarm.from,
     to: alarm.to,
@@ -37,8 +43,28 @@ export function CommuteAlertCard({
   const { data, isFetching, refetch } = useQuery({
     queryKey: ["commute-briefing", payload],
     queryFn: () => fetchBriefing({ data: payload }),
+    enabled: scheduledToday,
     refetchInterval: 60_000,
   });
+
+  if (!scheduledToday) {
+    return (
+      <section className="mt-5 rounded-3xl border border-border bg-card p-4">
+        <div className="flex items-start gap-3">
+          <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-secondary text-brand-deep">
+            <CalendarDays className="size-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Today&apos;s commute alert</p>
+            <p className="mt-1 text-sm font-semibold leading-snug text-brand-deep">
+              No scheduled journey today. Next journey: {nextRunLabel(alarm)}.
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">{recurrenceLabel(alarm)}</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   const severity = data?.severity ?? "calm";
   const tone =
