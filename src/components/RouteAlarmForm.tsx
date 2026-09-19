@@ -484,8 +484,19 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                         <p className="truncate text-xs text-muted-foreground">
                           Arrive by {entry.alarm.arriveBy} ·{" "}
                           {entry.alarm.repeat === "custom" ? entry.alarm.days.join(", ") : REPEAT_LABELS[entry.alarm.repeat]}
+                          {!entry.alarm.active && " · Paused"}
                         </p>
                       </button>
+                      <div className="flex shrink-0 flex-col items-center gap-0.5">
+                        <Switch
+                          checked={entry.alarm.active}
+                          onCheckedChange={(value) => toggleAlarmActive(entry, value)}
+                          aria-label={`${entry.alarm.active ? "Pause" : "Resume"} alarm ${entry.alarm.from} to ${entry.alarm.to}`}
+                        />
+                        <span className="text-[10px] font-semibold text-muted-foreground">
+                          {entry.alarm.active ? "On" : "Paused"}
+                        </span>
+                      </div>
                       <button
                         type="button"
                         onClick={() => removeAlarm(entry.id)}
@@ -501,14 +512,40 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
             </section>
           )}
 
-          {saved && alarm.active && (
+          {editingExisting && alarm.active && !showForm && (
             <section className="rounded-2xl border border-success/30 bg-success-soft p-4">
               <div className="flex items-start gap-3">
                 <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-success text-primary-foreground"><Check /></div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-brand-deep">Alarm active · arrive by {alarm.arriveBy}</p>
                   <p className="mt-1 text-xs leading-relaxed text-foreground">{alarm.from} → {alarm.to} · {repeatSummary}</p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setFormOpen(true)}
+                  className="shrink-0 rounded-lg px-2 py-1 text-xs font-bold text-primary hover:bg-secondary"
+                >
+                  Edit trip
+                </button>
+              </div>
+            </section>
+          )}
+
+          {editingExisting && !alarm.active && !showForm && (
+            <section className="rounded-2xl border border-border bg-card p-4">
+              <div className="flex items-start gap-3">
+                <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-secondary text-muted-foreground"><BellRing /></div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-brand-deep">Alarm paused</p>
+                  <p className="mt-1 text-xs leading-relaxed text-foreground">{alarm.from} → {alarm.to} · {repeatSummary}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormOpen(true)}
+                  className="shrink-0 rounded-lg px-2 py-1 text-xs font-bold text-primary hover:bg-secondary"
+                >
+                  Edit trip
+                </button>
               </div>
             </section>
           )}
