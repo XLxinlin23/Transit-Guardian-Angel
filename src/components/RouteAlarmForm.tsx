@@ -203,12 +203,19 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
       unique.set(key, { preference, journey, recommended: key === recommendedKey });
     }
 
-    const options = [...unique.values()];
+    const reach = toMinutes(alarm.arriveBy);
+    const baseDuration = recommendedJourney?.totalDurationMinutes ?? recommendedJourney?.minutes ?? 0;
+    const departureMinutes = reach === null ? null : reach - baseDuration;
+    const options = filterEligible([...unique.values()], {
+      arriveBy: alarm.arriveBy,
+      maxDelay: alarm.maxDelay,
+      departureMinutes,
+    });
     if ((preferences[0] ?? "speed") === "walking") {
       options.sort((a, b) => (a.journey.totalWalkingDistanceMetres ?? a.journey.walkMetres ?? 0) - (b.journey.totalWalkingDistanceMetres ?? b.journey.walkMetres ?? 0));
     }
     return options.slice(0, 4);
-  }, [manualJourney, optionsQuery.data, preferences, preview, recommendedJourney]);
+  }, [alarm.arriveBy, alarm.maxDelay, manualJourney, optionsQuery.data, preferences, preview, recommendedJourney]);
 
   const segments = useMemo(
     () => (preview ? preview.legs.map((leg) => ({ mode: leg.mode, badge: leg.badge, points: leg.points })) : []),
