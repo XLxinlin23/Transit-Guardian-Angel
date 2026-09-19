@@ -357,46 +357,47 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
     setRouteMinutes?.(previewMinutes);
   }, [previewMinutes, setRouteMinutes]);
 
-  const departureTime = recommendedJourney ? shiftTime(alarm.arriveBy, recommendedJourney.minutes) : "--:--";
-  const fixedDepartureMinutes = parseTime(departureTime);
   const pastReachBy = reachByHasPassed(alarm);
-  const plannedArrival = assessment
-    ? assessment.predictedArrival
-    : preview
-      ? arrivalFromDeparture(preview, fixedDepartureMinutes)
-      : alarm.arriveBy || "--:--";
+  const baselineMinutes = recommendedJourney?.totalDurationMinutes ?? recommendedJourney?.minutes ?? null;
 
-  // Once the user has left (simulated departure), arrival is measured from that moment.
+  // One metrics object per route — every figure on this page reads from it.
   const disruptionDelay = disruption.disrupted ? (assessment?.delayMinutes ?? 0) : 0;
-  const actualArrivalMin =
-    departedAt !== null && previewMinutes !== null
-      ? departedAt + previewMinutes + disruptionDelay + rainDelay
-      : null;
-  const arrivalTime = actualArrivalMin !== null ? formatMinutes(actualArrivalMin) : plannedArrival;
+  const metrics = preview
+    ? buildRouteMetrics({
+        journey: preview,
+        alarm,
+        baselineMinutes,
+        delayMinutes: disruptionDelay + rainDelay,
+        // Once the user has actually left, that moment replaces the planned departure.
+        departureMinutes: departedAt,
+      })
+    : null;
 
-  // Minutes past the latest acceptable arrival for the route currently shown —
-  // applies to any route on screen, disrupted or not.
-  const reachMin = parseTime(alarm.arriveBy);
-  const arrivalMin = parseTime(arrivalTime);
-  const latestMin = reachMin !== null ? reachMin + (Number(alarm.maxDelay) || 0) : null;
-  const lateBy = arrivalMin !== null && latestMin !== null ? Math.max(0, arrivalMin - latestMin) : 0;
+  const departureTime = metrics?.departureClock ?? "--:--";
+  const fixedDepartureMinutes = metrics ? toMinutes(metrics.departureClock) : null;
+  const arrivalTime = metrics?.arrivalClock ?? alarm.arriveBy || "--:--";
+  const latestAcceptableArrivalClock = metrics?.latestAcceptableClock ?? latestAcceptableArrival;
+  const lateBy = metrics?.overLimitMinutes ?? 0;
   const routeLate = lateBy > 0;
+  const departurePassed = Boolean(metrics && departedAt === null && departureHasPassed(alarm, metrics.departureClock));
+
   const departedLine =
-    departedAt !== null
-      ? `Left at ${formatMinutes(departedAt)} · ${previewMinutes !== null ? `${previewMinutes + disruptionDelay + rainDelay} min journey · ` : ""}arriving about ${arrivalTime}${
-          reachMin !== null && arrivalMin !== null && arrivalMin > reachMin
-            ? ` (${arrivalMin - reachMin} min after your ${alarm.arriveBy})`
-            : ` — before your ${alarm.arriveBy}`
+    departedAt !== null && metrics
+      ? `Left at ${metrics.departureClock} · ${metrics.totalDurationMinutes} min journey · arriving about ${metrics.arrivalClock}${
+          metrics.arrivalClock > metrics.reachByClock
+            ? ` (after your ${metrics.reachByClock})`
+            : ` — before your ${metrics.reachByClock}`
         }`
       : null;
   const statusLine = disruption.disrupted && assessment
     ? `${assessment.headline}${disruption.incident?.source === "demo" ? " (simulated)" : ""}`
     : routeLate
-      ? `Arrives ${arrivalTime} — ${lateBy} min past your latest ${latestAcceptableArrival}. Leave earlier or pick another route.`
+      ? `Arrives ${arrivalTime} — ${lateBy} min past your latest ${latestAcceptableArrivalClock}. Leave earlier or pick another route.`
       : null;
 
-  const departureMin = parseTime(departureTime);
+  const departureMin = fixedDepartureMinutes;
   const minutesToLeave = simClock !== null && departureMin !== null ? departureMin - simClock : null;
+
 
 
   return (
