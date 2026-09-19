@@ -263,7 +263,8 @@ export const getGoogleDirections = createServerFn({ method: "POST" })
       distanceMetres: Number(route.distanceMeters ?? 0),
       steps,
       segments,
-      origin: first ? { ...first, name: data.origin } : null,
-      destination: last ? { ...last, name: data.destination } : null,
+      origin: first ? { ...first, name: data.origin.label } : null,
+      destination: last ? { ...last, name: data.destination.label } : null,
+
     };
   });
