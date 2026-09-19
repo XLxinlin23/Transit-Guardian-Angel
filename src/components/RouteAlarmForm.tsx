@@ -409,6 +409,9 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                       {[0, 5, 10, 15, 20, 30].map((minutes) => <SelectItem key={minutes} value={String(minutes)}>{minutes} min</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  <p className="mt-1.5 text-[11px] font-semibold text-muted-foreground">
+                    Latest acceptable arrival: {latestAcceptableArrival}
+                  </p>
                 </Field>
               </div>
               <Field icon={CalendarDays} label="How often">
