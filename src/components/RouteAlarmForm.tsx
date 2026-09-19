@@ -486,10 +486,9 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                 />
               </Field>
               <Field icon={CalendarDays} label="Journey date">
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   {([
                     ["today", "Today"],
-                    ["tomorrow", "Tomorrow"],
                     ["date", "Select date"],
                   ] as Array<[JourneyDateMode, string]>).map(([mode, label]) => (
                     <button
@@ -520,10 +519,15 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                   <p className="text-xs font-bold text-brand-deep">{alarm.arriveBy} has already passed today.</p>
                   <button
                     type="button"
-                    onClick={() => update("dateMode", "tomorrow")}
+                    onClick={() => {
+                      const tomorrow = new Date(Date.now() + 86_400_000);
+                      const iso = tomorrow.toLocaleDateString("en-CA");
+                      update("date", iso);
+                      update("dateMode", "date");
+                    }}
                     className="mt-1.5 text-xs font-bold text-primary underline underline-offset-4"
                   >
-                    Use tomorrow instead
+                    Use tomorrow's date instead
                   </button>
                 </div>
               )}
