@@ -147,7 +147,11 @@ export function TripProvider({ children }: { children: ReactNode }) {
     else window.localStorage.removeItem(MANUAL_ROUTE_STORAGE_KEY);
   }, []);
 
-  const loadDraft = useCallback((next: TripDraft) => persist(next), [persist]);
+  const loadDraft = useCallback((next: TripDraft) => {
+    setManualJourneyState(null);
+    window.localStorage.removeItem(MANUAL_ROUTE_STORAGE_KEY);
+    persist(next);
+  }, [persist]);
   const startNewTrip = useCallback(() => {
     setManualJourneyState(null);
     window.localStorage.removeItem(MANUAL_ROUTE_STORAGE_KEY);
