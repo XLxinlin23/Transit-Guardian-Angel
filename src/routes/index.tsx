@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { BellRing, Bus, Home, Settings, SlidersHorizontal } from "lucide-react";
+import { BellRing, Bus, FlaskConical, Home, Settings, SlidersHorizontal } from "lucide-react";
 
 import { SettingsSheet } from "../components/SettingsSheet";
+import { SimulationView } from "../components/SimulationView";
+import { SimulationProvider } from "../lib/simulation";
 import { ThemeProvider } from "../lib/theme";
 import { useEffect, useState } from "react";
 import { BusArrivalCard } from "../components/BusArrivalCard";
@@ -28,14 +30,16 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-type Tab = "home" | "preference" | "arrivals" | "alerts";
+type Tab = "home" | "preference" | "arrivals" | "alerts" | "simulation";
 
 function Index() {
   return (
     <ThemeProvider>
-      <TripProvider>
-        <IndexShell />
-      </TripProvider>
+      <SimulationProvider>
+        <TripProvider>
+          <IndexShell />
+        </TripProvider>
+      </SimulationProvider>
     </ThemeProvider>
   );
 }
@@ -81,14 +85,16 @@ function IndexShell() {
         {tab === "preference" && <RoutePreferencePanel focusCompareRequest={compareRequest} onBackToPlan={() => setTab("home")} />}
         {tab === "arrivals" && <ArrivalsView />}
         {tab === "alerts" && <AlertsView />}
+        {tab === "simulation" && <SimulationView />}
       </main>
 
-      <nav className="glass-control fixed inset-x-4 bottom-4 z-20 mx-auto grid max-w-[480px] grid-cols-4 rounded-2xl p-1.5" aria-label="Primary navigation">
+      <nav className="glass-control fixed inset-x-4 bottom-4 z-20 mx-auto grid max-w-[560px] grid-cols-5 rounded-2xl p-1.5" aria-label="Primary navigation">
         <NavButton active={tab === "home"} icon={Home} label="Home" onClick={() => setTab("home")} />
         <NavButton active={tab === "preference"} icon={SlidersHorizontal} label="Preferences" onClick={() => setTab("preference")} />
 
         <NavButton active={tab === "arrivals"} icon={Bus} label="Arrivals" onClick={() => setTab("arrivals")} />
         <NavButton active={tab === "alerts"} icon={BellRing} label="Alerts" onClick={() => setTab("alerts")} />
+        <NavButton active={tab === "simulation"} icon={FlaskConical} label="Simulate" onClick={() => setTab("simulation")} />
       </nav>
     </div>
   );

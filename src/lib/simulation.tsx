@@ -1,0 +1,57 @@
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+
+/** Shared state for the Simulation tab — a simulated clock and a simulated Circle Line incident. */
+export type SimulationContextValue = {
+  /** Simulated Circle Line disruption (also driven by the home page demo switch). */
+  demo: boolean;
+  setDemo: (value: boolean) => void;
+  /** Simulated time of day, in minutes past midnight. */
+  clockMinutes: number;
+  setClockMinutes: (value: number) => void;
+  /** Whether the simulated clock drives the rest of the app. */
+  clockActive: boolean;
+  setClockActive: (value: boolean) => void;
+};
+
+const SimulationContext = createContext<SimulationContextValue | null>(null);
+
+export function SimulationProvider({ children }: { children: ReactNode }) {
+  const [demo, setDemo] = useState(false);
+  const [clockMinutes, setClockMinutes] = useState(() => {
+    const now = new Date();
+    return now.getHours() * 60 + now.getMinutes();
+  });
+  const [clockActive, setClockActive] = useState(false);
+
+  const value = useMemo<SimulationContextValue>(
+    () => ({ demo, setDemo, clockMinutes, setClockMinutes, clockActive, setClockActive }),
+    [demo, clockMinutes, clockActive],
+  );
+
+  return <SimulationContext.Provider value={value}>{children}</SimulationContext.Provider>;
+}
+
+/** Null when no provider is mounted, so components stay usable on their own. */
+export function useSimulationOptional(): SimulationContextValue | null {
+  return useContext(SimulationContext);
+}
+
+export function useSimulation(): SimulationContextValue {
+  const context = useContext(SimulationContext);
+  if (!context) throw new Error("useSimulation must be used inside SimulationProvider");
+  return context;
+}
+
+/** Fallback used when the simulation provider is absent. */
+export function useSimulationOrLocal(): SimulationContextValue {
+  const shared = useSimulationOptional();
+  const [demo, setDemo] = useState(false);
+  const [clockMinutes, setClockMinutes] = useState(0);
+  const [clockActive, setClockActive] = useState(false);
+  const setClock = useCallback((value: number) => setClockMinutes(value), []);
+  const local = useMemo<SimulationContextValue>(
+    () => ({ demo, setDemo, clockMinutes, setClockMinutes: setClock, clockActive, setClockActive }),
+    [demo, clockMinutes, clockActive, setClock],
+  );
+  return shared ?? local;
+}

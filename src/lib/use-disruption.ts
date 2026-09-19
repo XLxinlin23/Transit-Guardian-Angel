@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { assessDisruption, DEMO_INCIDENT, type DisruptionAssessment, type Incident } from "@/lib/disruption";
+import { useSimulationOrLocal } from "@/lib/simulation";
 import type { Journey } from "@/lib/journey.functions";
 import { getTrainAlerts } from "@/lib/singapore.functions";
 
@@ -27,7 +28,8 @@ export function useDisruptionWatch(params: {
   maxDelay: string;
   preference?: string | undefined;
 }): DisruptionWatch {
-  const [demo, setDemo] = useState(false);
+  // Shared with the Simulation tab, so a simulated incident is visible everywhere.
+  const { demo, setDemo } = useSimulationOrLocal();
 
   const alertsFn = useServerFn(getTrainAlerts);
   const alertsQuery = useQuery({

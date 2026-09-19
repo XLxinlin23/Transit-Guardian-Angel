@@ -49,6 +49,7 @@ import { PlacePicker, placeLine, type ConfirmedPlace } from "./PlacePicker";
 import { CommuteAlertCard } from "./CommuteAlertCard";
 import { JourneyStatusCard } from "./JourneyStatusCard";
 import { useDisruptionWatch } from "@/lib/use-disruption";
+import { useSimulationOptional } from "@/lib/simulation";
 
 import { formatMinutes, parseTime } from "@/lib/disruption";
 import { RouteMap } from "./RouteMap";
@@ -339,9 +340,26 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
       : null;
 
 
+  const simulation = useSimulationOptional();
+  const simClock = simulation?.clockActive ? simulation.clockMinutes : null;
+  const departureMin = parseTime(departureTime);
+  const minutesToLeave = simClock !== null && departureMin !== null ? departureMin - simClock : null;
+
   return (
     <div className="pt-7">
       <h1 className="font-display text-3xl font-bold tracking-tight text-brand-deep">Plan your trip</h1>
+      {simClock !== null && (
+        <p className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-route-orange/35 bg-warning-soft px-3 py-2 text-xs font-bold text-brand-deep">
+          <span>Simulated time {formatMinutes(simClock)}</span>
+          {minutesToLeave !== null && (
+            <span className="font-semibold text-muted-foreground">
+              {minutesToLeave > 0
+                ? `· leave in ${minutesToLeave} min (${departureTime})`
+                : `· departure time ${departureTime} has passed`}
+            </span>
+          )}
+        </p>
+      )}
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
         Enter where you are going, compare routes, and Wayline tells you when to leave.
       </p>
