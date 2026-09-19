@@ -579,7 +579,7 @@ async function buildCandidates(data: PlanInput): Promise<JourneyCandidate[]> {
     }
   }
 
-  addRailAvoiding(["EW", "CG"]);
+  addRailAvoiding([], CLOSED_SEGMENTS);
 
   if (!candidates.length) {
     const fallback = toCandidate(walkLegBetween(origin, destination));
