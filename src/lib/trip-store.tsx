@@ -10,6 +10,9 @@ import {
   type RouteAlarm,
   type RoutePreference,
 } from "./commute-settings";
+import type { Journey } from "./journey.functions";
+
+const MANUAL_ROUTE_STORAGE_KEY = "wayline-manual-route";
 
 export const BLANK_ALARM: RouteAlarm = { ...DEFAULT_ALARM, from: "", to: "", active: false };
 
@@ -22,10 +25,12 @@ export type TripDraft = {
 
 type TripContextValue = TripDraft & {
   preferences: RoutePreference[];
+  manualJourney: Journey | null;
   hydrated: boolean;
   setAlarmField: <Key extends keyof RouteAlarm>(key: Key, value: RouteAlarm[Key]) => void;
   setPlace: (field: "from" | "to", place: PlacePoint | null) => void;
   setPreferences: (values: RoutePreference[]) => void;
+  setManualJourney: (journey: Journey | null) => void;
   loadDraft: (draft: TripDraft) => void;
   startNewTrip: () => void;
   clearTrip: () => void;
@@ -70,6 +75,7 @@ function readPreferences(): RoutePreference[] | null {
 export function TripProvider({ children }: { children: ReactNode }) {
   const [draft, setDraft] = useState<TripDraft>(emptyDraft);
   const [preferences, setPreferencesState] = useState<RoutePreference[]>(DEFAULT_PREFERENCES);
+  const [manualJourney, setManualJourneyState] = useState<Journey | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
   // Restore everything once, on the client only.
@@ -77,7 +83,13 @@ export function TripProvider({ children }: { children: ReactNode }) {
     const stored = readDraft();
     if (stored) setDraft(stored);
     const prefs = readPreferences();
-    if (prefs) setPreferencesState(prefs);
+    if (prefs) setPreferencesState([prefs[0] ?? DEFAULT_PREFERENCES[0]]);
+    try {
+      const manual = window.localStorage.getItem(MANUAL_ROUTE_STORAGE_KEY);
+      if (manual) setManualJourneyState(JSON.parse(manual) as Journey);
+    } catch {
+      window.localStorage.removeItem(MANUAL_ROUTE_STORAGE_KEY);
+    }
     setHydrated(true);
   }, []);
 
@@ -117,14 +129,23 @@ export function TripProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setPreferences = useCallback((values: RoutePreference[]) => {
-    setPreferencesState(values);
-    window.localStorage.setItem(PREFERENCE_STORAGE_KEY, JSON.stringify(values));
+    const primary = values[0] ?? DEFAULT_PREFERENCES[0];
+    setPreferencesState([primary]);
+    window.localStorage.setItem(PREFERENCE_STORAGE_KEY, JSON.stringify([primary]));
+  }, []);
+
+  const setManualJourney = useCallback((journey: Journey | null) => {
+    setManualJourneyState(journey);
+    if (journey) window.localStorage.setItem(MANUAL_ROUTE_STORAGE_KEY, JSON.stringify(journey));
+    else window.localStorage.removeItem(MANUAL_ROUTE_STORAGE_KEY);
   }, []);
 
   const loadDraft = useCallback((next: TripDraft) => persist(next), [persist]);
   const startNewTrip = useCallback(() => persist(emptyDraft()), [persist]);
   const clearTrip = useCallback(() => {
     window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+    window.localStorage.removeItem(MANUAL_ROUTE_STORAGE_KEY);
+    setManualJourneyState(null);
     setDraft(emptyDraft());
   }, []);
 
@@ -132,15 +153,17 @@ export function TripProvider({ children }: { children: ReactNode }) {
     () => ({
       ...draft,
       preferences,
+      manualJourney,
       hydrated,
       setAlarmField,
       setPlace,
       setPreferences,
+      setManualJourney,
       loadDraft,
       startNewTrip,
       clearTrip,
     }),
-    [draft, preferences, hydrated, setAlarmField, setPlace, setPreferences, loadDraft, startNewTrip, clearTrip],
+    [draft, preferences, manualJourney, hydrated, setAlarmField, setPlace, setPreferences, setManualJourney, loadDraft, startNewTrip, clearTrip],
   );
 
   return <TripContext.Provider value={value}>{children}</TripContext.Provider>;
