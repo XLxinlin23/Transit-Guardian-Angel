@@ -247,308 +247,377 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
     .filter(Boolean)
     .join(" · ");
 
+  const arrivalTime = alarm.arriveBy || "--:--";
+  const departureTime = preview ? shiftTime(alarm.arriveBy, preview.minutes) : "--:--";
+
   return (
     <div className="pt-7">
-      <p className="bg-gradient-to-r from-primary via-success to-primary bg-clip-text text-xs font-semibold uppercase text-transparent">Route alarms</p>
-      <h1 className="mt-2 font-display text-3xl font-bold text-brand-deep">Arrive on time</h1>
+      <h1 className="font-display text-3xl font-bold tracking-tight text-brand-deep">Plan your trip</h1>
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-        Save as many trips as you like. Wayline watches disruptions and tells you when to leave.
+        Enter where you are going, compare routes, and Wayline tells you when to leave.
       </p>
 
-      {alarms.length > 0 && (
-        <section className="glass-panel mt-5 rounded-3xl p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="font-display text-base font-semibold text-brand-deep">Saved alarms</h2>
-            <button
-              type="button"
-              onClick={startNewAlarm}
-              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10"
-            >
-              <Plus className="size-4" /> New
-            </button>
-          </div>
-          <ul className="mt-3 space-y-2">
-            {alarms.map((entry) => {
-              const active = entry.id === editingId;
-              return (
-                <li
-                  key={entry.id}
-                  className={`flex items-center gap-2 rounded-2xl border px-3 py-2.5 ${
-                    active ? "border-primary bg-primary/10" : "border-border bg-background/60"
-                  }`}
+      <div className="mt-5 grid items-start gap-4 lg:grid-cols-2">
+        {/* Left column — the trip form */}
+        <div className="space-y-4">
+          {alarms.length > 0 && (
+            <section className="glass-panel rounded-2xl p-5">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="font-display text-base font-bold text-brand-deep">Saved route alarms</h2>
+                <button
+                  type="button"
+                  onClick={startNewAlarm}
+                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-primary hover:bg-secondary"
                 >
-                  <button type="button" onClick={() => editAlarm(entry)} className="min-w-0 flex-1 text-left">
-                    <p className="truncate text-sm font-semibold text-brand-deep">
-                      {entry.alarm.from} → {entry.alarm.to}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      Arrive by {entry.alarm.arriveBy} ·{" "}
-                      {entry.alarm.repeat === "custom" ? entry.alarm.days.join(", ") : REPEAT_LABELS[entry.alarm.repeat]}
-                    </p>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removeAlarm(entry.id)}
-                    aria-label={`Delete alarm ${entry.alarm.from} to ${entry.alarm.to}`}
-                    className="grid size-8 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-secondary"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
-
-      {saved && alarm.active && (
-        <section className="mt-5 rounded-2xl border border-success/20 bg-success-soft/70 p-4">
-          <div className="flex items-start gap-3">
-            <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-success text-primary-foreground"><Check /></div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-brand-deep">Alarm active · arrive by {alarm.arriveBy}</p>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{alarm.from} → {alarm.to} · {repeatSummary}</p>
-            </div>
-          </div>
-        </section>
-      )}
-
-      <section className="glass-panel mt-5 rounded-3xl p-5">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="font-display text-base font-semibold text-brand-deep">
-            {editingExisting ? "Edit alarm" : "New alarm"}
-          </h2>
-          {editingExisting && (
-            <button
-              type="button"
-              onClick={startNewAlarm}
-              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10"
-            >
-              <Plus className="size-4" /> Add another
-            </button>
-          )}
-        </div>
-
-        <div className="space-y-5">
-          <Field icon={Navigation} label="From">
-            <PlacePicker
-              value={alarm.from}
-              onValueChange={(value) => update("from", value)}
-              confirmed={fromPlace}
-              onConfirm={(place) => confirmPlace("from", place)}
-              placeholder="Where are you departing from?"
-              ariaLabel="From"
-            />
-          </Field>
-          <Field icon={MapPin} label="To">
-            <PlacePicker
-              value={alarm.to}
-              onValueChange={(value) => update("to", value)}
-              confirmed={toPlace}
-              onConfirm={(place) => confirmPlace("to", place)}
-              placeholder="Where are you going?"
-              ariaLabel="To"
-            />
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field icon={AlarmClock} label="Reach by">
-              <Input type="time" value={alarm.arriveBy} onChange={(event) => update("arriveBy", event.target.value)} aria-label="Reach by" className="h-11 bg-background/70" />
-            </Field>
-            <Field icon={ShieldAlert} label="Maximum delay">
-              <Select value={alarm.maxDelay} onValueChange={(value) => update("maxDelay", value)}>
-                <SelectTrigger aria-label="Maximum delay" className="h-11 bg-background/70"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {[0, 5, 10, 15, 20, 30].map((minutes) => <SelectItem key={minutes} value={String(minutes)}>{minutes} min</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </Field>
-          </div>
-          <Field icon={CalendarDays} label="How often">
-            <Select value={alarm.repeat} onValueChange={(value) => update("repeat", value as RepeatOption)}>
-              <SelectTrigger aria-label="How often" className="h-11 bg-background/70"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {Object.entries(REPEAT_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </Field>
-
-          {alarm.repeat === "custom" && (
-            <fieldset>
-              <legend className="text-xs font-semibold text-muted-foreground">Active days</legend>
-              <div className="mt-3 grid grid-cols-4 gap-2">
-                {WEEKDAYS.map((day) => {
-                  const checked = alarm.days.includes(day);
+                  <Plus className="size-4" /> New
+                </button>
+              </div>
+              <ul className="mt-3 space-y-2">
+                {alarms.map((entry) => {
+                  const active = entry.id === editingId;
                   return (
-                    <Label key={day} className={`flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border px-2 text-xs font-semibold ${checked ? "border-primary bg-primary/10 text-primary" : "border-border bg-background/60 text-muted-foreground"}`}>
-                      <Checkbox checked={checked} onCheckedChange={(value) => toggleDay(day, value === true)} className="sr-only" />
-                      {day}
-                    </Label>
+                    <li
+                      key={entry.id}
+                      className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 ${
+                        active ? "border-primary bg-primary/5" : "border-border bg-card"
+                      }`}
+                    >
+                      <button type="button" onClick={() => editAlarm(entry)} className="min-w-0 flex-1 text-left">
+                        <p className="truncate text-sm font-semibold text-brand-deep">
+                          {entry.alarm.from} → {entry.alarm.to}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          Arrive by {entry.alarm.arriveBy} ·{" "}
+                          {entry.alarm.repeat === "custom" ? entry.alarm.days.join(", ") : REPEAT_LABELS[entry.alarm.repeat]}
+                        </p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeAlarm(entry.id)}
+                        aria-label={`Delete alarm ${entry.alarm.from} to ${entry.alarm.to}`}
+                        className="grid size-8 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-secondary"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </li>
                   );
                 })}
-              </div>
-            </fieldset>
+              </ul>
+            </section>
           )}
+
+          {saved && alarm.active && (
+            <section className="rounded-2xl border border-success/30 bg-success-soft p-4">
+              <div className="flex items-start gap-3">
+                <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-success text-primary-foreground"><Check /></div>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-brand-deep">Alarm active · arrive by {alarm.arriveBy}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-foreground">{alarm.from} → {alarm.to} · {repeatSummary}</p>
+                </div>
+              </div>
+            </section>
+          )}
+
+          <section className="glass-panel rounded-2xl p-5">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="font-display text-base font-bold text-brand-deep">
+                {editingExisting ? "Edit trip" : "Plan your trip"}
+              </h2>
+              {editingExisting && (
+                <button
+                  type="button"
+                  onClick={startNewAlarm}
+                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-primary hover:bg-secondary"
+                >
+                  <Plus className="size-4" /> Add another
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-5">
+              <Field icon={Navigation} label="From">
+                <PlacePicker
+                  value={alarm.from}
+                  onValueChange={(value) => update("from", value)}
+                  confirmed={fromPlace}
+                  onConfirm={(place) => confirmPlace("from", place)}
+                  placeholder="Where are you departing from?"
+                  ariaLabel="From"
+                />
+              </Field>
+              <Field icon={MapPin} label="To">
+                <PlacePicker
+                  value={alarm.to}
+                  onValueChange={(value) => update("to", value)}
+                  confirmed={toPlace}
+                  onConfirm={(place) => confirmPlace("to", place)}
+                  placeholder="Where are you going?"
+                  ariaLabel="To"
+                />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field icon={AlarmClock} label="Reach by">
+                  <Input type="time" value={alarm.arriveBy} onChange={(event) => update("arriveBy", event.target.value)} aria-label="Reach by" className="h-11 bg-card" />
+                </Field>
+                <Field icon={ShieldAlert} label="Maximum delay">
+                  <Select value={alarm.maxDelay} onValueChange={(value) => update("maxDelay", value)}>
+                    <SelectTrigger aria-label="Maximum delay" className="h-11 bg-card"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {[0, 5, 10, 15, 20, 30].map((minutes) => <SelectItem key={minutes} value={String(minutes)}>{minutes} min</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
+              <Field icon={CalendarDays} label="How often">
+                <Select value={alarm.repeat} onValueChange={(value) => update("repeat", value as RepeatOption)}>
+                  <SelectTrigger aria-label="How often" className="h-11 bg-card"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(REPEAT_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              {alarm.repeat === "custom" && (
+                <fieldset>
+                  <legend className="text-xs font-bold text-foreground">Active days</legend>
+                  <div className="mt-3 grid grid-cols-4 gap-2">
+                    {WEEKDAYS.map((day) => {
+                      const checked = alarm.days.includes(day);
+                      return (
+                        <Label key={day} className={`flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border px-2 text-xs font-bold ${checked ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-muted-foreground"}`}>
+                          <Checkbox checked={checked} onCheckedChange={(value) => toggleDay(day, value === true)} className="sr-only" />
+                          {day}
+                        </Label>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+              )}
+            </div>
+
+            <Button
+              className="mt-6 h-11 w-full rounded-xl text-sm font-bold"
+              disabled={!bothConfirmed || looking}
+              onClick={() => journeyQuery.refetch()}
+            >
+              <Navigation /> {looking ? "Finding best route…" : "Find best route"}
+            </Button>
+
+            {typedBoth && !bothConfirmed && (
+              <p className="mt-3 text-sm text-muted-foreground">
+                Pick a suggestion for both locations to confirm them, then we can find your route.
+              </p>
+            )}
+
+            {preview && (
+              <Button
+                variant="outline"
+                className="mt-3 h-11 w-full rounded-xl border-primary text-sm font-bold text-primary"
+                disabled={!canSave || syncing}
+                onClick={saveAlarm}
+              >
+                <BellRing /> {syncing ? "Saving…" : "Save route alarm"}
+              </Button>
+            )}
+
+            <button
+              type="button"
+              onClick={clearCurrentTrip}
+              className="mt-3 w-full rounded-lg py-2 text-xs font-semibold text-muted-foreground underline underline-offset-4 hover:text-foreground"
+            >
+              Clear trip
+            </button>
+          </section>
         </div>
 
-        {preview && segments.length > 0 && (
-          <div className="mt-6 space-y-3 border-t border-border/70 pt-5">
-            {toPlace && (
-              <p className="rounded-xl border border-success/25 bg-success-soft/60 px-3 py-2 text-xs font-semibold text-brand-deep">
-                Destination confirmed: {placeLine(toPlace)}
+        {/* Right column — route result, map and alerts */}
+        <div className="space-y-4">
+          {preview && segments.length > 0 && (
+            <section className="glass-panel rounded-2xl p-5">
+              <div className="flex items-baseline justify-between gap-3">
+                <h2 className="font-display text-base font-bold text-brand-deep">Your route</h2>
+                <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">{preferenceSummary}</span>
+              </div>
+
+              <div className="mt-3 flex items-baseline gap-2">
+                <p className="font-display text-2xl font-bold text-primary">{departureTime}</p>
+                <span className="text-sm text-muted-foreground">→</span>
+                <p className="font-display text-2xl font-bold text-brand-deep">{arrivalTime}</p>
+                <p className="ml-auto text-sm font-bold text-brand-deep">{preview.minutes} min</p>
+              </div>
+              <p className="mt-1 text-xs font-semibold text-muted-foreground">Leave at {departureTime} to reach by {arrivalTime}</p>
+
+              <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
+                <Stat label="Walking" value={`${preview.walkMetres ?? 0} m`} />
+                <Stat label="Transfers" value={String(preview.transfers ?? 0)} />
+                <Stat label="Fare" value={typeof preview.fare === "number" ? `$${preview.fare.toFixed(2)}` : "—"} />
+              </dl>
+
+              <p className="mt-3 rounded-xl border border-border bg-secondary px-3 py-2 text-xs font-semibold text-foreground">
+                {(preview.alternatives ?? 0) > 1
+                  ? `Recommended because it is the ${preview.reason?.toLowerCase() ?? "best match"} of ${preview.alternatives} options.`
+                  : "Only one route is currently available."}
               </p>
-            )}
-            <div className="rounded-xl border border-primary/25 bg-primary/5 px-3 py-2">
-              <p className="text-xs font-semibold text-brand-deep">
-                Recommended route · {preview.reason}
-                {(preview.alternatives ?? 0) > 1 && (
-                  <span className="font-medium text-muted-foreground"> · best of {preview.alternatives} options</span>
-                )}
-              </p>
-              <p className="mt-1 flex flex-wrap gap-x-3 text-[11px] font-semibold text-muted-foreground">
-                <span>{preview.minutes} min total</span>
-                <span>Walk {preview.walkMinutes ?? 0} min</span>
-                <span>{preview.transfers ?? 0} transfer{(preview.transfers ?? 0) === 1 ? "" : "s"}</span>
-                {typeof preview.fare === "number" && <span>Fare ${preview.fare.toFixed(2)}</span>}
-              </p>
-            </div>
 
-            <RouteMap
-              stations={[]}
-              segments={segments}
-              title="Route preview"
-              badge={preferenceSummary}
-              footer={`About ${preview.minutes} min door to door · ${preview.legs.length} leg${preview.legs.length > 1 ? "s" : ""} · currently no disruption`}
-            />
-            <div className="flex flex-wrap gap-3 px-1">
-              {modesUsed.map((mode) => (
-                <span key={mode} className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
-                  <span className="h-1.5 w-5 rounded-full" style={{ backgroundColor: MODE_COLORS[mode] }} />
-                  {MODE_LABELS[mode]}
-                </span>
-              ))}
-            </div>
-            <ol className="space-y-2 rounded-2xl border border-border/70 bg-background/60 p-4">
-              {preview.legs.map((leg, index) => (
-                <li key={`${leg.badge}-${index}`} className="flex items-start gap-3 text-sm">
-                  <span
-                    className="mt-0.5 shrink-0 rounded-md px-2 py-0.5 text-[11px] font-bold text-white"
-                    style={{ backgroundColor: MODE_COLORS[leg.mode] }}
-                  >
-                    {leg.badge}
-                  </span>
-                  <span className="min-w-0 text-muted-foreground">
-                    <span className="font-semibold text-brand-deep">{leg.from} → {leg.to}</span>
-                    <br />
-                    {leg.detail} · {leg.minutes} min
-                  </span>
-                </li>
-              ))}
-            </ol>
-            {onSeeMoreRoutes && (
-              <button
-                type="button"
-                onClick={onSeeMoreRoutes}
-                className="flex w-full items-center justify-center gap-1 rounded-xl border border-primary/30 py-2.5 text-sm font-semibold text-primary hover:bg-primary/10"
-              >
-                See more routes… <ChevronRight className="size-4" />
-              </button>
-            )}
+              {toPlace && (
+                <p className="mt-2 text-xs text-muted-foreground">Destination confirmed: {placeLine(toPlace)}</p>
+              )}
+            </section>
+          )}
 
-          </div>
-        )}
-
-        {typedBoth && !bothConfirmed && (
-          <p className="mt-6 border-t border-border/70 pt-5 text-sm text-muted-foreground">
-            Pick a suggestion for both locations to confirm them, then the route appears here.
-          </p>
-        )}
-
-        {bothConfirmed && !preview && (
-          <p className="mt-6 border-t border-border/70 pt-5 text-sm text-muted-foreground">
-            {looking ? "Working out the best way door to door…" : "We could not build a route between those two points yet."}
-          </p>
-        )}
-
-        <Button className="mt-6 h-11 w-full rounded-xl" disabled={!canSave || syncing} onClick={saveAlarm}>
-          <Check /> {syncing ? "Saving…" : "Save route"}
-        </Button>
-        <p className="mt-2 text-center text-[11px] text-muted-foreground">
-          Saves this trip to your Saved alarms list above.
-        </p>
-        <button
-          type="button"
-          onClick={clearCurrentTrip}
-          className="mt-3 w-full rounded-xl py-2 text-xs font-semibold text-muted-foreground hover:bg-secondary"
-        >
-          Clear trip
-        </button>
-      </section>
-
-      <section className="glass-panel mt-4 rounded-3xl p-5">
-        <button
-          type="button"
-          onClick={() => setSettingsOpen((open) => !open)}
-          aria-expanded={settingsOpen}
-          className="flex w-full items-center justify-between gap-3 text-left"
-        >
-          <span className="flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
-            <BellRing className="size-4 text-primary" /> Alert settings
-          </span>
-          <span className="flex items-center gap-2">
-            {!settingsOpen && (
-              <span className="max-w-[13rem] truncate text-[11px] font-medium normal-case text-muted-foreground">
-                {settingsSummary}
-              </span>
-            )}
-            <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform duration-200 ${settingsOpen ? "rotate-180" : ""}`} />
-          </span>
-        </button>
-        {settingsOpen && (
-          <div className="mt-4 space-y-3">
-            <Field icon={BellRing} label="Remind me before departure">
-              <Select value={alarm.notifyLeadMinutes} onValueChange={(value) => update("notifyLeadMinutes", value)}>
-                <SelectTrigger aria-label="Remind me before departure" className="h-11 bg-background/70"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {[5, 10, 15, 20, 30, 45].map((minutes) => <SelectItem key={minutes} value={String(minutes)}>{minutes} min before</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Toggle icon={CloudRain} label="Weather impact" checked={alarm.notifyWeather} onChange={(value) => update("notifyWeather", value)} />
-            <Toggle icon={Users} label="MRT crowd levels" checked={alarm.notifyCrowd} onChange={(value) => update("notifyCrowd", value)} />
-            <Toggle icon={Bus} label="Bus arrivals" checked={alarm.notifyBus} onChange={(value) => update("notifyBus", value)} />
-            {alarm.notifyBus && (
-              <Input
-                value={alarm.busStopCode}
-                onChange={(event) => update("busStopCode", event.target.value)}
-                placeholder="Bus stop code, e.g. 75009"
-                aria-label="Bus stop code"
-                className="h-11 bg-background/70"
+          {preview && segments.length > 0 && (
+            <section className="glass-panel rounded-2xl p-5">
+              <RouteMap
+                stations={[]}
+                segments={segments}
+                title="Route map"
+                badge={preferenceSummary}
+                footer={`About ${preview.minutes} min door to door · ${preview.legs.length} leg${preview.legs.length > 1 ? "s" : ""} · currently no disruption`}
               />
+              <div className="mt-3 flex flex-wrap gap-3 px-1">
+                {modesUsed.map((mode) => (
+                  <span key={mode} className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground">
+                    <span className="h-1.5 w-5 rounded-full" style={{ backgroundColor: MODE_COLORS[mode] }} />
+                    {MODE_LABELS[mode]}
+                  </span>
+                ))}
+              </div>
+              <ol className="mt-3 space-y-2 rounded-xl border border-border bg-card p-4">
+                {preview.legs.map((leg, index) => (
+                  <li key={`${leg.badge}-${index}`} className="flex items-start gap-3 text-sm">
+                    <span
+                      className="mt-0.5 shrink-0 rounded-md px-2 py-0.5 text-[11px] font-bold text-white"
+                      style={{ backgroundColor: MODE_COLORS[leg.mode] }}
+                    >
+                      {leg.badge}
+                    </span>
+                    <span className="min-w-0 text-foreground">
+                      <span className="font-bold text-brand-deep">{leg.from} → {leg.to}</span>
+                      <br />
+                      {leg.detail} · {leg.minutes} min
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+
+          {preview && alternatives.length > 0 && (
+            <section className="glass-panel rounded-2xl p-5">
+              <h2 className="font-display text-base font-bold text-brand-deep">Other routes</h2>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {alternatives.map(({ preference, journey }) => (
+                  <div key={preference} className="rounded-xl border border-border bg-card p-3">
+                    <p className="text-xs font-bold uppercase tracking-wide text-primary">{PREFERENCE_LABELS[preference as keyof typeof PREFERENCE_LABELS] ?? preference}</p>
+                    <p className="mt-1 text-sm font-bold text-brand-deep">{journey.minutes} min</p>
+                    <p className="text-[11px] font-semibold text-muted-foreground">
+                      Walk {journey.walkMinutes ?? 0} min · {journey.transfers ?? 0} transfer{(journey.transfers ?? 0) === 1 ? "" : "s"}
+                      {typeof journey.fare === "number" ? ` · $${journey.fare.toFixed(2)}` : ""}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              {onSeeMoreRoutes && (
+                <button
+                  type="button"
+                  onClick={onSeeMoreRoutes}
+                  className="mt-3 flex w-full items-center justify-center gap-1 rounded-xl border border-primary py-2.5 text-sm font-bold text-primary hover:bg-primary/5"
+                >
+                  Compare all routes <ChevronRight className="size-4" />
+                </button>
+              )}
+            </section>
+          )}
+
+          {bothConfirmed && !preview && (
+            <section className="glass-panel rounded-2xl p-5 text-sm text-muted-foreground">
+              {looking ? "Working out the best way door to door…" : "Tap “Find best route” to see your route."}
+            </section>
+          )}
+
+          <section className="glass-panel rounded-2xl p-5">
+            <button
+              type="button"
+              onClick={() => setSettingsOpen((open) => !open)}
+              aria-expanded={settingsOpen}
+              className="flex w-full items-center justify-between gap-3 text-left"
+            >
+              <span className="flex items-center gap-2 text-sm font-bold text-brand-deep">
+                <BellRing className="size-4 text-primary" /> Alert settings
+              </span>
+              <span className="flex items-center gap-2">
+                {!settingsOpen && (
+                  <span className="max-w-[13rem] truncate text-[11px] font-semibold text-muted-foreground">
+                    {settingsSummary}
+                  </span>
+                )}
+                <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform duration-200 ${settingsOpen ? "rotate-180" : ""}`} />
+              </span>
+            </button>
+            {settingsOpen && (
+              <div className="mt-4 space-y-3">
+                <Field icon={BellRing} label="Remind me before departure">
+                  <Select value={alarm.notifyLeadMinutes} onValueChange={(value) => update("notifyLeadMinutes", value)}>
+                    <SelectTrigger aria-label="Remind me before departure" className="h-11 bg-card"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {[5, 10, 15, 20, 30, 45].map((minutes) => <SelectItem key={minutes} value={String(minutes)}>{minutes} min before</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Toggle icon={CloudRain} label="Weather impact" checked={alarm.notifyWeather} onChange={(value) => update("notifyWeather", value)} />
+                <Toggle icon={Users} label="MRT crowd levels" checked={alarm.notifyCrowd} onChange={(value) => update("notifyCrowd", value)} />
+                <Toggle icon={Bus} label="Bus arrivals" checked={alarm.notifyBus} onChange={(value) => update("notifyBus", value)} />
+                {alarm.notifyBus && (
+                  <Input
+                    value={alarm.busStopCode}
+                    onChange={(event) => update("busStopCode", event.target.value)}
+                    placeholder="Bus stop code, e.g. 75009"
+                    aria-label="Bus stop code"
+                    className="h-11 bg-card"
+                  />
+                )}
+                <Button
+                  variant="outline"
+                  className="h-11 w-full rounded-xl border-primary text-sm font-bold text-primary"
+                  disabled={!canSave || syncing}
+                  onClick={saveAlarm}
+                >
+                  {syncing ? "Saving…" : "Update alert settings"}
+                </Button>
+              </div>
             )}
-          </div>
-        )}
+          </section>
 
-        <Button
-          variant="outline"
-          className="mt-5 h-11 w-full rounded-xl border-primary/30 text-primary"
-          disabled={!canSave || syncing}
-          onClick={saveAlarm}
-        >
-          <BellRing /> {syncing ? "Saving…" : "Update alarm settings"}
-        </Button>
-      </section>
+          {saved && alarm.active && (
+            <CommuteAlertCard alarm={alarm} preferences={preferences} fromPlace={fromPlace} toPlace={toPlace} />
+          )}
 
-      {saved && alarm.active && (
-        <CommuteAlertCard alarm={alarm} preferences={preferences} fromPlace={fromPlace} toPlace={toPlace} />
-      )}
-
-      <section className="mt-4 rounded-2xl border border-primary/15 bg-primary/5 p-4">
-        <p className="text-sm font-semibold text-brand-deep">Adapts before every trip</p>
-        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">If disruption changes the best route, Wayline recalculates using your preferences and alerts you earlier.</p>
-      </section>
+          <p className="px-1 text-xs leading-relaxed text-muted-foreground">
+            Adapts before every trip — if disruption changes the best route, Wayline recalculates using your preferences and alerts you earlier.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-card px-2 py-2">
+      <dt className="text-[11px] font-semibold text-muted-foreground">{label}</dt>
+      <dd className="text-sm font-bold text-brand-deep">{value}</dd>
+    </div>
+  );
+}
+
+function shiftTime(hhmm: string, minusMinutes: number): string {
+  const [h, m] = (hhmm || "").split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return "--:--";
+  let total = h * 60 + m - (minusMinutes || 0);
+  total = ((total % 1440) + 1440) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
 
 function defaultDays(repeat: RepeatOption): string[] {
   if (repeat === "weekdays") return ["Mon", "Tue", "Wed", "Thu", "Fri"];
