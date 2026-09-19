@@ -414,6 +414,15 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
           )}
         </p>
       )}
+      {departedLine && (
+        <p
+          className={`mt-2 rounded-xl border px-3 py-2 text-xs font-bold ${
+            routeLate ? "border-route-red/35 bg-route-red/10 text-route-red" : "border-success/35 bg-success-soft text-brand-deep"
+          }`}
+        >
+          {departedLine}
+        </p>
+      )}
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
         Enter where you are going, compare routes, and Wayline tells you when to leave.
       </p>
