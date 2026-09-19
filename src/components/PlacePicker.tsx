@@ -3,6 +3,7 @@ import { Check, Loader2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { findStation, STATION_INDEX } from "@/lib/mrt-network";
 import { isInSingapore, searchPlaces, type PlaceSuggestion } from "@/lib/place-search.functions";
 
@@ -141,26 +142,34 @@ export function PlacePicker({ value, onValueChange, confirmed, onConfirm, placeh
           placeholder={placeholder}
           aria-label={ariaLabel}
           autoComplete="off"
-          className="h-11 bg-background/70 pr-9"
+          className="h-11 bg-background/70 pr-16"
         />
-        <span className="absolute right-3 top-1/2 -translate-y-1/2">
+        <span className="pointer-events-none absolute right-10 top-1/2 -translate-y-1/2">
           {loading ? (
             <Loader2 className="size-4 animate-spin text-muted-foreground" />
           ) : confirmed && matchesConfirmed ? (
             <Check className="size-4 text-success" />
-          ) : value ? (
-            <button
+          ) : null}
+        </span>
+        {value && (
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               aria-label={`Clear ${ariaLabel}`}
+              title={`Clear ${ariaLabel}`}
+              className="absolute right-1 top-1/2 size-8 -translate-y-1/2 rounded-full text-muted-foreground hover:text-foreground"
+              onMouseDown={(event) => event.preventDefault()}
               onClick={() => {
                 onValueChange("");
                 onConfirm(null);
+                setOpen(false);
+                setResults([]);
               }}
             >
               <X className="size-4 text-muted-foreground" />
-            </button>
-          ) : null}
-        </span>
+            </Button>
+        )}
       </div>
 
       {hint && (

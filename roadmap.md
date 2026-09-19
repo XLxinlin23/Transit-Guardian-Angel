@@ -3,3 +3,4 @@
 - [x] Remove fixed-route wording while preserving alerts, dashboard, and map access.
 - [x] Verify persistence, custom days, mobile layout, and build health.
 - [x] Separate the primary route preference from route comparison and add persistent manual route selection.
+- [x] Add clear controls and selectable Home route alternatives while retaining the recommended route.
