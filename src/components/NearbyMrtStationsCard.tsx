@@ -1,8 +1,9 @@
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Check, Crosshair, DoorOpen, TrainFront, Users } from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, Crosshair, DoorOpen, TrainFront, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { getStationDetail } from "../lib/mrt-nearby.functions";
 import { LINE_NAMES, STATION_INDEX, type NetworkStation } from "../lib/mrt-network";
 
@@ -28,6 +29,7 @@ export function NearbyMrtStationsCard() {
   const [coords, setCoords] = useState<Coords | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [selected, setSelected] = useState<NetworkStation | null>(null);
+  const [open, setOpen] = useState(false);
   const fetchDetail = useServerFn(getStationDetail);
 
   const locate = () => {
@@ -67,26 +69,29 @@ export function NearbyMrtStationsCard() {
   });
 
   return (
-    <section className="glass-panel rounded-3xl p-5">
+    <section className="glass-panel overflow-hidden rounded-2xl border-t-2 border-t-primary p-5">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <TrainFront className="size-4 shrink-0 text-primary" />
-          <h2 className="truncate font-display text-base font-semibold text-brand-deep">MRT stations near you</h2>
-        </div>
-        <button
+        <Button
           type="button"
-          onClick={locate}
-          aria-label="Use my location"
-          className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-secondary"
+          variant="ghost"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          className="h-auto min-w-0 flex-1 justify-start gap-2 px-0 py-1 hover:bg-transparent"
         >
-          <Crosshair className="size-4" />
-        </button>
+          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><TrainFront className="size-4" /></span>
+          <span className="min-w-0 flex-1 text-left">
+            <span className="block truncate font-display text-base font-semibold text-brand-deep">MRT stations near you</span>
+            {!open && <span className="block truncate text-[11px] font-medium text-muted-foreground">{nearest.length ? `${nearest.length} nearby stations` : "Tap to view nearby stations"}</span>}
+          </span>
+          <ChevronDown className={`size-4 shrink-0 text-primary transition-transform ${open ? "rotate-180" : ""}`} />
+        </Button>
+        {open && <Button type="button" variant="ghost" size="icon" onClick={locate} aria-label="Use my location" className="size-8 shrink-0 text-primary"><Crosshair className="size-4" /></Button>}
       </div>
 
-      {geoError && <p className="mt-3 text-sm text-muted-foreground">{geoError}</p>}
-      {!geoError && !coords && <p className="mt-3 text-sm text-muted-foreground">Finding your location…</p>}
+      {open && geoError && <p className="mt-3 text-sm text-muted-foreground">{geoError}</p>}
+      {open && !geoError && !coords && <p className="mt-3 text-sm text-muted-foreground">Finding your location…</p>}
 
-      {nearest.length ? (
+      {open && nearest.length ? (
         <ul className="mt-4 space-y-2">
           {nearest.map((station) => {
             const active = selected?.name === station.name;

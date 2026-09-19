@@ -53,7 +53,7 @@ function IndexShell() {
     <div className="relative min-h-screen overflow-x-hidden bg-background">
       <main className="relative mx-auto min-h-screen w-full max-w-[1050px] px-4 pb-[120px] pt-5">
         <header className="flex items-center gap-3">
-          <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary font-display text-sm font-bold text-primary-foreground">WL</div>
+          <div className="brand-mark grid size-11 shrink-0 place-items-center rounded-xl font-display text-sm font-bold text-primary-foreground">WL</div>
           <div className="min-w-0 leading-tight">
             <p className="truncate font-display text-base font-bold text-brand-deep">Wayline</p>
             <p className="truncate text-xs text-muted-foreground">Plan your trip, compare routes, and get disruption alerts.</p>
@@ -62,7 +62,7 @@ function IndexShell() {
             type="button"
             onClick={() => setSettingsOpen(true)}
             aria-label="Open settings"
-            className="ml-auto grid size-11 shrink-0 place-items-center rounded-xl border border-border bg-card text-primary transition-colors hover:bg-secondary"
+            className="ml-auto grid size-11 shrink-0 place-items-center rounded-xl border border-route-orange/30 bg-card text-route-orange transition-colors hover:bg-warning-soft"
           >
             <Settings className="size-5" />
           </button>
@@ -97,7 +97,7 @@ function IndexShell() {
 function AlertsView() {
   return (
     <div className="pt-6">
-      <p className="text-xs font-semibold uppercase text-success">Monitoring active</p>
+      <p className="text-xs font-semibold uppercase text-route-red">Monitoring active</p>
       <h1 className="mt-2 font-display text-3xl font-bold text-brand-deep">Disruption alert</h1>
       <p className="mt-2 text-sm text-muted-foreground">Live checks for your route alarm — one line, only when it matters.</p>
 
@@ -120,7 +120,7 @@ function ArrivalsView() {
 
   return (
     <div className="pt-6">
-      <p className="text-xs font-semibold uppercase text-primary">Live timings</p>
+      <p className="text-xs font-semibold uppercase text-success">Live timings</p>
       <h1 className="mt-2 font-display text-3xl font-bold text-brand-deep">MRT &amp; Bus arrival</h1>
       <p className="mt-2 text-sm text-muted-foreground">Stations and stops near you, tapped once for live details.</p>
 
