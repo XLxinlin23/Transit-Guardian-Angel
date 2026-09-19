@@ -157,14 +157,18 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
   const alternatives = useMemo(() => {
     const rows = optionsQuery.data ?? [];
     const seen = new Set<string>();
-    if (preview) seen.add(`${preview.minutes}-${preview.walkMetres}-${preview.transfers}`);
-    return rows.filter(({ journey }) => {
-      const key = `${journey.minutes}-${journey.walkMetres}-${journey.transfers}`;
+    if (preview) seen.add(preview.id ?? `${preview.minutes}-${preview.walkMetres}-${preview.transfers}`);
+    const unique = rows.filter(({ journey }) => {
+      const key = journey.id ?? `${journey.minutes}-${journey.walkMetres}-${journey.transfers}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
-    }).slice(0, 4);
-  }, [optionsQuery.data, preview]);
+    });
+    if ((preferences[0] ?? "speed") === "walking") {
+      unique.sort((a, b) => (a.journey.totalWalkingDistanceMetres ?? a.journey.walkMetres ?? 0) - (b.journey.totalWalkingDistanceMetres ?? b.journey.walkMetres ?? 0));
+    }
+    return unique.slice(0, 4);
+  }, [optionsQuery.data, preferences, preview]);
 
   const segments = useMemo(
     () => (preview ? preview.legs.map((leg) => ({ mode: leg.mode, badge: leg.badge, points: leg.points })) : []),
@@ -464,15 +468,13 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
               <p className="mt-1 text-xs font-semibold text-muted-foreground">Leave at {departureTime} to reach by {arrivalTime}</p>
 
               <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
-                <Stat label="Walking" value={`${preview.walkMetres ?? 0} m`} />
+                <Stat label="Walking" value={`${preview.totalWalkingDistanceMetres ?? preview.walkMetres ?? 0} m · ${preview.totalWalkingTimeMinutes ?? preview.walkMinutes ?? 0} min`} />
                 <Stat label="Transfers" value={String(preview.transfers ?? 0)} />
                 <Stat label="Fare" value={typeof preview.fare === "number" ? `$${preview.fare.toFixed(2)}` : "—"} />
               </dl>
 
               <p className="mt-3 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-semibold text-foreground">
-                {(preview.alternatives ?? 0) > 1
-                  ? `Recommended because it is the ${preview.reason?.toLowerCase() ?? "best match"} of ${preview.alternatives} options.`
-                  : "Only one route is currently available."}
+                {preview.reason ?? ((preview.alternatives ?? 0) > 1 ? `Recommended from ${preview.alternatives} routes.` : "Only one route is currently available.")}
               </p>
 
               {toPlace && (
@@ -505,7 +507,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                         <p className="text-xs font-bold uppercase tracking-wide text-primary">{PREFERENCE_LABELS[preference as keyof typeof PREFERENCE_LABELS] ?? preference}</p>
                         <p className="mt-1 text-sm font-bold text-brand-deep">{journey.minutes} min</p>
                         <p className="text-[11px] font-semibold text-muted-foreground">
-                          Walk {journey.walkMinutes ?? 0} min · {journey.transfers ?? 0} transfer{(journey.transfers ?? 0) === 1 ? "" : "s"}
+                          Walk {journey.totalWalkingDistanceMetres ?? journey.walkMetres ?? 0} m · {journey.totalWalkingTimeMinutes ?? journey.walkMinutes ?? 0} min · {journey.numberOfTransfers ?? journey.transfers ?? 0} transfer{(journey.numberOfTransfers ?? journey.transfers ?? 0) === 1 ? "" : "s"}
                           {typeof journey.fare === "number" ? ` · $${journey.fare.toFixed(2)}` : ""}
                         </p>
                       </div>
