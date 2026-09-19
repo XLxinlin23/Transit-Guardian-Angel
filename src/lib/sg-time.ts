@@ -99,7 +99,7 @@ export function activeDays(alarm: Pick<RouteAlarm, "repeat" | "days">): string[]
 }
 
 export function isRecurring(repeat: RepeatOption): boolean {
-  return repeat !== "once";
+  return repeat !== "once" && repeat !== "date";
 }
 
 /** Plain description of when a recurring trip runs. */
