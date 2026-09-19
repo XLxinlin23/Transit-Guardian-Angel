@@ -136,6 +136,13 @@ function ArrivalsView() {
   const [selected, setSelected] = useState<{ code: string; name: string } | null>(null);
   const origin = useTripOrigin();
 
+  // A new trip start invalidates the previously chosen stop — never show arrivals for
+  // a stop that has nothing to do with where the trip now begins.
+  const originKey = origin ? `${origin.lat.toFixed(4)},${origin.lng.toFixed(4)}` : "none";
+  useEffect(() => {
+    setSelected(null);
+  }, [originKey]);
+
   return (
     <div className="pt-6">
       <p className="text-xs font-semibold uppercase text-success">Live timings</p>
@@ -148,9 +155,11 @@ function ArrivalsView() {
         <NearbyMrtStationsCard origin={origin} />
         <div className="grid gap-4">
           <NearbyBusStopsCard
+            key={originKey}
             selectedCode={selected?.code}
             onSelect={(stop) => setSelected({ code: stop.code, name: stop.name })}
             origin={origin}
+            autoSelect
           />
           <BusArrivalCard
             stopCode={selected?.code}
@@ -159,6 +168,7 @@ function ArrivalsView() {
           />
         </div>
       </div>
+
 
 
 
