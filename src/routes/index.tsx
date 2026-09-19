@@ -85,6 +85,7 @@ function IndexShell() {
         {tab === "preference" && <RoutePreferencePanel focusCompareRequest={compareRequest} onBackToPlan={() => setTab("home")} />}
         {tab === "arrivals" && <ArrivalsView />}
         {tab === "alerts" && <AlertsView />}
+        {tab === "simulation" && <SimulationView />}
       </main>
 
       <nav className="glass-control fixed inset-x-4 bottom-4 z-20 mx-auto grid max-w-[480px] grid-cols-4 rounded-2xl p-1.5" aria-label="Primary navigation">
