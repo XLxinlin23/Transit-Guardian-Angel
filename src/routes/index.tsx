@@ -122,18 +122,21 @@ function ArrivalsView() {
       <h1 className="mt-2 font-display text-3xl font-bold text-brand-deep">MRT &amp; Bus arrival</h1>
       <p className="mt-2 text-sm text-muted-foreground">Stations and stops near you, tapped once for live details.</p>
 
-      <div className="mt-5 space-y-3.5">
+      <div className="mt-5 grid gap-4 lg:grid-cols-2 lg:items-start">
         <NearbyMrtStationsCard />
-        <NearbyBusStopsCard
-          selectedCode={selected?.code}
-          onSelect={(stop) => setSelected({ code: stop.code, name: stop.name })}
-        />
-        <BusArrivalCard
-          stopCode={selected?.code}
-          stopName={selected?.name}
-          onStopChange={(stop) => setSelected(stop)}
-        />
+        <div className="grid gap-4">
+          <NearbyBusStopsCard
+            selectedCode={selected?.code}
+            onSelect={(stop) => setSelected({ code: stop.code, name: stop.name })}
+          />
+          <BusArrivalCard
+            stopCode={selected?.code}
+            stopName={selected?.name}
+            onStopChange={(stop) => setSelected(stop)}
+          />
+        </div>
       </div>
+
 
       <p className="mt-5 text-center text-[11px] text-muted-foreground">Train and bus data © LTA DataMall</p>
     </div>
