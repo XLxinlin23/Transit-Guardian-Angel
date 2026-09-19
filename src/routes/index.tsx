@@ -30,14 +30,16 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-type Tab = "home" | "preference" | "arrivals" | "alerts";
+type Tab = "home" | "preference" | "arrivals" | "alerts" | "simulation";
 
 function Index() {
   return (
     <ThemeProvider>
-      <TripProvider>
-        <IndexShell />
-      </TripProvider>
+      <SimulationProvider>
+        <TripProvider>
+          <IndexShell />
+        </TripProvider>
+      </SimulationProvider>
     </ThemeProvider>
   );
 }
