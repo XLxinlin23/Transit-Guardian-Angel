@@ -42,6 +42,8 @@ import { getDeviceId } from "@/lib/device-id";
 import { compareJourneys, planJourney, type Journey } from "@/lib/journey.functions";
 import { PlacePicker, placeLine, type ConfirmedPlace } from "./PlacePicker";
 import { CommuteAlertCard } from "./CommuteAlertCard";
+import { JourneyStatusCard } from "./JourneyStatusCard";
+import { formatMinutes, parseTime } from "@/lib/disruption";
 import { RouteMap } from "./RouteMap";
 import { JourneyTimeline, RouteLegend } from "./JourneySteps";
 
@@ -290,6 +292,12 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
     .filter(Boolean)
     .join(" · ");
 
+  const latestAcceptableArrival = (() => {
+    const reach = parseTime(alarm.arriveBy);
+    if (reach === null) return "--:--";
+    return formatMinutes(reach + (Number(alarm.maxDelay) || 0));
+  })();
+
   const arrivalTime = alarm.arriveBy || "--:--";
   const departureTime = preview ? shiftTime(alarm.arriveBy, preview.minutes) : "--:--";
 
@@ -409,6 +417,9 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                       {[0, 5, 10, 15, 20, 30].map((minutes) => <SelectItem key={minutes} value={String(minutes)}>{minutes} min</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  <p className="mt-1.5 text-[11px] font-semibold text-muted-foreground">
+                    Latest acceptable arrival: {latestAcceptableArrival}
+                  </p>
                 </Field>
               </div>
               <Field icon={CalendarDays} label="How often">
@@ -464,6 +475,16 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
 
         {/* Right column — route result, map and alerts */}
         <div className="space-y-4">
+          {preview && (
+            <JourneyStatusCard
+              journey={preview}
+              alternatives={alternatives}
+              arriveBy={alarm.arriveBy}
+              maxDelay={alarm.maxDelay}
+              onUseAlternative={(journey) => setManualJourney(journey)}
+            />
+          )}
+
           {preview && segments.length > 0 && (
             <section className="glass-panel rounded-2xl p-5">
               <div className="flex items-baseline justify-between gap-3">
