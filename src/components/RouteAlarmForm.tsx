@@ -678,27 +678,37 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                 </p>
               )}
 
-              <p className="mt-3 text-xs font-bold text-brand-deep">{journeyDateTimeLabel(alarm)}</p>
+              <p className="mt-3 text-xs font-bold text-brand-deep">
+                {isRecurring(alarm.repeat) ? `${recurrenceLabel(alarm)} · Arrive by ${alarm.arriveBy}` : journeyDateTimeLabel(alarm)}
+              </p>
 
               <div className="mt-2 flex items-baseline gap-2">
                 <p className="font-display text-2xl font-bold text-primary">{departureTime}</p>
                 <span className="text-sm text-muted-foreground">→</span>
                 <p className={`font-display text-2xl font-bold ${disruption.disrupted || routeLate ? "text-route-red" : "text-brand-deep"}`}>{arrivalTime}</p>
-                <p className="ml-auto text-sm font-bold text-brand-deep">{preview.minutes} min</p>
+                <p className="ml-auto text-sm font-bold text-brand-deep">{metrics?.totalDurationMinutes ?? 0} min</p>
               </div>
               <p className="mt-1 text-xs font-semibold text-muted-foreground">
                 {routeLate
-                  ? `Leave at ${departureTime} · arrives ${arrivalTime} (${lateBy} min after latest ${latestAcceptableArrival})`
+                  ? `Leave at ${departureTime} · arrives ${arrivalTime} (${lateBy} min after latest ${latestAcceptableArrivalClock})`
                   : disruption.disrupted
                     ? `Leave at ${departureTime} · expected arrival ${arrivalTime} (planned ${alarm.arriveBy})`
                     : `Leave at ${departureTime} to reach by ${arrivalTime}`}
               </p>
+              {departurePassed && (
+                <p className="mt-1.5 rounded-lg border border-route-orange/40 bg-warning-soft px-2.5 py-1.5 text-[11px] font-bold text-brand-deep">
+                  That departure time has already passed — leaving now arrives later than shown.
+                </p>
+              )}
 
-              {disruption.disrupted && assessment && (
+              {disruption.disrupted && metrics && assessment && (
                 <dl className="mt-3 space-y-1 rounded-xl border border-route-red/30 bg-route-red/5 px-3 py-2.5 text-xs font-semibold text-brand-deep">
-                  <div className="flex justify-between gap-2"><dt>Original arrival</dt><dd>{alarm.arriveBy || "--:--"}</dd></div>
-                  <div className="flex justify-between gap-2"><dt>Updated arrival</dt><dd className="text-route-red">{assessment.predictedArrival}</dd></div>
-                  <div className="flex justify-between gap-2"><dt>Latest acceptable arrival</dt><dd>{latestAcceptableArrival}</dd></div>
+                  <div className="flex justify-between gap-2"><dt>Normal duration</dt><dd>{metrics.normalDurationMinutes} min</dd></div>
+                  <div className="flex justify-between gap-2"><dt>Disrupted duration</dt><dd className="text-route-red">{metrics.totalDurationMinutes} min</dd></div>
+                  <div className="flex justify-between gap-2"><dt>Delay</dt><dd className="text-route-red">+{metrics.delayMinutes} min</dd></div>
+                  <div className="flex justify-between gap-2"><dt>Original arrival</dt><dd>{assessment.originalArrival}</dd></div>
+                  <div className="flex justify-between gap-2"><dt>Updated arrival</dt><dd className="text-route-red">{metrics.arrivalClock}</dd></div>
+                  <div className="flex justify-between gap-2"><dt>Latest acceptable arrival</dt><dd>{metrics.latestAcceptableClock}</dd></div>
                   {lateBy > 0 && <p className="pt-1 text-route-red">This route exceeds your delay limit by {lateBy} min.</p>}
                 </dl>
               )}
@@ -706,11 +716,11 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
 
 
               <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
-                <Stat label="Walking" value={`${preview.totalWalkingDistanceMetres ?? preview.walkMetres ?? 0} m · ${preview.totalWalkingTimeMinutes ?? preview.walkMinutes ?? 0} min`} />
-                <Stat label="Transfers" value={String(preview.transfers ?? 0)} />
+                <Stat label="Walking" value={`${metrics?.walkingDistanceMetres ?? 0} m · ${metrics?.walkingMinutes ?? 0} min`} />
+                <Stat label="Transfers" value={String(metrics?.transferCount ?? 0)} />
                 <Stat
-                  label={preview.fareEstimated === false ? "Fare" : "Estimated fare"}
-                  value={typeof preview.fare === "number" ? `$${preview.fare.toFixed(2)}` : "—"}
+                  label={metrics?.fareEstimated === false ? "Fare" : "Estimated fare"}
+                  value={typeof metrics?.estimatedFare === "number" ? `$${metrics.estimatedFare.toFixed(2)}` : "—"}
                 />
               </dl>
 
