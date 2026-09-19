@@ -508,9 +508,9 @@ async function buildCandidates(data: PlanInput): Promise<JourneyCandidate[]> {
   };
 
   if (candidates.length) {
-    // Keep at least one option clear of the East–West Line, so a disrupted EW trip
-    // can be compared against a genuinely different set of legs and line badges.
-    addRailAvoiding(["EW", "CG"]);
+    // Keep at least one option clear of the closed stretch, so a disrupted trip can be
+    // compared against a genuinely different set of legs and line badges.
+    addRailAvoiding([], CLOSED_SEGMENTS);
     await attachCrowd(candidates);
     return candidates;
   }
