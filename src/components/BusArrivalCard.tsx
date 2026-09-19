@@ -74,8 +74,9 @@ export function BusArrivalCard({
       </div>
 
       <p className="mt-2 truncate text-sm text-muted-foreground">
-        {stopName ? `${stopName} · Stop ${stop}` : `Stop ${stop}`}
+        {!stop ? "No stop selected — choose one from the nearby stops above." : stopName ? `${stopName} · Stop ${stop}` : `Stop ${stop}`}
       </p>
+
 
       <div className="relative mt-3">
         <input
