@@ -307,10 +307,20 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
   const departedAt = simulation?.departedAt ?? null;
   const rainDelay = simulation?.rain ? 5 : 0;
 
+  const watchAlternatives = useMemo(() => {
+    const rows = alternatives.map((route) => ({ preference: route.primaryPreference, journey: route.journey }));
+    const safer = store.disruptionRecommended;
+    if (!safer) return rows;
+    return [
+      { preference: safer.primaryPreference, journey: safer.journey },
+      ...rows.filter((row) => row.journey !== safer.journey),
+    ];
+  }, [alternatives, store.disruptionRecommended]);
+
   const disruption = useDisruptionWatch({
     journey: preview,
     baselineJourney: recommendedJourney,
-    alternatives,
+    alternatives: watchAlternatives,
     arriveBy: alarm.arriveBy,
     maxDelay: alarm.maxDelay,
     preference: preferences[0] ?? "speed",
