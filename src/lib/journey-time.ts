@@ -104,6 +104,12 @@ export function isWalkOnly(journey: Journey): boolean {
   return journey.legs.every((leg) => leg.mode === "walk");
 }
 
+/** Arrival clock for a route leaving at a fixed departure minute. */
+export function arrivalFromDeparture(journey: Journey, departureMinutes: number | null): string {
+  if (departureMinutes === null) return "--:--";
+  return toClock(departureMinutes + duration(journey));
+}
+
 /**
  * Drop options the user should never be offered: long all-walking routes, routes
  * with excessive walking, routes that miss the delay limit, and disrupted routes —
@@ -111,7 +117,12 @@ export function isWalkOnly(journey: Journey): boolean {
  */
 export function filterEligible<T extends { journey: Journey }>(
   options: T[],
-  opts: { arriveBy: string; maxDelay: string | number; isDisrupted?: (journey: Journey) => boolean },
+  opts: {
+    arriveBy: string;
+    maxDelay: string | number;
+    departureMinutes: number | null;
+    isDisrupted?: (journey: Journey) => boolean;
+  },
 ): T[] {
   if (options.length <= 1) return options;
   const transit = options.filter((option) => !isWalkOnly(option.journey));
@@ -122,7 +133,8 @@ export function filterEligible<T extends { journey: Journey }>(
 
   const inTime = pool.filter(
     (option) =>
-      arrivalStatus(departureArrival(option.journey, opts.arriveBy), opts.arriveBy, opts.maxDelay) !== "late",
+      arrivalStatus(arrivalFromDeparture(option.journey, opts.departureMinutes), opts.arriveBy, opts.maxDelay) !==
+      "late",
   );
   if (inTime.length) pool = inTime;
 
@@ -131,14 +143,4 @@ export function filterEligible<T extends { journey: Journey }>(
     if (clear.length) pool = clear;
   }
   return pool;
-}
-
-/**
- * Arrival clock time for a route that leaves at the same moment as the
- * recommended one, so every card is compared from one fixed departure.
- */
-export function departureArrival(journey: Journey, arriveBy: string): string {
-  const reach = toMinutes(arriveBy);
-  if (reach === null) return "--:--";
-  return toClock(reach);
 }
