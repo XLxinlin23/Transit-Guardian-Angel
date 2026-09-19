@@ -162,6 +162,7 @@ export type CommuteBriefing = {
   disruption: string | null;
   crowd: string | null;
   bus: string | null;
+  traffic: string | null;
   alternative: string | null;
   routeSummary: string | null;
   checkedAt: string;
@@ -253,6 +254,7 @@ export const getCommuteBriefing = createServerFn({ method: "POST" })
         disruption: null,
         crowd: null,
         bus: null,
+        traffic: null,
         alternative: null,
         routeSummary: null,
         checkedAt,
@@ -269,14 +271,50 @@ export const getCommuteBriefing = createServerFn({ method: "POST" })
         ? { lat: originStation.lat, lng: originStation.lng }
         : null;
 
-    const [disruption, weather, crowdMap, bus] = await Promise.all([
+    const [disruption, weather, crowdMap, bus, trafficData] = await Promise.all([
       transit
         .fetchDisruption()
         .catch((): import("@/lib/transit.server").DisruptionInfo => ({ configured: false, disrupted: false, lines: [] })),
       data.notifyWeather && weatherPoint ? transit.fetchWeatherNear(weatherPoint.lat, weatherPoint.lng).catch(() => null) : null,
       data.notifyCrowd && routeLines[0] ? transit.fetchCrowd(routeLines[0]).catch(() => ({})) : {},
       data.notifyBus && data.busStopCode ? transit.fetchNextBus(data.busStopCode).catch(() => null) : null,
+      transit.fetchTrafficIncidents().catch(() => ({ configured: false, incidents: [] as import("@/lib/transit.server").TrafficIncident[] })),
     ]);
+
+    // Road incidents that sit on (or very near) the corridor this trip travels.
+    const corridorFrom = hasFromCoords
+      ? { lat: data.fromLat!, lng: data.fromLng! }
+      : originStation
+        ? { lat: originStation.lat, lng: originStation.lng }
+        : null;
+    const corridorTo = hasToCoords
+      ? { lat: data.toLat!, lng: data.toLng! }
+      : destStation
+        ? { lat: destStation.lat, lng: destStation.lng }
+        : null;
+    const distanceToCorridor = (
+      incident: { lat: number; lng: number },
+      from: { lat: number; lng: number },
+      to: { lat: number; lng: number },
+    ) => {
+      let best = Number.POSITIVE_INFINITY;
+      for (let i = 0; i <= 20; i += 1) {
+        const t = i / 20;
+        best = Math.min(
+          best,
+          distanceKm(incident, { lat: from.lat + (to.lat - from.lat) * t, lng: from.lng + (to.lng - from.lng) * t }),
+        );
+      }
+      return best;
+    };
+    const routeIncidents =
+      corridorFrom && corridorTo
+        ? trafficData.incidents
+            .map((incident) => ({ incident, km: distanceToCorridor(incident, corridorFrom, corridorTo) }))
+            .filter((entry) => entry.km <= 1.2)
+            .sort((a, b) => a.km - b.km)
+        : [];
+
 
     const hitLines = disruption.lines.filter((line) => routeLines.includes(line));
     let travelMinutes = baselineMinutes;
@@ -315,6 +353,20 @@ export const getCommuteBriefing = createServerFn({ method: "POST" })
       delayMinutes += 3;
     }
 
+    // Road incidents only slow a trip that actually uses the roads.
+    const usesRoad = !base || base.legs.length === 0;
+    const topIncident = routeIncidents[0];
+    if (topIncident && usesRoad) {
+      travelMinutes += 7;
+      delayMinutes += 7;
+    }
+    const traffic = topIncident
+      ? `${topIncident.incident.type} on your route${routeIncidents.length > 1 ? ` (+${routeIncidents.length - 1} more)` : ""}: ${topIncident.incident.message}`
+      : trafficData.configured
+        ? "No road incidents on your route."
+        : null;
+
+
     const leaveAt = toClock(toMinutes(data.arriveBy) - travelMinutes - 3);
     const severity: CommuteBriefing["severity"] =
       delayMinutes >= data.maxDelay && delayMinutes > 0 ? "act" : delayMinutes >= 5 ? "watch" : "calm";
@@ -347,6 +399,7 @@ export const getCommuteBriefing = createServerFn({ method: "POST" })
           ? "Platform crowding normal on your line."
           : null,
       bus: bus ? `Bus ${bus.serviceNo} in ${bus.minutes} min at stop ${data.busStopCode}` : null,
+      traffic,
       alternative,
       routeSummary,
       checkedAt,

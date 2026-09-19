@@ -88,6 +88,32 @@ export async function fetchWeatherNear(lat: number, lng: number) {
   return best;
 }
 
+export type TrafficIncident = {
+  type: string;
+  lat: number;
+  lng: number;
+  message: string;
+};
+
+/** Live road incidents (accidents, roadworks, heavy traffic) from LTA DataMall. */
+export async function fetchTrafficIncidents(): Promise<{ configured: boolean; incidents: TrafficIncident[] }> {
+  const data = await ltaFetch("TrafficIncidents");
+  if (!data) return { configured: false, incidents: [] };
+  const incidents: TrafficIncident[] = [];
+  for (const row of data?.value ?? []) {
+    const lat = Number(row?.Latitude);
+    const lng = Number(row?.Longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+    incidents.push({
+      type: String(row?.Type ?? "Incident"),
+      lat,
+      lng,
+      message: String(row?.Message ?? "").trim(),
+    });
+  }
+  return { configured: true, incidents };
+}
+
 export async function fetchNextBus(busStopCode: string) {
   const data = await ltaFetch(`v3/BusArrival?BusStopCode=${encodeURIComponent(busStopCode)}`);
   const service = data?.Services?.[0];
