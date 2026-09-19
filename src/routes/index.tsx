@@ -140,5 +140,5 @@ function ArrivalsView() {
 }
 
 function NavButton({ active, icon: Icon, label, onClick }: { active: boolean; icon: typeof Home; label: string; onClick: () => void }) {
-  return <button type="button" onClick={onClick} aria-current={active ? "page" : undefined} className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 transition-colors ${active ? "bg-gradient-to-br from-primary/15 to-success/15 text-primary" : "text-muted-foreground hover:bg-secondary"}`}><Icon className="size-5 shrink-0" /><span className="max-w-full truncate text-[11px] font-semibold">{label}</span></button>;
+  return <button type="button" onClick={onClick} aria-current={active ? "page" : undefined} className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 transition-colors ${active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}><Icon className="size-5 shrink-0" /><span className="max-w-full truncate text-[11px] font-semibold">{label}</span></button>;
 }
