@@ -586,7 +586,10 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
               <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
                 <Stat label="Walking" value={`${preview.totalWalkingDistanceMetres ?? preview.walkMetres ?? 0} m · ${preview.totalWalkingTimeMinutes ?? preview.walkMinutes ?? 0} min`} />
                 <Stat label="Transfers" value={String(preview.transfers ?? 0)} />
-                <Stat label="Fare" value={typeof preview.fare === "number" ? `$${preview.fare.toFixed(2)}` : "—"} />
+                <Stat
+                  label={preview.fareEstimated === false ? "Fare" : "Estimated fare"}
+                  value={typeof preview.fare === "number" ? `$${preview.fare.toFixed(2)}` : "—"}
+                />
               </dl>
 
               <p className="mt-3 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-semibold text-foreground">
@@ -594,6 +597,13 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                   ? "Chosen by you. Your saved primary preference is unchanged."
                   : preview.reason ?? ((preview.alternatives ?? 0) > 1 ? `Recommended from ${preview.alternatives} routes.` : "Only one route is currently available.")}
               </p>
+
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Source: {preview.dataSource ?? "LTA DataMall"}
+                {preview.crowdLevel && preview.crowdLevel !== "unknown" ? ` · crowding from LTA PCDRealTime (${preview.crowdLevel})` : ""}
+                {preview.updatedAt ? ` · last updated ${new Date(preview.updatedAt).toLocaleTimeString("en-SG", { hour: "2-digit", minute: "2-digit" })}` : ""}
+              </p>
+
 
               {manualJourney && (
                 <Button
