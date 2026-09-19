@@ -159,19 +159,30 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
   // Show only options that differ from the recommended one, one card per shape.
   const alternatives = useMemo(() => {
     const rows = optionsQuery.data ?? [];
-    const seen = new Set<string>();
-    if (preview) seen.add(preview.id ?? `${preview.minutes}-${preview.walkMetres}-${preview.transfers}`);
-    const unique = rows.filter(({ journey }) => {
-      const key = journey.id ?? `${journey.minutes}-${journey.walkMetres}-${journey.transfers}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-    if ((preferences[0] ?? "speed") === "walking") {
-      unique.sort((a, b) => (a.journey.totalWalkingDistanceMetres ?? a.journey.walkMetres ?? 0) - (b.journey.totalWalkingDistanceMetres ?? b.journey.walkMetres ?? 0));
+    const previewKey = preview?.id ?? (preview ? `${preview.minutes}-${preview.walkMetres}-${preview.transfers}` : null);
+    const recommendedKey = recommendedJourney?.id ?? (recommendedJourney ? `${recommendedJourney.minutes}-${recommendedJourney.walkMetres}-${recommendedJourney.transfers}` : null);
+    const unique = new Map<string, { preference: string; journey: Journey; recommended: boolean }>();
+
+    if (manualJourney && recommendedJourney && recommendedKey !== previewKey) {
+      unique.set(recommendedKey ?? recommendedJourney.id, {
+        preference: preferences[0] ?? "speed",
+        journey: recommendedJourney,
+        recommended: true,
+      });
     }
-    return unique.slice(0, 4);
-  }, [optionsQuery.data, preferences, preview]);
+
+    for (const { preference, journey } of rows) {
+      const key = journey.id ?? `${journey.minutes}-${journey.walkMetres}-${journey.transfers}`;
+      if (key === previewKey || unique.has(key)) continue;
+      unique.set(key, { preference, journey, recommended: key === recommendedKey });
+    }
+
+    const options = [...unique.values()];
+    if ((preferences[0] ?? "speed") === "walking") {
+      options.sort((a, b) => (a.journey.totalWalkingDistanceMetres ?? a.journey.walkMetres ?? 0) - (b.journey.totalWalkingDistanceMetres ?? b.journey.walkMetres ?? 0));
+    }
+    return options.slice(0, 4);
+  }, [manualJourney, optionsQuery.data, preferences, preview, recommendedJourney]);
 
   const segments = useMemo(
     () => (preview ? preview.legs.map((leg) => ({ mode: leg.mode, badge: leg.badge, points: leg.points })) : []),
@@ -504,7 +515,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                   embedded
                   title="Route map"
                   badge={manualJourney ? "Chosen by you" : preferenceSummary}
-                  footer={`About ${preview.minutes} min door to door · ${preview.legs.length} leg${preview.legs.length > 1 ? "s" : ""} · currently no disruption`}
+                  footer={`About ${preview.minutes} min door to door · ${preview.legs.length} leg${preview.legs.length > 1 ? "s" : ""} · route when no disruptions`}
                 />
                 <div className="mt-3 px-1">
                   <RouteLegend legs={preview.legs} />
@@ -518,15 +529,26 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                 <div className="mt-4 border-t border-border pt-4">
                   <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Other routes</h3>
                   <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                    {alternatives.map(({ preference, journey }) => (
-                      <div key={preference} className="rounded-xl border border-success/25 bg-success-soft/35 p-3">
-                        <p className="text-xs font-bold uppercase tracking-wide text-primary">{PREFERENCE_LABELS[preference as keyof typeof PREFERENCE_LABELS] ?? preference}</p>
-                        <p className="mt-1 text-sm font-bold text-brand-deep">{journey.minutes} min</p>
-                        <p className="text-[11px] font-semibold text-muted-foreground">
-                          Walk {journey.totalWalkingDistanceMetres ?? journey.walkMetres ?? 0} m · {journey.totalWalkingTimeMinutes ?? journey.walkMinutes ?? 0} min · {journey.numberOfTransfers ?? journey.transfers ?? 0} transfer{(journey.numberOfTransfers ?? journey.transfers ?? 0) === 1 ? "" : "s"}
-                          {typeof journey.fare === "number" ? ` · $${journey.fare.toFixed(2)}` : ""}
-                        </p>
-                      </div>
+                    {alternatives.map(({ preference, journey, recommended }) => (
+                      <Button
+                        key={journey.id ?? `${preference}-${journey.minutes}`}
+                        type="button"
+                        variant="outline"
+                        aria-label={`Use ${PREFERENCE_LABELS[preference as keyof typeof PREFERENCE_LABELS] ?? preference} route`}
+                        onClick={() => setManualJourney(journey)}
+                        className="h-auto min-h-20 w-full items-start justify-start whitespace-normal rounded-xl border-success/25 bg-success-soft/35 p-3 text-left shadow-none hover:border-primary/40 hover:bg-primary/5"
+                      >
+                        <span className="min-w-0">
+                          <span className="block text-xs font-bold uppercase tracking-wide text-primary">
+                            {PREFERENCE_LABELS[preference as keyof typeof PREFERENCE_LABELS] ?? preference}{recommended ? " (Recommended)" : ""}
+                          </span>
+                          <span className="mt-1 block text-sm font-bold text-brand-deep">{journey.minutes} min</span>
+                          <span className="block text-[11px] font-semibold text-muted-foreground">
+                            Walk {journey.totalWalkingDistanceMetres ?? journey.walkMetres ?? 0} m · {journey.totalWalkingTimeMinutes ?? journey.walkMinutes ?? 0} min · {journey.numberOfTransfers ?? journey.transfers ?? 0} transfer{(journey.numberOfTransfers ?? journey.transfers ?? 0) === 1 ? "" : "s"}
+                            {typeof journey.fare === "number" ? ` · $${journey.fare.toFixed(2)}` : ""}
+                          </span>
+                        </span>
+                      </Button>
                     ))}
                   </div>
                 </div>
