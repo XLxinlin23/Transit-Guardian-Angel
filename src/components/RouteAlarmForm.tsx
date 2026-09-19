@@ -139,11 +139,39 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
       }),
   });
   const preview: Journey | null = journeyQuery.data ?? null;
+
+  const compareFn = useServerFn(compareJourneys);
+  const optionsQuery = useQuery({
+    queryKey: ["journey-options", fromPlace?.lat, fromPlace?.lng, toPlace?.lat, toPlace?.lng],
+    enabled: Boolean(fromPlace && toPlace && preview),
+    staleTime: 5 * 60_000,
+    queryFn: () =>
+      compareFn({
+        data: {
+          from: { lat: fromPlace!.lat, lng: fromPlace!.lng, label: fromPlace!.name },
+          to: { lat: toPlace!.lat, lng: toPlace!.lng, label: toPlace!.name },
+        },
+      }),
+  });
+  // Show only options that differ from the recommended one, one card per shape.
+  const alternatives = useMemo(() => {
+    const rows = optionsQuery.data ?? [];
+    const seen = new Set<string>();
+    if (preview) seen.add(`${preview.minutes}-${preview.walkMetres}-${preview.transfers}`);
+    return rows.filter(({ journey }) => {
+      const key = `${journey.minutes}-${journey.walkMetres}-${journey.transfers}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 4);
+  }, [optionsQuery.data, preview]);
+
   const segments = useMemo(
     () => (preview ? preview.legs.map((leg) => ({ mode: leg.mode, badge: leg.badge, points: leg.points })) : []),
     [preview],
   );
   const modesUsed = useMemo(() => [...new Set(preview?.legs.map((leg) => leg.mode) ?? [])], [preview]);
+
   const typedBoth = Boolean(alarm.from.trim() && alarm.to.trim());
   const bothConfirmed = Boolean(fromPlace && toPlace);
   const looking = journeyQuery.isFetching;
