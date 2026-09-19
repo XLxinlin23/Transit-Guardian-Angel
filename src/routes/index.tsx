@@ -100,10 +100,11 @@ function AlertsView() {
       <h1 className="mt-2 font-display text-3xl font-bold text-brand-deep">Disruption alert</h1>
       <p className="mt-2 text-sm text-muted-foreground">Live checks for your route alarm — one line, only when it matters.</p>
 
-      <div className="mt-5 space-y-3.5">
+      <div className="mt-5 grid gap-4 lg:grid-cols-2 lg:items-start">
         <MrtStatusCard />
         <WeatherCard />
       </div>
+
 
       <p className="mt-5 text-center text-[11px] text-muted-foreground">
         Train and bus data © LTA DataMall · Weather © data.gov.sg
