@@ -262,6 +262,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
   const changeRepeat = (value: RepeatOption) => {
     update("repeat", value);
     if (value === "custom") setCustomDraft(alarm.days);
+    if (value === "date") setAlarmField("dateMode", "date");
   };
 
   const editAlarm = (entry: SavedRouteAlarm) => {
@@ -560,6 +561,16 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                     Repeating trip · next journey {nextRunLabel(alarm)}
                   </p>
                 </div>
+              ) : alarm.repeat === "date" ? (
+                <Field icon={CalendarDays} label="Journey date">
+                  <Input
+                    type="date"
+                    value={alarm.date}
+                    onChange={(event) => update("date", event.target.value)}
+                    aria-label="Journey date"
+                    className="h-11 bg-card"
+                  />
+                </Field>
               ) : (
                 <Field icon={CalendarDays} label="Journey date">
                   <div className="grid grid-cols-2 gap-2">
@@ -929,14 +940,9 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                     className="h-11 bg-card"
                   />
                 )}
-                <Button
-                  variant="outline"
-                  className="h-11 w-full rounded-xl border-primary text-sm font-bold text-primary"
-                  disabled={!canSave || syncing}
-                  onClick={saveAlarm}
-                >
-                  {syncing ? "Saving…" : "Update alert settings"}
-                </Button>
+                <p className="text-[11px] font-semibold text-muted-foreground">
+                  These settings are saved when you tap Save route alarm.
+                </p>
               </div>
             )}
           </section>

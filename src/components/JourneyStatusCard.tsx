@@ -1,9 +1,7 @@
-import { AlertTriangle, CheckCircle2, ChevronDown, ShieldAlert, TrainFront } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, TrainFront } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import type { DisruptionWatch } from "@/lib/use-disruption";
 import { PREFERENCE_LABELS, type RoutePreference } from "@/lib/commute-settings";
 import type { Journey } from "@/lib/journey.functions";
@@ -20,7 +18,7 @@ export function JourneyStatusCard({
   const [keptCurrent, setKeptCurrent] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
-  const { assessment, incident, demo, setDemo, demoAvailable } = watch;
+  const { assessment, incident } = watch;
   if (!assessment) return null;
 
 
@@ -112,15 +110,6 @@ export function JourneyStatusCard({
         <p className="mt-2 text-[11px] font-semibold text-muted-foreground">
           Alternative avoids the disrupted segment · {PREFERENCE_LABELS[assessment.alternative.preference as RoutePreference] ?? assessment.alternative.preference}
         </p>
-      )}
-
-      {demoAvailable && (
-        <Label className="mt-4 flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-xl border border-dashed border-route-orange/50 bg-card px-3">
-          <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-            <ShieldAlert className="size-4 text-route-orange" /> Demo incident (simulated Circle Line disruption)
-          </span>
-          <Switch checked={demo} onCheckedChange={setDemo} aria-label="Demo incident" />
-        </Label>
       )}
     </section>
   );
