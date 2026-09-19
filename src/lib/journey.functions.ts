@@ -250,7 +250,14 @@ function toCandidate(legs: JourneyLeg[]): JourneyCandidate | null {
   const minutes = legs.reduce((total, leg) => total + leg.minutes, 0) + changes * 2;
   const walkMetres = legs.reduce((total, leg) => total + (leg.metres ?? 0), 0);
   const walkMinutes = legs.filter((leg) => leg.mode === "walk").reduce((total, leg) => total + leg.minutes, 0);
-  const signature = legs.map((leg) => `${leg.mode}:${leg.badge}:${leg.from}>${leg.to}`).join("|");
+  const signature = legs
+    .map(
+      (leg) =>
+        `${leg.mode}:${leg.badge}:${leg.from}>${leg.to}:${leg.points
+          .map((point) => `${point.lat.toFixed(5)},${point.lng.toFixed(5)}`)
+          .join(">")}`,
+    )
+    .join("|");
   return {
     id: routeId(signature),
     legs,
