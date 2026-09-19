@@ -483,6 +483,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                 <RouteMap
                   stations={[]}
                   segments={segments}
+                  embedded
                   title="Route map"
                   badge={preferenceSummary}
                   footer={`About ${preview.minutes} min door to door · ${preview.legs.length} leg${preview.legs.length > 1 ? "s" : ""} · currently no disruption`}

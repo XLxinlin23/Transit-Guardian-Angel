@@ -204,6 +204,11 @@
   box-shadow: 0 -2px 20px -10px var(--glass-shadow), 0 8px 26px -16px var(--glass-shadow);
 }
 
+@utility brand-mark {
+  background: linear-gradient(135deg, var(--primary) 0 48%, var(--success) 48% 78%, var(--route-orange) 78% 100%);
+  box-shadow: 0 8px 20px -10px color-mix(in oklab, var(--primary) 55%, transparent);
+}
+
 
 @keyframes status-pulse {
   0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--success) 32%, transparent); }
