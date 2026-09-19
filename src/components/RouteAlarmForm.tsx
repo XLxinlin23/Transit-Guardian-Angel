@@ -781,37 +781,54 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                 <div className="mt-4 border-t border-border pt-4">
                   <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Other routes</h3>
                   <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                    {alternatives.map(({ preference, journey, recommended }) => {
-                      const label = PREFERENCE_LABELS[preference as keyof typeof PREFERENCE_LABELS] ?? preference;
-                      const metric = primaryMetric(journey, preference as never);
-                      const arrival = arrivalFromDeparture(journey, fixedDepartureMinutes);
-                      const status = arrivalStatus(arrival, alarm.arriveBy, alarm.maxDelay);
+                    {alternatives.map((route) => {
+                      const label = PREFERENCE_LABELS[route.primaryPreference] ?? route.primaryPreference;
+                      const metric = primaryMetric(route.journey, route.primaryPreference);
+                      const arrival = route.predictedArrivalClock;
+                      const status = route.status;
                       return (
                         <Button
-                          key={journey.id ?? `${preference}-${journey.minutes}`}
+                          key={route.id}
                           type="button"
                           variant="outline"
                           aria-label={`Use ${label} route`}
-                          onClick={() => setManualJourney(journey)}
-                          className="h-auto min-h-24 w-full items-start justify-start whitespace-normal rounded-xl border-border bg-card p-3 text-left shadow-none hover:border-primary/40 hover:bg-primary/5"
+                          onClick={() => setManualJourney(route.journey)}
+                          className={`h-auto min-h-24 w-full items-start justify-start whitespace-normal rounded-xl bg-card p-3 text-left shadow-none hover:bg-primary/5 ${
+                            route.isDisruptionRecommended
+                              ? "border-success"
+                              : route.isAffectedByDisruption
+                                ? "border-route-red/60"
+                                : "border-border hover:border-primary/40"
+                          }`}
                         >
                           <span className="min-w-0 flex-1">
                             <span className="flex flex-wrap items-center gap-1.5">
                               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
                                 {label}
                               </span>
-                              {recommended && (
+                              {route.isPrimaryPreferenceWinner && (
                                 <span className="rounded-full bg-success-soft px-2 py-0.5 text-[10px] font-bold uppercase text-success">Recommended</span>
                               )}
-                              {journey.fareEstimated !== false && (
+                              {route.isDisruptionRecommended && (
+                                <span className="rounded-full bg-success-soft px-2 py-0.5 text-[10px] font-bold uppercase text-success">Recommended during disruption</span>
+                              )}
+                              {route.isAffectedByDisruption && (
+                                <span className="rounded-full bg-route-red/10 px-2 py-0.5 text-[10px] font-bold uppercase text-route-red">Affected by disruption</span>
+                              )}
+                              {route.journey.fareEstimated !== false && (
                                 <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">Estimated</span>
                               )}
                             </span>
                             <span className="mt-1.5 block font-display text-xl font-bold text-brand-deep">{metric.primary}</span>
                             <span className="block text-[11px] font-semibold text-muted-foreground">{metric.support}</span>
+                            {route.isAffectedByDisruption && (
+                              <span className="mt-1 block text-[11px] font-semibold text-muted-foreground">
+                                Normal: {route.normalDepartureClock} → {route.normalArrivalClock} · {route.normalDurationMinutes} min
+                              </span>
+                            )}
                             <span className={`mt-1.5 inline-block rounded-md border px-2 py-0.5 text-[10px] font-bold ${STATUS_CLASS[status]}`}>
-                              {departureTime} → {arrival}
-                              {status === "within" ? " · within your delay limit" : status === "late" ? " · unable to meet arrival limit" : ""}
+                              {route.normalDepartureClock} → {arrival} · {route.predictedDurationMinutes} min
+                              {status === "within" ? " · within your delay limit" : route.overLimitMinutes > 0 ? ` · ${route.overLimitMinutes} min after your limit` : ""}
                             </span>
                           </span>
                         </Button>
