@@ -161,8 +161,10 @@ export function RoutePreferencePanel({
   const useRoute = () => {
     if (!pendingJourney) return;
     setManualJourney(pendingJourney);
+    const arrival = arrivalFromDeparture(pendingJourney, fixedDepartureMinutes);
+    const leaveAt = shiftTime(alarm.arriveBy, pendingJourney.totalDurationMinutes ?? pendingJourney.minutes);
     setPendingJourney(null);
-    setConfirmation("Route updated. This option is now marked Chosen by you on Home.");
+    setConfirmation(`Route selected. You will leave at ${leaveAt} and arrive by ${arrival}.`);
   };
 
   return (
