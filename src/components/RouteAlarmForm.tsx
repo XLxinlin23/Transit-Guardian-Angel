@@ -475,6 +475,16 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
 
         {/* Right column — route result, map and alerts */}
         <div className="space-y-4">
+          {preview && (
+            <JourneyStatusCard
+              journey={preview}
+              alternatives={alternatives}
+              arriveBy={alarm.arriveBy}
+              maxDelay={alarm.maxDelay}
+              onUseAlternative={(journey) => setManualJourney(journey)}
+            />
+          )}
+
           {preview && segments.length > 0 && (
             <section className="glass-panel rounded-2xl p-5">
               <div className="flex items-baseline justify-between gap-3">
