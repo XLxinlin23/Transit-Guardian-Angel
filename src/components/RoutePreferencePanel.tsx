@@ -26,12 +26,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { PREFERENCE_LABELS, type RoutePreference } from "@/lib/commute-settings";
+import { PREFERENCE_LABELS, type PlacePoint, type RoutePreference } from "@/lib/commute-settings";
 import { compareJourneys, type Journey } from "@/lib/journey.functions";
+import { getGoogleDirections } from "@/lib/directions.functions";
 import { getTrainAlerts } from "@/lib/singapore.functions";
 import { useTrip } from "@/lib/trip-store";
+import { DirectionsStepList, formatDistance } from "./DirectionsSteps";
 import { JourneyTimeline, LegBadge, RouteLegend } from "./JourneySteps";
 import { RouteMap } from "./RouteMap";
+
 
 const OPTIONS: { value: RoutePreference; icon: typeof Gauge; detail: string }[] = [
   { value: "speed", icon: Gauge, detail: "Shortest travel time" },
