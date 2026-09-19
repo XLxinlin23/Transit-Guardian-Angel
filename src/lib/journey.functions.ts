@@ -474,7 +474,43 @@ async function buildCandidates(data: PlanInput): Promise<JourneyCandidate[]> {
   } catch (error) {
     console.error("Google route lookup failed", error);
   }
+  /** A rail route that keeps off the given lines, so a disruption always has a real fallback. */
+  const addRailAvoiding = (avoidLines: string[]) => {
+    const start = nearestStation(origin.lat, origin.lng);
+    const end = nearestStation(destination.lat, destination.lng);
+    if (!start || !end || start.name === end.name) return;
+    const rail = planRoute(start.name, end.name, ["transfers"] as never, avoidLines);
+    if (!rail) return;
+    if (rail.legs.some((leg) => avoidLines.includes(leg.line))) return;
+    const startNode = STATION_INDEX.get(start.name) ?? start;
+    const endNode = STATION_INDEX.get(end.name) ?? end;
+    const railLegs: JourneyLeg[] = rail.legs.map((leg) => {
+      const stops = leg.stations.length - 1;
+      return {
+        mode: LRT_LINES.has(leg.line) ? "lrt" : "mrt",
+        badge: leg.line,
+        from: leg.stations[0]!.name,
+        to: leg.stations[leg.stations.length - 1]!.name,
+        detail: `${stops} stop${stops > 1 ? "s" : ""}`,
+        minutes: Math.max(2, Math.round(stops * 2.4)),
+        points: leg.stations.map((station) => ({ lat: station.lat, lng: station.lng, name: station.name })),
+      };
+    });
+    add(
+      [
+        ...walkLegBetween(origin, { lat: startNode.lat, lng: startNode.lng, name: `${start.name} station` }),
+        ...railLegs,
+        ...walkLegBetween({ lat: endNode.lat, lng: endNode.lng, name: `${end.name} station` }, destination),
+      ],
+      null,
+      "LTA DataMall",
+    );
+  };
+
   if (candidates.length) {
+    // Keep at least one option clear of the East–West Line, so a disrupted EW trip
+    // can be compared against a genuinely different set of legs and line badges.
+    addRailAvoiding(["EW", "CG"]);
     await attachCrowd(candidates);
     return candidates;
   }
