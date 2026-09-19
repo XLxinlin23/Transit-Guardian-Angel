@@ -438,9 +438,42 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                   ariaLabel="To"
                 />
               </Field>
+              <Field icon={CalendarDays} label="Journey date">
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    ["today", "Today"],
+                    ["tomorrow", "Tomorrow"],
+                    ["date", "Select date"],
+                  ] as Array<[JourneyDateMode, string]>).map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => update("dateMode", mode)}
+                      aria-pressed={alarm.dateMode === mode}
+                      className={`min-h-10 rounded-lg border px-2 text-xs font-bold ${
+                        alarm.dateMode === mode ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-muted-foreground"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {alarm.dateMode === "date" && (
+                  <Input
+                    type="date"
+                    value={alarm.date}
+                    onChange={(event) => update("date", event.target.value)}
+                    aria-label="Journey date"
+                    className="mt-2 h-11 bg-card"
+                  />
+                )}
+              </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field icon={AlarmClock} label="Reach by">
                   <Input type="time" value={alarm.arriveBy} onChange={(event) => update("arriveBy", event.target.value)} aria-label="Reach by" className="h-11 bg-card" />
+                  <p className="mt-1.5 text-[11px] font-semibold text-muted-foreground">
+                    {journeyDateLabel(alarm)} · {alarm.arriveBy || "--:--"}
+                  </p>
                 </Field>
                 <Field icon={ShieldAlert} label="Maximum delay">
                   <Select value={alarm.maxDelay} onValueChange={(value) => update("maxDelay", value)}>
@@ -454,6 +487,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                   </p>
                 </Field>
               </div>
+
               <Field icon={CalendarDays} label="How often">
                 <Select value={alarm.repeat} onValueChange={(value) => update("repeat", value as RepeatOption)}>
                   <SelectTrigger aria-label="How often" className="h-11 bg-card"><SelectValue /></SelectTrigger>
