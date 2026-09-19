@@ -122,7 +122,7 @@
 .dark {
   --background: oklch(0.19 0.045 258);
   --foreground: oklch(0.97 0.012 240);
-  --card: oklch(0.26 0.05 258 / 88%);
+  --card: oklch(0.25 0.045 258);
   --card-foreground: oklch(0.97 0.012 240);
   --popover: oklch(0.24 0.05 258);
   --popover-foreground: oklch(0.97 0.012 240);
@@ -139,8 +139,8 @@
   --border: oklch(1 0 0 / 14%);
   --input: oklch(1 0 0 / 18%);
   --ring: oklch(0.72 0.19 253);
-  --surface: oklch(0.27 0.05 258 / 80%);
-  --surface-strong: oklch(0.29 0.05 258 / 94%);
+  --surface: oklch(0.25 0.045 258);
+  --surface-strong: oklch(0.27 0.05 258);
   --glass-border: oklch(1 0 0 / 14%);
   --glass-shadow: oklch(0 0 0 / 45%);
   --brand: oklch(0.72 0.19 253);
