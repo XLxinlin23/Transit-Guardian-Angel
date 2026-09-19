@@ -761,8 +761,8 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                   badge={disruption.disrupted ? "Disruption on this route" : manualJourney ? "Chosen by you" : preferenceSummary}
                   footer={
                     disruption.disrupted && assessment
-                      ? `${disruption.incident?.line ? `${disruption.incident.line} line disruption` : "Disruption"} · about ${preview.minutes + assessment.delayMinutes} min door to door · arrive ${assessment.predictedArrival}`
-                      : `About ${preview.minutes} min door to door · ${preview.legs.length} leg${preview.legs.length > 1 ? "s" : ""} · route when no disruptions`
+                      ? `${disruption.incident?.line ? `${disruption.incident.line} line disruption` : "Disruption"} · about ${metrics?.totalDurationMinutes ?? 0} min door to door · arrive ${metrics?.arrivalClock ?? assessment.predictedArrival}`
+                      : `About ${metrics?.totalDurationMinutes ?? 0} min door to door · ${preview.legs.length} leg${preview.legs.length > 1 ? "s" : ""} · route when no disruptions`
                   }
                 />
 
@@ -904,7 +904,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
           </section>
 
           {saved && alarm.active && (
-            <CommuteAlertCard alarm={alarm} preferences={preferences} fromPlace={fromPlace} toPlace={toPlace} />
+            <CommuteAlertCard alarm={alarm} preferences={preferences} fromPlace={fromPlace} toPlace={toPlace} metrics={metrics} />
           )}
 
           <p className="px-1 text-xs leading-relaxed text-muted-foreground">
