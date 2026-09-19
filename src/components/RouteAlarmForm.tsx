@@ -43,7 +43,7 @@ import { CommuteAlertCard } from "./CommuteAlertCard";
 import { RouteMap } from "./RouteMap";
 import { MODE_COLORS, MODE_LABELS } from "@/lib/travel-modes";
 
-export function RouteAlarmForm() {
+export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => void }) {
   const {
     editingId,
     alarm,
