@@ -314,6 +314,19 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
   const departureTime = recommendedJourney ? shiftTime(alarm.arriveBy, recommendedJourney.minutes) : "--:--";
   const arrivalTime = assessment ? assessment.predictedArrival : alarm.arriveBy || "--:--";
 
+  // Minutes past the latest acceptable arrival for the route currently shown —
+  // applies to any route on screen, disrupted or not.
+  const reachMin = parseTime(alarm.arriveBy);
+  const arrivalMin = parseTime(arrivalTime);
+  const latestMin = reachMin !== null ? reachMin + (Number(alarm.maxDelay) || 0) : null;
+  const lateBy = arrivalMin !== null && latestMin !== null ? Math.max(0, arrivalMin - latestMin) : 0;
+  const routeLate = lateBy > 0;
+  const statusLine = disruption.disrupted && assessment
+    ? `${assessment.headline}${disruption.incident?.source === "demo" ? " (simulated)" : ""}`
+    : routeLate
+      ? `Arrives ${arrivalTime} — ${lateBy} min past your latest ${latestAcceptableArrival}. Leave earlier or pick another route.`
+      : null;
+
 
   return (
     <div className="pt-7">
@@ -506,26 +519,25 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                 </span>
               </div>
 
-              {disruption.disrupted && assessment && (
+              {statusLine && (
                 <p className="mt-3 flex items-start gap-2 rounded-xl border border-route-red/35 bg-route-red/10 px-3 py-2 text-xs font-bold text-brand-deep">
                   <AlertTriangle className="mt-0.5 size-4 shrink-0 text-route-red" />
-                  <span>
-                    Current status: {assessment.headline}
-                    {disruption.incident?.source === "demo" ? " (simulated)" : ""}
-                  </span>
+                  <span>Current status: {statusLine}</span>
                 </p>
               )}
 
               <div className="mt-3 flex items-baseline gap-2">
                 <p className="font-display text-2xl font-bold text-primary">{departureTime}</p>
                 <span className="text-sm text-muted-foreground">→</span>
-                <p className={`font-display text-2xl font-bold ${disruption.disrupted ? "text-route-red" : "text-brand-deep"}`}>{arrivalTime}</p>
+                <p className={`font-display text-2xl font-bold ${disruption.disrupted || routeLate ? "text-route-red" : "text-brand-deep"}`}>{arrivalTime}</p>
                 <p className="ml-auto text-sm font-bold text-brand-deep">{preview.minutes} min</p>
               </div>
               <p className="mt-1 text-xs font-semibold text-muted-foreground">
-                {disruption.disrupted
-                  ? `Leave at ${departureTime} · expected arrival ${arrivalTime} (planned ${alarm.arriveBy})`
-                  : `Leave at ${departureTime} to reach by ${arrivalTime}`}
+                {routeLate
+                  ? `Leave at ${departureTime} · arrives ${arrivalTime} (${lateBy} min after latest ${latestAcceptableArrival})`
+                  : disruption.disrupted
+                    ? `Leave at ${departureTime} · expected arrival ${arrivalTime} (planned ${alarm.arriveBy})`
+                    : `Leave at ${departureTime} to reach by ${arrivalTime}`}
               </p>
 
 
