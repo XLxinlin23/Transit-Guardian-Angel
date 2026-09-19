@@ -151,73 +151,17 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
   }, [listRemote]);
 
 
-  const planJourneyFn = useServerFn(planJourney);
-  const journeyQuery = useQuery({
-    queryKey: ["journey", fromPlace?.lat, fromPlace?.lng, toPlace?.lat, toPlace?.lng, preferences.join(",")],
-    enabled: Boolean(fromPlace && toPlace),
-    staleTime: 5 * 60_000,
-    queryFn: () =>
-      planJourneyFn({
-        data: {
-          from: { lat: fromPlace!.lat, lng: fromPlace!.lng, label: fromPlace!.name },
-          to: { lat: toPlace!.lat, lng: toPlace!.lng, label: toPlace!.name },
-          preferences,
-        },
-      }),
-  });
-  const planResult = journeyQuery.data ?? null;
-  const recommendedJourney: Journey | null = planResult?.ok ? planResult.journey : null;
-  const planMessage = planResult && !planResult.ok ? planResult.message : null;
-  const preview: Journey | null = manualJourney ?? recommendedJourney;
+  // One shared route store — Preferences reads exactly the same values.
+  const store = useRouteStore();
+  const recommendedJourney: Journey | null = store.recommended?.journey ?? null;
+  const planMessage = store.planMessage;
+  const preview: Journey | null = store.selected?.journey ?? null;
 
-
-  const compareFn = useServerFn(compareJourneys);
-  const optionsQuery = useQuery({
-    queryKey: ["journey-options", fromPlace?.lat, fromPlace?.lng, toPlace?.lat, toPlace?.lng],
-    enabled: Boolean(fromPlace && toPlace && recommendedJourney),
-    staleTime: 5 * 60_000,
-    queryFn: () =>
-      compareFn({
-        data: {
-          from: { lat: fromPlace!.lat, lng: fromPlace!.lng, label: fromPlace!.name },
-          to: { lat: toPlace!.lat, lng: toPlace!.lng, label: toPlace!.name },
-        },
-      }),
-  });
-  // Show only options that differ from the recommended one, one card per shape.
-  const alternatives = useMemo(() => {
-    const rows = optionsQuery.data ?? [];
-    const previewKey = preview?.id ?? (preview ? `${preview.minutes}-${preview.walkMetres}-${preview.transfers}` : null);
-    const recommendedKey = recommendedJourney?.id ?? (recommendedJourney ? `${recommendedJourney.minutes}-${recommendedJourney.walkMetres}-${recommendedJourney.transfers}` : null);
-    const unique = new Map<string, { preference: string; journey: Journey; recommended: boolean }>();
-
-    if (manualJourney && recommendedJourney && recommendedKey !== previewKey) {
-      unique.set(recommendedKey ?? recommendedJourney.id, {
-        preference: preferences[0] ?? "speed",
-        journey: recommendedJourney,
-        recommended: true,
-      });
-    }
-
-    for (const { preference, journey } of rows) {
-      const key = journey.id ?? `${journey.minutes}-${journey.walkMetres}-${journey.transfers}`;
-      if (key === previewKey || unique.has(key)) continue;
-      unique.set(key, { preference, journey, recommended: key === recommendedKey });
-    }
-
-    const reach = toMinutes(alarm.arriveBy);
-    const baseDuration = recommendedJourney?.totalDurationMinutes ?? recommendedJourney?.minutes ?? 0;
-    const departureMinutes = reach === null ? null : reach - baseDuration;
-    const options = filterEligible([...unique.values()], {
-      arriveBy: alarm.arriveBy,
-      maxDelay: alarm.maxDelay,
-      departureMinutes,
-    });
-    if ((preferences[0] ?? "speed") === "walking") {
-      options.sort((a, b) => (a.journey.totalWalkingDistanceMetres ?? a.journey.walkMetres ?? 0) - (b.journey.totalWalkingDistanceMetres ?? b.journey.walkMetres ?? 0));
-    }
-    return options.slice(0, 4);
-  }, [alarm.arriveBy, alarm.maxDelay, manualJourney, optionsQuery.data, preferences, preview, recommendedJourney]);
+  // Everything except the route currently shown, newest ranking from the shared store.
+  const alternatives = useMemo(
+    () => store.routes.filter((route) => route.id !== store.selected?.id).slice(0, 4),
+    [store.routes, store.selected?.id],
+  );
 
   const segments = useMemo(
     () => (preview ? preview.legs.map((leg) => ({ mode: leg.mode, badge: leg.badge, points: leg.points })) : []),
