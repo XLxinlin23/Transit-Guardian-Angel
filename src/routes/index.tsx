@@ -27,7 +27,7 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-type Tab = "home" | "preference" | "arrivals" | "alerts";
+type Tab = "home" | "preference" | "directions" | "arrivals" | "alerts";
 
 function Index() {
   return (
