@@ -205,6 +205,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
     update("repeat", value);
     if (value === "custom") setCustomDraft(alarm.days);
     if (value === "date") setAlarmField("dateMode", "date");
+    if (value === "once") setAlarmField("dateMode", "today");
   };
 
   const editAlarm = (entry: SavedRouteAlarm) => {
@@ -333,7 +334,6 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
     setRouteMinutes?.(previewMinutes);
   }, [previewMinutes, setRouteMinutes]);
 
-  const pastReachBy = reachByHasPassed(alarm);
   const baselineMinutes = recommendedJourney?.totalDurationMinutes ?? recommendedJourney?.minutes ?? null;
 
   // One metrics object per route — every figure on this page reads from it.
@@ -578,7 +578,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
 
             <Button
               className="mt-6 h-11 w-full rounded-xl text-sm font-bold"
-              disabled={!bothConfirmed || looking || pastReachBy}
+              disabled={!bothConfirmed || looking}
               onClick={() => store.refetch()}
             >
               <Navigation /> {looking ? "Finding best route…" : "Find best route"}
