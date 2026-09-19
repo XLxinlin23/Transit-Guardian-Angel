@@ -96,6 +96,11 @@ export function NearbyBusStopsCard({
         <p className="mt-3 text-sm text-muted-foreground">Waiting for the LTA DataMall account key.</p>
       )}
       {open && isError && <p className="mt-3 text-sm text-warning">Couldn’t load nearby stops right now.</p>}
+      {autoFailed && (
+        <p className="mt-3 text-sm font-semibold text-warning">
+          We couldn’t find a stop near your trip start — please choose a bus stop yourself.
+        </p>
+      )}
 
       {open && data?.stops.length ? (
         <ul className="mt-4 space-y-2">
