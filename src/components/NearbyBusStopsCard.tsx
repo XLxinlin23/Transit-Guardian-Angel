@@ -1,8 +1,9 @@
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { Crosshair, MapPin } from "lucide-react";
+import { ChevronDown, Crosshair, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { getNearbyBusStops, type NearbyBusStop } from "../lib/bus-stops.functions";
 
 type Coords = { lat: number; lng: number };
@@ -16,6 +17,7 @@ export function NearbyBusStopsCard({
 }) {
   const [coords, setCoords] = useState<Coords | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
   const fetchNearby = useServerFn(getNearbyBusStops);
 
   const locate = () => {
@@ -44,30 +46,33 @@ export function NearbyBusStopsCard({
   });
 
   return (
-    <section className="glass-panel rounded-3xl p-5">
+    <section className="glass-panel overflow-hidden rounded-2xl border-t-2 border-t-success p-5">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <MapPin className="size-4 shrink-0 text-primary" />
-          <h2 className="truncate font-display text-base font-semibold text-brand-deep">Bus stops near you</h2>
-        </div>
-        <button
+        <Button
           type="button"
-          onClick={locate}
-          aria-label="Use my location"
-          className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-secondary"
+          variant="ghost"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          className="h-auto min-w-0 flex-1 justify-start gap-2 px-0 py-1 hover:bg-transparent"
         >
-          <Crosshair className={`size-4 ${isFetching ? "animate-pulse" : ""}`} />
-        </button>
+          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-success-soft text-success"><MapPin className="size-4" /></span>
+          <span className="min-w-0 flex-1 text-left">
+            <span className="block truncate font-display text-base font-semibold text-brand-deep">Bus stops near you</span>
+            {!open && <span className="block truncate text-[11px] font-medium text-muted-foreground">{data?.stops.length ? `${data.stops.length} nearby stops` : "Tap to view nearby stops"}</span>}
+          </span>
+          <ChevronDown className={`size-4 shrink-0 text-success transition-transform ${open ? "rotate-180" : ""}`} />
+        </Button>
+        {open && <Button type="button" variant="ghost" size="icon" onClick={locate} aria-label="Use my location" className="size-8 shrink-0 text-success"><Crosshair className={`size-4 ${isFetching ? "animate-pulse" : ""}`} /></Button>}
       </div>
 
-      {geoError && <p className="mt-3 text-sm text-muted-foreground">{geoError}</p>}
-      {!geoError && !coords && <p className="mt-3 text-sm text-muted-foreground">Finding your location…</p>}
-      {data && !data.configured && (
+      {open && geoError && <p className="mt-3 text-sm text-muted-foreground">{geoError}</p>}
+      {open && !geoError && !coords && <p className="mt-3 text-sm text-muted-foreground">Finding your location…</p>}
+      {open && data && !data.configured && (
         <p className="mt-3 text-sm text-muted-foreground">Waiting for the LTA DataMall account key.</p>
       )}
-      {isError && <p className="mt-3 text-sm text-warning">Couldn’t load nearby stops right now.</p>}
+      {open && isError && <p className="mt-3 text-sm text-warning">Couldn’t load nearby stops right now.</p>}
 
-      {data?.stops.length ? (
+      {open && data?.stops.length ? (
         <ul className="mt-4 space-y-2">
           {data.stops.map((stop) => {
             const active = stop.code === selectedCode;

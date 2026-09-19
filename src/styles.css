@@ -70,6 +70,8 @@
   --color-success-soft: var(--success-soft);
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
+  --color-route-red: var(--route-red);
+  --color-route-orange: var(--route-orange);
 }
 
 :root {
@@ -103,6 +105,8 @@
   --success-soft: oklch(0.95 0.05 165);
   --warning: oklch(0.62 0.16 60);
   --warning-soft: oklch(0.96 0.06 60);
+  --route-red: oklch(0.59 0.22 27);
+  --route-orange: oklch(0.72 0.17 58);
   --chart-1: oklch(0.65 0.23 41);
   --chart-2: oklch(0.66 0.16 185);
   --chart-3: oklch(0.58 0.2 258);
@@ -149,6 +153,8 @@
   --success-soft: oklch(0.34 0.09 165);
   --warning: oklch(0.8 0.16 65);
   --warning-soft: oklch(0.36 0.09 65);
+  --route-red: oklch(0.72 0.18 25);
+  --route-orange: oklch(0.8 0.15 65);
   --chart-1: oklch(0.7 0.2 258);
   --chart-2: oklch(0.72 0.17 162);
   --chart-3: oklch(0.79 0.18 70);
@@ -171,6 +177,9 @@
 
   body {
     background-color: var(--color-background);
+    background-image:
+      linear-gradient(135deg, color-mix(in oklab, var(--primary) 8%, transparent), transparent 34%),
+      linear-gradient(315deg, color-mix(in oklab, var(--success) 7%, transparent), transparent 32%);
     background-attachment: fixed;
     color: var(--color-foreground);
     font-family: var(--font-sans);
@@ -193,6 +202,11 @@
   background: var(--surface-strong);
   border: 1px solid var(--glass-border);
   box-shadow: 0 -2px 20px -10px var(--glass-shadow), 0 8px 26px -16px var(--glass-shadow);
+}
+
+@utility brand-mark {
+  background: linear-gradient(135deg, var(--primary) 0 48%, var(--success) 48% 78%, var(--route-orange) 78% 100%);
+  box-shadow: 0 8px 20px -10px color-mix(in oklab, var(--primary) 55%, transparent);
 }
 
 

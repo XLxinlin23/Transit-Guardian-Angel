@@ -20,9 +20,10 @@ type RouteMapProps = {
   footer?: string | undefined;
   currentIndex?: number | undefined;
   transferNames?: string[] | undefined;
+  embedded?: boolean | undefined;
 };
 
-export function RouteMap({ stations, segments, title = "Route map", badge, footer, currentIndex, transferNames }: RouteMapProps) {
+export function RouteMap({ stations, segments, title = "Route map", badge, footer, currentIndex, transferNames, embedded = false }: RouteMapProps) {
   const [expanded, setExpanded] = useState(false);
   const mapRef = useRef<LeafletMap | null>(null);
   const routeBounds = useMemo<LatLngBoundsExpression>(
@@ -54,7 +55,7 @@ export function RouteMap({ stations, segments, title = "Route map", badge, foote
   if (!segments?.length && stations.length < 2) return null;
 
   return (
-    <div className={expanded ? "relative" : "glass-panel relative rounded-3xl p-4"}>
+    <div className={expanded ? "relative" : embedded ? "relative" : "glass-panel relative rounded-3xl p-4"}>
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-display text-base font-semibold text-brand-deep">{title}</h2>
         {badge && (
