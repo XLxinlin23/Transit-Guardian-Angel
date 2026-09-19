@@ -50,14 +50,15 @@ function IndexShell() {
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-background">
-      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
-        <div className="absolute -left-32 -top-32 size-96 rounded-full bg-primary/12 blur-3xl" />
-        <div className="absolute -right-40 top-1/3 size-96 rounded-full bg-success/10 blur-3xl" />
-      </div>
+        <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
+          <div className="absolute -left-32 -top-32 size-96 rounded-full bg-primary/18 blur-3xl" />
+          <div className="absolute -right-40 top-1/3 size-96 rounded-full bg-success/14 blur-3xl" />
+          <div className="absolute -left-24 bottom-0 size-80 rounded-full bg-destructive/8 blur-3xl" />
+        </div>
 
       <main className="relative mx-auto min-h-screen w-full max-w-md px-4 pb-28 pt-5">
         <header className="flex items-center gap-3">
-          <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand font-display text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20">WL</div>
+          <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-primary to-success font-display text-sm font-bold text-primary-foreground shadow-lg shadow-primary/25">WL</div>
           <div className="min-w-0 leading-tight">
             <p className="truncate font-display text-base font-semibold text-brand-deep">Wayline</p>
             <p className="truncate text-xs text-muted-foreground">Smart commute alarms</p>
@@ -150,5 +151,5 @@ function ArrivalsView() {
 }
 
 function NavButton({ active, icon: Icon, label, onClick }: { active: boolean; icon: typeof Home; label: string; onClick: () => void }) {
-  return <button type="button" onClick={onClick} aria-current={active ? "page" : undefined} className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 transition-colors ${active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary'}`}><Icon className="size-5 shrink-0" /><span className="max-w-full truncate text-[11px] font-semibold">{label}</span></button>;
+  return <button type="button" onClick={onClick} aria-current={active ? "page" : undefined} className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 transition-colors ${active ? "bg-gradient-to-br from-primary/15 to-success/15 text-primary" : "text-muted-foreground hover:bg-secondary"}`}><Icon className="size-5 shrink-0" /><span className="max-w-full truncate text-[11px] font-semibold">{label}</span></button>;
 }

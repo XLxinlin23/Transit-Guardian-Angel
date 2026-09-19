@@ -247,7 +247,7 @@ export function RouteAlarmForm() {
 
   return (
     <div className="pt-7">
-      <p className="text-xs font-semibold uppercase text-primary">Route alarms</p>
+      <p className="bg-gradient-to-r from-primary via-success to-primary bg-clip-text text-xs font-semibold uppercase text-transparent">Route alarms</p>
       <h1 className="mt-2 font-display text-3xl font-bold text-brand-deep">Arrive on time</h1>
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
         Save as many trips as you like. Wayline watches disruptions and tells you when to leave.
