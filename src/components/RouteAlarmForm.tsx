@@ -33,12 +33,15 @@ import {
   ALARMS_STORAGE_KEY,
   REPEAT_LABELS,
   WEEKDAYS,
+  journeyDateLabel,
+  type JourneyDateMode,
   type RepeatOption,
   DEFAULT_PREFERENCES,
   PREFERENCE_LABELS,
   type RouteAlarm,
   type SavedRouteAlarm,
 } from "@/lib/commute-settings";
+
 import { useTrip } from "@/lib/trip-store";
 import { getDeviceId } from "@/lib/device-id";
 import { compareJourneys, planJourney, type Journey } from "@/lib/journey.functions";
@@ -100,6 +103,9 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
         const remote: SavedRouteAlarm[] = rows.map((row) => ({
           id: row.alarmId,
           alarm: {
+            dateMode: "today",
+            date: "",
+
             from: row.origin,
             to: row.destination,
             arriveBy: row.arriveBy,
@@ -146,8 +152,11 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
         },
       }),
   });
-  const recommendedJourney: Journey | null = journeyQuery.data ?? null;
+  const planResult = journeyQuery.data ?? null;
+  const recommendedJourney: Journey | null = planResult?.ok ? planResult.journey : null;
+  const planMessage = planResult && !planResult.ok ? planResult.message : null;
   const preview: Journey | null = manualJourney ?? recommendedJourney;
+
 
   const compareFn = useServerFn(compareJourneys);
   const optionsQuery = useQuery({
@@ -308,8 +317,10 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
     alternatives,
     arriveBy: alarm.arriveBy,
     maxDelay: alarm.maxDelay,
+    preference: preferences[0] ?? "speed",
   });
   const assessment = disruption.assessment;
+
 
   const departureTime = recommendedJourney ? shiftTime(alarm.arriveBy, recommendedJourney.minutes) : "--:--";
   const arrivalTime = assessment ? assessment.predictedArrival : alarm.arriveBy || "--:--";
@@ -433,9 +444,42 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                   ariaLabel="To"
                 />
               </Field>
+              <Field icon={CalendarDays} label="Journey date">
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    ["today", "Today"],
+                    ["tomorrow", "Tomorrow"],
+                    ["date", "Select date"],
+                  ] as Array<[JourneyDateMode, string]>).map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => update("dateMode", mode)}
+                      aria-pressed={alarm.dateMode === mode}
+                      className={`min-h-10 rounded-lg border px-2 text-xs font-bold ${
+                        alarm.dateMode === mode ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-muted-foreground"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {alarm.dateMode === "date" && (
+                  <Input
+                    type="date"
+                    value={alarm.date}
+                    onChange={(event) => update("date", event.target.value)}
+                    aria-label="Journey date"
+                    className="mt-2 h-11 bg-card"
+                  />
+                )}
+              </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field icon={AlarmClock} label="Reach by">
                   <Input type="time" value={alarm.arriveBy} onChange={(event) => update("arriveBy", event.target.value)} aria-label="Reach by" className="h-11 bg-card" />
+                  <p className="mt-1.5 text-[11px] font-semibold text-muted-foreground">
+                    {journeyDateLabel(alarm)} · {alarm.arriveBy || "--:--"}
+                  </p>
                 </Field>
                 <Field icon={ShieldAlert} label="Maximum delay">
                   <Select value={alarm.maxDelay} onValueChange={(value) => update("maxDelay", value)}>
@@ -449,6 +493,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                   </p>
                 </Field>
               </div>
+
               <Field icon={CalendarDays} label="How often">
                 <Select value={alarm.repeat} onValueChange={(value) => update("repeat", value as RepeatOption)}>
                   <SelectTrigger aria-label="How often" className="h-11 bg-card"><SelectValue /></SelectTrigger>
@@ -544,7 +589,10 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
               <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
                 <Stat label="Walking" value={`${preview.totalWalkingDistanceMetres ?? preview.walkMetres ?? 0} m · ${preview.totalWalkingTimeMinutes ?? preview.walkMinutes ?? 0} min`} />
                 <Stat label="Transfers" value={String(preview.transfers ?? 0)} />
-                <Stat label="Fare" value={typeof preview.fare === "number" ? `$${preview.fare.toFixed(2)}` : "—"} />
+                <Stat
+                  label={preview.fareEstimated === false ? "Fare" : "Estimated fare"}
+                  value={typeof preview.fare === "number" ? `$${preview.fare.toFixed(2)}` : "—"}
+                />
               </dl>
 
               <p className="mt-3 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-semibold text-foreground">
@@ -552,6 +600,13 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                   ? "Chosen by you. Your saved primary preference is unchanged."
                   : preview.reason ?? ((preview.alternatives ?? 0) > 1 ? `Recommended from ${preview.alternatives} routes.` : "Only one route is currently available.")}
               </p>
+
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Source: {preview.dataSource ?? "LTA DataMall"}
+                {preview.crowdLevel && preview.crowdLevel !== "unknown" ? ` · crowding from LTA PCDRealTime (${preview.crowdLevel})` : ""}
+                {preview.updatedAt ? ` · last updated ${new Date(preview.updatedAt).toLocaleTimeString("en-SG", { hour: "2-digit", minute: "2-digit" })}` : ""}
+              </p>
+
 
               {manualJourney && (
                 <Button
@@ -641,10 +696,15 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
           )}
 
           {bothConfirmed && !preview && (
-            <section className="glass-panel rounded-2xl p-5 text-sm text-muted-foreground">
-              {looking ? "Working out the best way door to door…" : "Tap “Find best route” to see your route."}
+            <section className={`glass-panel rounded-2xl p-5 text-sm ${planMessage ? "border border-route-red/35 text-foreground" : "text-muted-foreground"}`}>
+              {looking
+                ? "Working out the best way door to door…"
+                : planMessage
+                  ? planMessage
+                  : "Tap “Find best route” to see your route."}
             </section>
           )}
+
 
           <section className="glass-panel rounded-2xl p-5">
             <button

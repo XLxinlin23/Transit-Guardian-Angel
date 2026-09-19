@@ -25,6 +25,7 @@ export function useDisruptionWatch(params: {
   alternatives: Array<{ preference?: string; journey: Journey }>;
   arriveBy: string;
   maxDelay: string;
+  preference?: string | undefined;
 }): DisruptionWatch {
   const [demo, setDemo] = useState(false);
 
@@ -37,6 +38,7 @@ export function useDisruptionWatch(params: {
   });
 
   const incident: Incident | null = useMemo(() => {
+    // Demo replaces live data entirely — simulated and live information are never mixed.
     if (demo) return DEMO_INCIDENT;
     const data = alertsQuery.data;
     if (!data || data.status !== "disrupted") return null;
@@ -60,9 +62,10 @@ export function useDisruptionWatch(params: {
         incident,
         arriveBy: params.arriveBy,
         maxDelayMinutes: Number(params.maxDelay) || 0,
+        preference: params.preference,
         baselineMinutes: (params.baselineJourney ?? params.journey)?.minutes,
       }),
-    [incident, params.alternatives, params.arriveBy, params.baselineJourney, params.journey, params.maxDelay],
+    [incident, params.alternatives, params.arriveBy, params.baselineJourney, params.journey, params.maxDelay, params.preference],
   );
 
   return {
@@ -70,7 +73,9 @@ export function useDisruptionWatch(params: {
     incident,
     demo,
     setDemo,
-    demoAvailable: import.meta.env.DEV,
+    // Judges need the demo switch in the published app too — it is clearly labelled as simulated.
+    demoAvailable: true,
     disrupted: Boolean(assessment && assessment.level !== "none"),
   };
 }
+

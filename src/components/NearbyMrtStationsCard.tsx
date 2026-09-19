@@ -25,7 +25,12 @@ function distanceLabel(m: number) {
   return m < 1000 ? `${m} m` : `${(m / 1000).toFixed(1)} km`;
 }
 
-export function NearbyMrtStationsCard() {
+export function NearbyMrtStationsCard({
+  origin,
+}: {
+  /** Start of the active trip — stations are shown around it instead of the device location. */
+  origin?: { lat: number; lng: number; label: string } | null | undefined;
+} = {}) {
   const [coords, setCoords] = useState<Coords | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [selected, setSelected] = useState<NetworkStation | null>(null);
@@ -50,13 +55,17 @@ export function NearbyMrtStationsCard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const anchor: Coords | null = origin ? { lat: origin.lat, lng: origin.lng } : coords;
+  const anchorNote = origin ? `Stations near your trip start: ${origin.label}` : coords ? "Stations near your current location" : null;
+
   const nearest = useMemo(() => {
-    if (!coords) return [] as Array<NetworkStation & { distanceMetres: number }>;
+    if (!anchor) return [] as Array<NetworkStation & { distanceMetres: number }>;
     return [...STATION_INDEX.values()]
-      .map((station) => ({ ...station, distanceMetres: metres(coords, station) }))
+      .map((station) => ({ ...station, distanceMetres: metres(anchor, station) }))
       .sort((a, b) => a.distanceMetres - b.distanceMetres)
       .slice(0, 5);
-  }, [coords]);
+  }, [anchor]);
+
 
   const { data: detail, isFetching: detailLoading } = useQuery({
     queryKey: ["station-detail", selected?.name],
@@ -80,7 +89,7 @@ export function NearbyMrtStationsCard() {
         >
           <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><TrainFront className="size-4" /></span>
           <span className="min-w-0 flex-1 text-left">
-            <span className="block truncate font-display text-base font-semibold text-brand-deep">MRT stations near you</span>
+            <span className="block truncate font-display text-base font-semibold text-brand-deep">{origin ? "MRT stations near your trip start" : "MRT stations near you"}</span>
             {!open && <span className="block truncate text-[11px] font-medium text-muted-foreground">{nearest.length ? `${nearest.length} nearby stations` : "Tap to view nearby stations"}</span>}
           </span>
           <ChevronDown className={`size-4 shrink-0 text-primary transition-transform ${open ? "rotate-180" : ""}`} />
@@ -88,8 +97,10 @@ export function NearbyMrtStationsCard() {
         {open && <Button type="button" variant="ghost" size="icon" onClick={locate} aria-label="Use my location" className="size-8 shrink-0 text-primary"><Crosshair className="size-4" /></Button>}
       </div>
 
-      {open && geoError && <p className="mt-3 text-sm text-muted-foreground">{geoError}</p>}
-      {open && !geoError && !coords && <p className="mt-3 text-sm text-muted-foreground">Finding your location…</p>}
+      {open && anchorNote && <p className="mt-3 text-xs font-semibold text-muted-foreground">{anchorNote}</p>}
+      {open && geoError && !origin && <p className="mt-3 text-sm text-muted-foreground">{geoError}</p>}
+      {open && !geoError && !anchor && <p className="mt-3 text-sm text-muted-foreground">Finding your location…</p>}
+
 
       {open && nearest.length ? (
         <ul className="mt-4 space-y-2">

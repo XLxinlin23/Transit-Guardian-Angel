@@ -7,13 +7,21 @@ import { getWeather } from "../lib/singapore.functions";
 
 const WET = /rain|shower|thunder/i;
 
-export function WeatherCard({ defaultArea = "Tampines" }: { defaultArea?: string }) {
+export function WeatherCard({
+  defaultArea = "Tampines",
+  origin,
+}: {
+  defaultArea?: string;
+  /** Start of the active trip — weather follows it instead of the device location. */
+  origin?: { lat: number; lng: number; label: string } | null | undefined;
+}) {
   const [area, setArea] = useState(defaultArea);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locating, setLocating] = useState(false);
   const [locationNote, setLocationNote] = useState<string | null>(null);
   const userPicked = useRef(false);
   const fetchWeather = useServerFn(getWeather);
+
 
   const { data, isFetching, isError, refetch } = useQuery({
     queryKey: ["weather-2h"],
@@ -46,21 +54,23 @@ export function WeatherCard({ defaultArea = "Tampines" }: { defaultArea?: string
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Pick the nearest forecast area to the device location.
+  // Prefer the active trip's start; otherwise the nearest forecast area to the device.
   useEffect(() => {
-    if (!coords || !data?.areas.length || userPicked.current) return;
+    const point = origin ? { lat: origin.lat, lng: origin.lng } : coords;
+    if (!point || !data?.areas.length || userPicked.current) return;
     let best = data.areas[0]!;
     let bestDist = Number.POSITIVE_INFINITY;
     for (const a of data.areas) {
-      const d = (a.lat - coords.lat) ** 2 + (a.lng - coords.lng) ** 2;
+      const d = (a.lat - point.lat) ** 2 + (a.lng - point.lng) ** 2;
       if (d < bestDist) {
         bestDist = d;
         best = a;
       }
     }
     setArea(best.name);
-    setLocationNote("Nearest area to you: " + best.name);
-  }, [coords, data]);
+    setLocationNote(origin ? `Nearest area to your trip start (${origin.label}): ${best.name}` : "Nearest area to you: " + best.name);
+  }, [coords, data, origin]);
+
 
   const match = data?.areas.find((a) => a.name.toLowerCase() === area.trim().toLowerCase());
   const selected = match ?? data?.areas[0];

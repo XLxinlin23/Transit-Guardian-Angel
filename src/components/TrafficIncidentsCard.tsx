@@ -6,7 +6,12 @@ import { CarFront, CheckCircle2, ChevronDown, RefreshCw, TriangleAlert } from "l
 import { Button } from "@/components/ui/button";
 import { getTrafficIncidents } from "@/lib/traffic.functions";
 
-export function TrafficIncidentsCard() {
+export function TrafficIncidentsCard({
+  origin,
+}: {
+  /** Start of the active trip — incidents are ranked around it instead of the device location. */
+  origin?: { lat: number; lng: number; label: string } | null | undefined;
+} = {}) {
   const fetchIncidents = useServerFn(getTrafficIncidents);
   const [here, setHere] = useState<{ lat: number; lng: number } | null>(null);
   const [open, setOpen] = useState(false);
@@ -20,13 +25,21 @@ export function TrafficIncidentsCard() {
     );
   }, []);
 
+  const anchor = origin ? { lat: origin.lat, lng: origin.lng } : here;
+  const anchorNote = origin
+    ? `Incidents near your trip start: ${origin.label}`
+    : here
+      ? "Incidents near your current location"
+      : "Island-wide incidents — no trip or location set";
+
   const { data, isFetching, isError, refetch } = useQuery({
-    queryKey: ["traffic-incidents", here?.lat ?? null, here?.lng ?? null],
-    queryFn: () => fetchIncidents({ data: { lat: here?.lat ?? null, lng: here?.lng ?? null, radiusKm: 10 } }),
+    queryKey: ["traffic-incidents", anchor?.lat ?? null, anchor?.lng ?? null],
+    queryFn: () => fetchIncidents({ data: { lat: anchor?.lat ?? null, lng: anchor?.lng ?? null, radiusKm: 10 } }),
     refetchInterval: 120_000,
   });
 
   const incidents = data?.incidents ?? [];
+
 
   return (
     <section className="glass-panel overflow-hidden rounded-2xl border-t-2 border-t-warning p-5">
@@ -64,6 +77,10 @@ export function TrafficIncidentsCard() {
           </Button>
         )}
       </div>
+
+      {open && <p className="mt-3 text-xs font-semibold text-muted-foreground">{anchorNote}</p>}
+
+
 
       {open && data && !data.configured ? (
         <p className="mt-4 text-sm text-muted-foreground">Waiting for live road incident data.</p>

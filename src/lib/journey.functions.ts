@@ -31,17 +31,26 @@ export type Journey = {
   /** Total time spent on foot. */
   walkMinutes: number;
   totalWalkingTimeMinutes: number;
-  /** Estimated adult fare in SGD. */
+  /** Adult fare in SGD — from the operator when available, otherwise estimated. */
   fare: number;
+  /** True when the fare is our own distance estimate rather than published data. */
+  fareEstimated: boolean;
   /** Number of vehicle-to-vehicle changes. */
   transfers: number;
   numberOfTransfers: number;
+  /** Live platform crowding from LTA PCDRealTime, when the route uses rail. */
+  crowdLevel: "low" | "moderate" | "high" | "unknown";
+  /** Where the route data came from, shown to the user. */
+  dataSource: string;
+  /** ISO timestamp of when this route was calculated. */
+  updatedAt: string;
   /** One line explaining why this option won, e.g. "Fastest · 54 min". */
   reason: string;
   /** How many distinct options were compared. */
   alternatives: number;
   note?: string;
 };
+
 
 
 const LRT_LINES = new Set(["BP", "SE", "SW", "PE", "PW", "PTC", "STC"]);
@@ -214,9 +223,14 @@ export type JourneyCandidate = {
   totalWalkingDistanceMetres: number;
   totalWalkingTimeMinutes: number;
   fare: number;
+  fareEstimated: boolean;
   numberOfTransfers: number;
+  /** 0 = not crowded, 1 = moderate, 2 = crowded. Null when no live data covers this route. */
+  crowdScore: number | null;
+  source: string;
   signature: string;
 };
+
 
 function pathMetres(points: Array<{ lat: number; lng: number }>): number {
   let total = 0;
@@ -244,7 +258,7 @@ function routeId(signature: string): string {
   return `route-${(hash >>> 0).toString(36)}`;
 }
 
-function toCandidate(legs: JourneyLeg[], fareOverride?: number | null): JourneyCandidate | null {
+function toCandidate(legs: JourneyLeg[], fareOverride?: number | null, source = "LTA DataMall"): JourneyCandidate | null {
   if (!legs.length) return null;
 
   const changes = Math.max(0, legs.filter((leg) => leg.mode !== "walk").length - 1);
@@ -259,20 +273,100 @@ function toCandidate(legs: JourneyLeg[], fareOverride?: number | null): JourneyC
           .join(">")}`,
     )
     .join("|");
+  const published = typeof fareOverride === "number";
   return {
     id: routeId(signature),
     legs,
     totalDurationMinutes: minutes,
     totalWalkingDistanceMetres: walkMetres,
     totalWalkingTimeMinutes: walkMinutes,
-    fare: typeof fareOverride === "number" ? fareOverride : estimateFare(legs),
+    fare: published ? fareOverride : estimateFare(legs),
+    fareEstimated: !published,
     numberOfTransfers: changes,
+    crowdScore: null,
+    source,
     signature,
   };
 }
 
+/** Public transport = at least one ridden leg. */
+function usesTransit(candidate: JourneyCandidate): boolean {
+  return candidate.legs.some((leg) => leg.mode !== "walk");
+}
+
+const MAX_WALK_ONLY_METRES = 3000;
+const MAX_TOTAL_WALK_METRES = 2000;
+
+/**
+ * Drop routes no one would actually take before ranking:
+ * all-walking routes over 3 km, and routes with more than 2 km of walking
+ * whenever a reasonable public-transport route exists.
+ */
+export function eligibleCandidates(candidates: JourneyCandidate[], directMetres: number): JourneyCandidate[] {
+  if (!candidates.length) return [];
+  const transit = candidates.filter(usesTransit);
+  let pool = transit.length ? transit : candidates;
+  if (!transit.length && directMetres > MAX_WALK_ONLY_METRES) return [];
+  const shortWalk = pool.filter((candidate) => candidate.totalWalkingDistanceMetres <= MAX_TOTAL_WALK_METRES);
+  if (shortWalk.length) pool = shortWalk;
+  return pool;
+}
+
+const CROWD_VALUE: Record<string, number> = { l: 0, m: 1, h: 2 };
+
+/** Attach live platform crowding (LTA PCDRealTime) to every rail route. */
+async function attachCrowd(candidates: JourneyCandidate[]): Promise<void> {
+  const lines = new Set<string>();
+  for (const candidate of candidates) {
+    for (const leg of candidate.legs) if (leg.mode === "mrt" || leg.mode === "lrt") lines.add(leg.badge.toUpperCase());
+  }
+  if (!lines.size) return;
+  try {
+    const { fetchCrowd } = await import("./transit.server");
+    const byLine = new Map<string, Record<string, string>>();
+    await Promise.all(
+      [...lines].map(async (line) => {
+        const data = await fetchCrowd(line).catch(() => ({}));
+        if (Object.keys(data).length) byLine.set(line, data);
+      }),
+    );
+    if (!byLine.size) return;
+    for (const candidate of candidates) {
+      const readings: number[] = [];
+      for (const leg of candidate.legs) {
+        if (leg.mode !== "mrt" && leg.mode !== "lrt") continue;
+        const table = byLine.get(leg.badge.toUpperCase());
+        if (!table) continue;
+        for (const point of leg.points) {
+          const level = table[point.name.toUpperCase()];
+          const value = level ? CROWD_VALUE[level] : undefined;
+          if (value !== undefined) readings.push(value);
+        }
+      }
+      if (readings.length) {
+        candidate.crowdScore = readings.reduce((total, value) => total + value, 0) / readings.length;
+      }
+    }
+  } catch (error) {
+    console.error("crowd lookup failed", error);
+  }
+}
+
+function crowdLabel(score: number | null): "low" | "moderate" | "high" | "unknown" {
+  if (score === null) return "unknown";
+  if (score < 0.67) return "low";
+  if (score < 1.34) return "moderate";
+  return "high";
+}
+
+/** Walking in the open is the only sheltered signal we actually measure. */
+function openAirMetres(candidate: JourneyCandidate): number {
+  return candidate.totalWalkingDistanceMetres;
+}
+
 
 const PRIMARY_ORDER = ["speed", "walking", "sheltered", "transfers", "cost", "crowd"] as const;
+
 
 function primaryPreference(preferences: string[]): string {
   for (const value of PRIMARY_ORDER) {
@@ -284,15 +378,16 @@ function primaryPreference(preferences: string[]): string {
 function scoreFor(candidate: JourneyCandidate, preference: string): number {
   switch (preference) {
     case "sheltered":
-      // Sheltered = as little open-air walking as possible, with rail preferred over bus waits.
-      return candidate.totalWalkingDistanceMetres * 12 + candidate.numberOfTransfers * 40 + candidate.totalDurationMinutes;
+      // Measured signal: open-air walking distance, then transfers (each one adds exposure).
+      return openAirMetres(candidate) * 12 + candidate.numberOfTransfers * 40 + candidate.totalDurationMinutes;
     case "transfers":
+      // Minimise transfers first; shortest duration breaks the tie.
       return candidate.numberOfTransfers * 1000 + candidate.totalDurationMinutes;
     case "cost":
       return candidate.fare * 100 + candidate.totalDurationMinutes;
-
     case "crowd":
-      return candidate.numberOfTransfers * 80 + candidate.totalDurationMinutes;
+      // Live PCDRealTime reading where we have one; unknown routes sit mid-table.
+      return (candidate.crowdScore ?? 1) * 600 + candidate.numberOfTransfers * 80 + candidate.totalDurationMinutes;
     default:
       return candidate.totalDurationMinutes;
   }
@@ -311,6 +406,12 @@ export function rankCandidates(candidates: JourneyCandidate[], preference: strin
   });
 }
 
+const CROWD_TEXT: Record<string, string> = {
+  low: "platforms reported not crowded",
+  moderate: "platforms reported moderately crowded",
+  high: "platforms reported crowded",
+};
+
 function reasonFor(candidate: JourneyCandidate, preference: string, next?: JourneyCandidate): string {
   const walkingMetres = Math.round(candidate.totalWalkingDistanceMetres);
   const walk = walkingMetres >= 1000
@@ -322,18 +423,22 @@ function reasonFor(candidate: JourneyCandidate, preference: string, next?: Journ
         ? `Least walking: ${walkingMetres} m, ${Math.max(0, Math.round(next.totalWalkingDistanceMetres - candidate.totalWalkingDistanceMetres))} m less than the next route.`
         : "Only one route is available — least walking cannot be compared.";
     case "sheltered":
-      return `Most sheltered · ${walk}`;
+      return `Most sheltered · ${walk} in the open, ${candidate.numberOfTransfers} transfer${candidate.numberOfTransfers === 1 ? "" : "s"} (ranked by open-air walking — no covered-link dataset).`;
     case "transfers":
-      return `Fewest transfers · ${candidate.numberOfTransfers} transfer${candidate.numberOfTransfers === 1 ? "" : "s"}`;
+      return `Fewest transfers · ${candidate.numberOfTransfers} transfer${candidate.numberOfTransfers === 1 ? "" : "s"} · ${candidate.totalDurationMinutes} min`;
     case "cost":
-      return `Lowest cost · $${candidate.fare.toFixed(2)} · ${candidate.totalDurationMinutes} min`;
-
-    case "crowd":
-      return `Lower crowding · ${candidate.totalDurationMinutes} min`;
+      return `Lowest cost · ${candidate.fareEstimated ? "estimated fare " : ""}$${candidate.fare.toFixed(2)} · ${candidate.totalDurationMinutes} min`;
+    case "crowd": {
+      const level = crowdLabel(candidate.crowdScore);
+      return level === "unknown"
+        ? `Lower crowding · live crowd data unavailable for this route, ranked by transfers and time (${candidate.totalDurationMinutes} min).`
+        : `Lower crowding · ${CROWD_TEXT[level]} (LTA PCDRealTime) · ${candidate.totalDurationMinutes} min`;
+    }
     default:
       return `Fastest · ${candidate.totalDurationMinutes} min`;
   }
 }
+
 
 const pointSchema = z.object({
   lat: z.number(),
@@ -354,8 +459,9 @@ async function buildCandidates(data: PlanInput): Promise<JourneyCandidate[]> {
   const destination: Point = { lat: data.to.lat, lng: data.to.lng, name: data.to.label };
 
   const candidates: JourneyCandidate[] = [];
-  const add = (legs: JourneyLeg[], fare?: number | null) => {
-    const candidate = toCandidate(legs, fare);
+  let source = "LTA DataMall";
+  const add = (legs: JourneyLeg[], fare?: number | null, from = source) => {
+    const candidate = toCandidate(legs, fare, from);
     if (!candidate) return;
     if (candidates.some((item) => item.signature === candidate.signature)) return;
     candidates.push(candidate);
@@ -364,11 +470,16 @@ async function buildCandidates(data: PlanInput): Promise<JourneyCandidate[]> {
   // 0. Google Maps walking/bus/MRT routes first — they follow real paths and timetables.
   try {
     const { googleRoutePlans } = await import("./google-routes.server");
-    for (const plan of await googleRoutePlans(origin, destination)) add(plan.legs, plan.fare);
+    for (const plan of await googleRoutePlans(origin, destination)) add(plan.legs, plan.fare, "Google Maps Routes");
   } catch (error) {
     console.error("Google route lookup failed", error);
   }
-  if (candidates.length) return candidates;
+  if (candidates.length) {
+    await attachCrowd(candidates);
+    return candidates;
+  }
+  source = "LTA DataMall";
+
 
 
 
@@ -434,7 +545,9 @@ async function buildCandidates(data: PlanInput): Promise<JourneyCandidate[]> {
     if (fallback) candidates.push(fallback);
   }
 
+  await attachCrowd(candidates);
   return candidates;
+
 }
 
 function logCandidateMetrics(candidates: JourneyCandidate[]) {
@@ -445,6 +558,8 @@ function logCandidateMetrics(candidates: JourneyCandidate[]) {
       walkingTimeMinutes: candidate.totalWalkingTimeMinutes,
       durationMinutes: candidate.totalDurationMinutes,
       transfers: candidate.numberOfTransfers,
+      transit: usesTransit(candidate),
+      crowdScore: candidate.crowdScore,
     })),
   );
 }
@@ -464,8 +579,12 @@ function pickJourney(candidates: JourneyCandidate[], preference: string): Journe
     walkMinutes: winner.totalWalkingTimeMinutes,
     totalWalkingTimeMinutes: winner.totalWalkingTimeMinutes,
     fare: winner.fare,
+    fareEstimated: winner.fareEstimated,
     transfers: winner.numberOfTransfers,
     numberOfTransfers: winner.numberOfTransfers,
+    crowdLevel: crowdLabel(winner.crowdScore),
+    dataSource: winner.source,
+    updatedAt: new Date().toISOString(),
     reason:
       preference === "walking"
         ? reasonFor(winner, preference, ranked[1])
@@ -484,6 +603,14 @@ function pickJourney(candidates: JourneyCandidate[], preference: string): Journe
   return journey;
 }
 
+function directDistance(data: PlanInput): number {
+  return distanceMetres(data.from.lat, data.from.lng, data.to.lat, data.to.lng);
+}
+
+export type PlanResult =
+  | { ok: true; journey: Journey }
+  | { ok: false; message: string };
+
 export const planJourney = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) =>
     z
@@ -494,10 +621,19 @@ export const planJourney = createServerFn({ method: "GET" })
       })
       .parse(data),
   )
-  .handler(async ({ data }): Promise<Journey | null> => {
-    const candidates = await buildCandidates(data);
-    if (process.env["NODE_ENV"] !== "production") logCandidateMetrics(candidates);
-    return pickJourney(candidates, primaryPreference(data.preferences));
+  .handler(async ({ data }): Promise<PlanResult> => {
+    const all = await buildCandidates(data);
+    const candidates = eligibleCandidates(all, directDistance(data));
+    if (process.env["NODE_ENV"] !== "production") logCandidateMetrics(all);
+    if (!candidates.length) {
+      const km = (directDistance(data) / 1000).toFixed(1);
+      return {
+        ok: false,
+        message: `No reasonable public transport route was found for this ${km} km trip. The only option returned was a very long walk, so nothing is recommended — try a nearby station or stop as your start or end point.`,
+      };
+    }
+    const journey = pickJourney(candidates, primaryPreference(data.preferences));
+    return journey ? { ok: true, journey } : { ok: false, message: "No route could be calculated for this trip." };
   });
 
 export type JourneyOption = { preference: string; journey: Journey };
@@ -508,7 +644,8 @@ export const compareJourneys = createServerFn({ method: "GET" })
     z.object({ from: pointSchema, to: pointSchema }).parse(data),
   )
   .handler(async ({ data }): Promise<JourneyOption[]> => {
-    const candidates = await buildCandidates(data);
+    const all = await buildCandidates(data);
+    const candidates = eligibleCandidates(all, directDistance(data));
     if (!candidates.length) return [];
     if (process.env["NODE_ENV"] !== "production") logCandidateMetrics(candidates);
     const options: JourneyOption[] = [];

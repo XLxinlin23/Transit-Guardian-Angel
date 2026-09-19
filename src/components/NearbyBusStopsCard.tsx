@@ -11,9 +11,12 @@ type Coords = { lat: number; lng: number };
 export function NearbyBusStopsCard({
   selectedCode,
   onSelect,
+  origin,
 }: {
   selectedCode?: string | undefined;
   onSelect: (stop: NearbyBusStop) => void;
+  /** Start of the active trip — stops are shown around it instead of the device location. */
+  origin?: { lat: number; lng: number; label: string } | null | undefined;
 }) {
   const [coords, setCoords] = useState<Coords | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
@@ -38,12 +41,16 @@ export function NearbyBusStopsCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const anchor: Coords | null = origin ? { lat: origin.lat, lng: origin.lng } : coords;
+  const anchorNote = origin ? `Stops near your trip start: ${origin.label}` : coords ? "Stops near your current location" : null;
+
   const { data, isFetching, isError } = useQuery({
-    queryKey: ["nearby-bus-stops", coords?.lat, coords?.lng],
-    queryFn: () => fetchNearby({ data: { lat: coords!.lat, lng: coords!.lng, limit: 5 } }),
-    enabled: !!coords,
+    queryKey: ["nearby-bus-stops", anchor?.lat, anchor?.lng],
+    queryFn: () => fetchNearby({ data: { lat: anchor!.lat, lng: anchor!.lng, limit: 5 } }),
+    enabled: !!anchor,
     staleTime: 5 * 60_000,
   });
+
 
   return (
     <section className="glass-panel overflow-hidden rounded-2xl border-t-2 border-t-success p-5">
@@ -57,7 +64,7 @@ export function NearbyBusStopsCard({
         >
           <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-success-soft text-success"><MapPin className="size-4" /></span>
           <span className="min-w-0 flex-1 text-left">
-            <span className="block truncate font-display text-base font-semibold text-brand-deep">Bus stops near you</span>
+            <span className="block truncate font-display text-base font-semibold text-brand-deep">{origin ? "Bus stops near your trip start" : "Bus stops near you"}</span>
             {!open && <span className="block truncate text-[11px] font-medium text-muted-foreground">{data?.stops.length ? `${data.stops.length} nearby stops` : "Tap to view nearby stops"}</span>}
           </span>
           <ChevronDown className={`size-4 shrink-0 text-success transition-transform ${open ? "rotate-180" : ""}`} />
@@ -65,8 +72,10 @@ export function NearbyBusStopsCard({
         {open && <Button type="button" variant="ghost" size="icon" onClick={locate} aria-label="Use my location" className="size-8 shrink-0 text-success"><Crosshair className={`size-4 ${isFetching ? "animate-pulse" : ""}`} /></Button>}
       </div>
 
-      {open && geoError && <p className="mt-3 text-sm text-muted-foreground">{geoError}</p>}
-      {open && !geoError && !coords && <p className="mt-3 text-sm text-muted-foreground">Finding your location…</p>}
+      {open && anchorNote && <p className="mt-3 text-xs font-semibold text-muted-foreground">{anchorNote}</p>}
+      {open && geoError && !origin && <p className="mt-3 text-sm text-muted-foreground">{geoError}</p>}
+      {open && !geoError && !anchor && <p className="mt-3 text-sm text-muted-foreground">Finding your location…</p>}
+
       {open && data && !data.configured && (
         <p className="mt-3 text-sm text-muted-foreground">Waiting for the LTA DataMall account key.</p>
       )}

@@ -12,7 +12,7 @@ import { RoutePreferencePanel } from "../components/RoutePreferencePanel";
 import { NearbyBusStopsCard } from "../components/NearbyBusStopsCard";
 import { WeatherCard } from "../components/WeatherCard";
 import { TrafficIncidentsCard } from "../components/TrafficIncidentsCard";
-import { TripProvider } from "../lib/trip-store";
+import { TripProvider, useTrip } from "../lib/trip-store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -97,7 +97,15 @@ function IndexShell() {
 
 
 
+/** The active trip's start, used to anchor weather, arrivals and traffic. */
+function useTripOrigin() {
+  const { fromPlace } = useTrip();
+  return fromPlace ? { lat: fromPlace.lat, lng: fromPlace.lng, label: fromPlace.name } : null;
+}
+
+
 function AlertsView() {
+  const origin = useTripOrigin();
   return (
     <div className="pt-6">
       <p className="text-xs font-semibold uppercase text-route-red">Monitoring active</p>
@@ -106,8 +114,8 @@ function AlertsView() {
 
       <div className="mt-5 grid gap-4 lg:grid-cols-2 lg:items-start">
         <MrtStatusCard />
-        <WeatherCard />
-        <TrafficIncidentsCard />
+        <WeatherCard origin={origin} />
+        <TrafficIncidentsCard origin={origin} />
       </div>
 
 
@@ -120,19 +128,23 @@ function AlertsView() {
 
 function ArrivalsView() {
   const [selected, setSelected] = useState<{ code: string; name: string } | null>(null);
+  const origin = useTripOrigin();
 
   return (
     <div className="pt-6">
       <p className="text-xs font-semibold uppercase text-success">Live timings</p>
       <h1 className="mt-2 font-display text-3xl font-bold text-brand-deep">MRT &amp; Bus arrival</h1>
-      <p className="mt-2 text-sm text-muted-foreground">Stations and stops near you, tapped once for live details.</p>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {origin ? `Stations and stops near your trip start (${origin.label}).` : "Stations and stops near you, tapped once for live details."}
+      </p>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-2 lg:items-start">
-        <NearbyMrtStationsCard />
+        <NearbyMrtStationsCard origin={origin} />
         <div className="grid gap-4">
           <NearbyBusStopsCard
             selectedCode={selected?.code}
             onSelect={(stop) => setSelected({ code: stop.code, name: stop.name })}
+            origin={origin}
           />
           <BusArrivalCard
             stopCode={selected?.code}
@@ -141,6 +153,7 @@ function ArrivalsView() {
           />
         </div>
       </div>
+
 
 
       <p className="mt-5 text-center text-[11px] text-muted-foreground">Train and bus data © LTA DataMall</p>

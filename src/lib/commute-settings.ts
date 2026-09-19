@@ -23,10 +23,17 @@ export function newAlarmId(): string {
   return `a${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 }
 
+/** Which day the trip is for: today, tomorrow, or a chosen calendar date. */
+export type JourneyDateMode = "today" | "tomorrow" | "date";
+
 export type RouteAlarm = {
   from: string;
   to: string;
   arriveBy: string;
+  /** Journey date mode — today, tomorrow or a specific date. */
+  dateMode: JourneyDateMode;
+  /** ISO yyyy-mm-dd, used only when dateMode is "date". */
+  date: string;
   maxDelay: string;
   repeat: RepeatOption;
   days: string[];
@@ -38,7 +45,26 @@ export type RouteAlarm = {
   busStopCode: string;
 };
 
+export function journeyDate(alarm: Pick<RouteAlarm, "dateMode" | "date">): Date {
+  const now = new Date();
+  if (alarm.dateMode === "tomorrow") return new Date(now.getTime() + 86_400_000);
+  if (alarm.dateMode === "date" && alarm.date) {
+    const parsed = new Date(`${alarm.date}T00:00:00`);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  return now;
+}
+
+export function journeyDateLabel(alarm: Pick<RouteAlarm, "dateMode" | "date">): string {
+  const date = journeyDate(alarm);
+  const formatted = date.toLocaleDateString("en-SG", { weekday: "short", day: "numeric", month: "short" });
+  if (alarm.dateMode === "today") return `Today, ${formatted}`;
+  if (alarm.dateMode === "tomorrow") return `Tomorrow, ${formatted}`;
+  return formatted;
+}
+
 export type RoutePreference = "speed" | "cost" | "walking" | "sheltered" | "transfers" | "crowd";
+
 
 export const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
@@ -46,6 +72,9 @@ export const DEFAULT_ALARM: RouteAlarm = {
   from: "Tampines",
   to: "Raffles Place",
   arriveBy: "08:45",
+  dateMode: "today",
+  date: "",
+
   maxDelay: "15",
   repeat: "weekdays",
   days: ["Mon", "Tue", "Wed", "Thu", "Fri"],

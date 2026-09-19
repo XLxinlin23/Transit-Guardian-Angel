@@ -4,4 +4,10 @@
 - [x] Verify persistence, custom days, mobile layout, and build health.
 - [x] Separate the primary route preference from route comparison and add persistent manual route selection.
 - [x] Add clear controls and selectable Home route alternatives while retaining the recommended route.
-- [x] Disruption-aware rerouting using Maximum delay (journey status card, demo incident switch)
+- [x] Disruption-aware rerouting using Maximum delay (journey status card, demo incident switch).
+- [x] Remove the Directions page; power all maps and steps with Google routing.
+- [x] Route eligibility rules (no unreasonable all-walking routes) and honest metric labels.
+- [x] Journey date selector (Today / Tomorrow / Select date) shown with Reach by.
+- [x] Data source, last-updated time and "Estimated fare" labelling on the route card.
+- [x] Demo incident switch always available and clearly labelled as simulated.
+- [x] Anchor weather, arrivals and traffic to the active trip start with labelled fallbacks.
