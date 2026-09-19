@@ -265,7 +265,7 @@ function toCandidate(legs: JourneyLeg[], fareOverride?: number | null): JourneyC
     totalDurationMinutes: minutes,
     totalWalkingDistanceMetres: walkMetres,
     totalWalkingTimeMinutes: walkMinutes,
-    fare: estimateFare(legs),
+    fare: typeof fareOverride === "number" ? fareOverride : estimateFare(legs),
     numberOfTransfers: changes,
     signature,
   };
