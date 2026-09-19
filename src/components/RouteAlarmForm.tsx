@@ -39,7 +39,7 @@ import {
 } from "@/lib/commute-settings";
 import { useTrip } from "@/lib/trip-store";
 import { getDeviceId } from "@/lib/device-id";
-import { planJourney, type Journey } from "@/lib/journey.functions";
+import { compareJourneys, planJourney, type Journey } from "@/lib/journey.functions";
 import { PlacePicker, placeLine, type ConfirmedPlace } from "./PlacePicker";
 import { CommuteAlertCard } from "./CommuteAlertCard";
 import { RouteMap } from "./RouteMap";
