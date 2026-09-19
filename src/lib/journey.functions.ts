@@ -474,12 +474,12 @@ async function buildCandidates(data: PlanInput): Promise<JourneyCandidate[]> {
   } catch (error) {
     console.error("Google route lookup failed", error);
   }
-  /** A rail route that keeps off the given lines, so a disruption always has a real fallback. */
-  const addRailAvoiding = (avoidLines: string[]) => {
+  /** A rail route that keeps off the given lines or closed stretches, so a disruption always has a real fallback. */
+  const addRailAvoiding = (avoidLines: string[], blockedSegments: BlockedSegment[] = []) => {
     const start = nearestStation(origin.lat, origin.lng);
     const end = nearestStation(destination.lat, destination.lng);
     if (!start || !end || start.name === end.name) return;
-    const rail = planRoute(start.name, end.name, ["transfers"] as never, avoidLines);
+    const rail = planRoute(start.name, end.name, ["transfers"] as never, avoidLines, blockedSegments);
     if (!rail) return;
     if (rail.legs.some((leg) => avoidLines.includes(leg.line))) return;
     const startNode = STATION_INDEX.get(start.name) ?? start;
