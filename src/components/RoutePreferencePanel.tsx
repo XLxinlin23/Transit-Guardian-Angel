@@ -26,15 +26,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { PREFERENCE_LABELS, type PlacePoint, type RoutePreference } from "@/lib/commute-settings";
+import { PREFERENCE_LABELS, type RoutePreference } from "@/lib/commute-settings";
 import { compareJourneys, type Journey } from "@/lib/journey.functions";
-import { getGoogleDirections } from "@/lib/directions.functions";
 import { getTrainAlerts } from "@/lib/singapore.functions";
 import { useTrip } from "@/lib/trip-store";
-import { DirectionsStepList, formatDistance } from "./DirectionsSteps";
 import { JourneyTimeline, LegBadge, RouteLegend } from "./JourneySteps";
 import { RouteMap } from "./RouteMap";
-
 
 const OPTIONS: { value: RoutePreference; icon: typeof Gauge; detail: string }[] = [
   { value: "speed", icon: Gauge, detail: "Shortest travel time" },
@@ -225,18 +222,12 @@ export function RoutePreferencePanel({
 
                   {open && (
                     <div className="mt-4 border-t border-border pt-4">
-                      <RouteDetails
-                        journey={journey}
-                        segments={segments}
-                        title={`${labels[0]} route map`}
-                        preference={routePreferences[0] ?? applied}
-                        from={fromPlace}
-                        to={toPlace}
-                      />
+                      <RouteMap stations={[]} segments={segments} embedded compact title={`${labels[0]} route map`} />
+                      <div className="mt-3"><RouteLegend legs={journey.legs} /></div>
+                      <div className="mt-3"><JourneyTimeline legs={journey.legs} /></div>
                       <Button className="mt-4 h-11 w-full rounded-xl" onClick={() => setPendingJourney(journey)}>Use this route</Button>
                     </div>
                   )}
-
                 </article>
               );
             })}
@@ -271,77 +262,6 @@ function Metric({ icon: Icon, label, value }: { icon: typeof Clock3; label: stri
     <div className="rounded-xl bg-secondary/65 p-2.5">
       <p className="flex items-center gap-1 text-[10px] font-semibold uppercase text-muted-foreground"><Icon className="size-3" /> {label}</p>
       <p className="mt-1 font-bold text-brand-deep">{value}</p>
-    </div>
-  );
-}
-
-/** Route detail view — uses Google's walking/bus/MRT geometry when available. */
-function RouteDetails({
-  journey,
-  segments,
-  title,
-  preference,
-  from,
-  to,
-}: {
-  journey: Journey;
-  segments: Array<{ mode: Journey["legs"][number]["mode"]; badge: string; points: Journey["legs"][number]["points"] }>;
-  title: string;
-  preference: RoutePreference;
-  from: PlacePoint | null;
-  to: PlacePoint | null;
-}) {
-  const directions = useServerFn(getGoogleDirections);
-  const onlyWalking = journey.legs.every((leg) => leg.mode === "walk");
-
-  const query = useQuery({
-    queryKey: ["google-directions", from?.lat, from?.lng, to?.lat, to?.lng, preference, onlyWalking],
-    enabled: Boolean(from && to),
-    staleTime: 5 * 60_000,
-    queryFn: () => {
-      if (!from || !to) return Promise.resolve(null);
-      return directions({
-        data: {
-          origin: { label: from.name, lat: from.lat, lng: from.lng },
-          destination: { label: to.name, lat: to.lat, lng: to.lng },
-          mode: onlyWalking ? ("WALK" as const) : ("TRANSIT" as const),
-          preference,
-        },
-      });
-    },
-  });
-
-  const google = query.data && query.data.segments.length > 0 ? query.data : null;
-
-  return (
-    <div>
-      <RouteMap
-        stations={
-          google
-            ? ([google.origin, google.destination].filter(Boolean) as { name: string; lat: number; lng: number }[])
-            : []
-        }
-        segments={google ? google.segments : segments}
-        embedded
-        compact
-        title={title}
-        footer={
-          google
-            ? `${google.minutes} min · ${formatDistance(google.distanceMetres)} · Directions © Google · Base map © OpenStreetMap contributors`
-            : "Base map © OpenStreetMap contributors"
-        }
-      />
-      <div className="mt-3"><RouteLegend legs={journey.legs} /></div>
-      <div className="mt-3">
-        {query.isFetching && !google ? (
-          <p className="text-xs text-muted-foreground">Loading Google directions…</p>
-        ) : google ? (
-          <DirectionsStepList steps={google.steps} />
-        ) : (
-          <JourneyTimeline legs={journey.legs} />
-        )}
-      </div>
-      {query.data?.message && !google && <p className="mt-2 text-xs text-muted-foreground">{query.data.message}</p>}
     </div>
   );
 }
