@@ -27,6 +27,8 @@ export function useDisruptionWatch(params: {
   arriveBy: string;
   maxDelay: string;
   preference?: string | undefined;
+  /** Minutes past midnight the user actually departed, when known. */
+  departureMinutes?: number | null | undefined;
 }): DisruptionWatch {
   // Shared with the Simulation tab, so a simulated incident is visible everywhere.
   const { demo, setDemo } = useSimulationOrLocal();
