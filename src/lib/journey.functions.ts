@@ -258,7 +258,7 @@ function routeId(signature: string): string {
   return `route-${(hash >>> 0).toString(36)}`;
 }
 
-function toCandidate(legs: JourneyLeg[], fareOverride?: number | null): JourneyCandidate | null {
+function toCandidate(legs: JourneyLeg[], fareOverride?: number | null, source = "LTA DataMall"): JourneyCandidate | null {
   if (!legs.length) return null;
 
   const changes = Math.max(0, legs.filter((leg) => leg.mode !== "walk").length - 1);
@@ -273,20 +273,100 @@ function toCandidate(legs: JourneyLeg[], fareOverride?: number | null): JourneyC
           .join(">")}`,
     )
     .join("|");
+  const published = typeof fareOverride === "number";
   return {
     id: routeId(signature),
     legs,
     totalDurationMinutes: minutes,
     totalWalkingDistanceMetres: walkMetres,
     totalWalkingTimeMinutes: walkMinutes,
-    fare: typeof fareOverride === "number" ? fareOverride : estimateFare(legs),
+    fare: published ? fareOverride : estimateFare(legs),
+    fareEstimated: !published,
     numberOfTransfers: changes,
+    crowdScore: null,
+    source,
     signature,
   };
 }
 
+/** Public transport = at least one ridden leg. */
+function usesTransit(candidate: JourneyCandidate): boolean {
+  return candidate.legs.some((leg) => leg.mode !== "walk");
+}
+
+const MAX_WALK_ONLY_METRES = 3000;
+const MAX_TOTAL_WALK_METRES = 2000;
+
+/**
+ * Drop routes no one would actually take before ranking:
+ * all-walking routes over 3 km, and routes with more than 2 km of walking
+ * whenever a reasonable public-transport route exists.
+ */
+export function eligibleCandidates(candidates: JourneyCandidate[], directMetres: number): JourneyCandidate[] {
+  if (!candidates.length) return [];
+  const transit = candidates.filter(usesTransit);
+  let pool = transit.length ? transit : candidates;
+  if (!transit.length && directMetres > MAX_WALK_ONLY_METRES) return [];
+  const shortWalk = pool.filter((candidate) => candidate.totalWalkingDistanceMetres <= MAX_TOTAL_WALK_METRES);
+  if (shortWalk.length) pool = shortWalk;
+  return pool;
+}
+
+const CROWD_VALUE: Record<string, number> = { l: 0, m: 1, h: 2 };
+
+/** Attach live platform crowding (LTA PCDRealTime) to every rail route. */
+async function attachCrowd(candidates: JourneyCandidate[]): Promise<void> {
+  const lines = new Set<string>();
+  for (const candidate of candidates) {
+    for (const leg of candidate.legs) if (leg.mode === "mrt" || leg.mode === "lrt") lines.add(leg.badge.toUpperCase());
+  }
+  if (!lines.size) return;
+  try {
+    const { fetchCrowd } = await import("./transit.server");
+    const byLine = new Map<string, Record<string, string>>();
+    await Promise.all(
+      [...lines].map(async (line) => {
+        const data = await fetchCrowd(line).catch(() => ({}));
+        if (Object.keys(data).length) byLine.set(line, data);
+      }),
+    );
+    if (!byLine.size) return;
+    for (const candidate of candidates) {
+      const readings: number[] = [];
+      for (const leg of candidate.legs) {
+        if (leg.mode !== "mrt" && leg.mode !== "lrt") continue;
+        const table = byLine.get(leg.badge.toUpperCase());
+        if (!table) continue;
+        for (const point of leg.points) {
+          const level = table[point.name.toUpperCase()];
+          const value = level ? CROWD_VALUE[level] : undefined;
+          if (value !== undefined) readings.push(value);
+        }
+      }
+      if (readings.length) {
+        candidate.crowdScore = readings.reduce((total, value) => total + value, 0) / readings.length;
+      }
+    }
+  } catch (error) {
+    console.error("crowd lookup failed", error);
+  }
+}
+
+function crowdLabel(score: number | null): "low" | "moderate" | "high" | "unknown" {
+  if (score === null) return "unknown";
+  if (score < 0.67) return "low";
+  if (score < 1.34) return "moderate";
+  return "high";
+}
+
+/** Walking in the open is the only sheltered signal we actually measure. */
+function openAirMetres(candidate: JourneyCandidate): number {
+  return candidate.totalWalkingDistanceMetres;
+}
+
 
 const PRIMARY_ORDER = ["speed", "walking", "sheltered", "transfers", "cost", "crowd"] as const;
+
 
 function primaryPreference(preferences: string[]): string {
   for (const value of PRIMARY_ORDER) {
