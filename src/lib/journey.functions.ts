@@ -378,15 +378,16 @@ function primaryPreference(preferences: string[]): string {
 function scoreFor(candidate: JourneyCandidate, preference: string): number {
   switch (preference) {
     case "sheltered":
-      // Sheltered = as little open-air walking as possible, with rail preferred over bus waits.
-      return candidate.totalWalkingDistanceMetres * 12 + candidate.numberOfTransfers * 40 + candidate.totalDurationMinutes;
+      // Measured signal: open-air walking distance, then transfers (each one adds exposure).
+      return openAirMetres(candidate) * 12 + candidate.numberOfTransfers * 40 + candidate.totalDurationMinutes;
     case "transfers":
+      // Minimise transfers first; shortest duration breaks the tie.
       return candidate.numberOfTransfers * 1000 + candidate.totalDurationMinutes;
     case "cost":
       return candidate.fare * 100 + candidate.totalDurationMinutes;
-
     case "crowd":
-      return candidate.numberOfTransfers * 80 + candidate.totalDurationMinutes;
+      // Live PCDRealTime reading where we have one; unknown routes sit mid-table.
+      return (candidate.crowdScore ?? 1) * 600 + candidate.numberOfTransfers * 80 + candidate.totalDurationMinutes;
     default:
       return candidate.totalDurationMinutes;
   }
@@ -405,6 +406,12 @@ export function rankCandidates(candidates: JourneyCandidate[], preference: strin
   });
 }
 
+const CROWD_TEXT: Record<string, string> = {
+  low: "platforms reported not crowded",
+  moderate: "platforms reported moderately crowded",
+  high: "platforms reported crowded",
+};
+
 function reasonFor(candidate: JourneyCandidate, preference: string, next?: JourneyCandidate): string {
   const walkingMetres = Math.round(candidate.totalWalkingDistanceMetres);
   const walk = walkingMetres >= 1000
@@ -416,18 +423,22 @@ function reasonFor(candidate: JourneyCandidate, preference: string, next?: Journ
         ? `Least walking: ${walkingMetres} m, ${Math.max(0, Math.round(next.totalWalkingDistanceMetres - candidate.totalWalkingDistanceMetres))} m less than the next route.`
         : "Only one route is available — least walking cannot be compared.";
     case "sheltered":
-      return `Most sheltered · ${walk}`;
+      return `Most sheltered · ${walk} in the open, ${candidate.numberOfTransfers} transfer${candidate.numberOfTransfers === 1 ? "" : "s"} (ranked by open-air walking — no covered-link dataset).`;
     case "transfers":
-      return `Fewest transfers · ${candidate.numberOfTransfers} transfer${candidate.numberOfTransfers === 1 ? "" : "s"}`;
+      return `Fewest transfers · ${candidate.numberOfTransfers} transfer${candidate.numberOfTransfers === 1 ? "" : "s"} · ${candidate.totalDurationMinutes} min`;
     case "cost":
-      return `Lowest cost · $${candidate.fare.toFixed(2)} · ${candidate.totalDurationMinutes} min`;
-
-    case "crowd":
-      return `Lower crowding · ${candidate.totalDurationMinutes} min`;
+      return `Lowest cost · ${candidate.fareEstimated ? "estimated fare " : ""}$${candidate.fare.toFixed(2)} · ${candidate.totalDurationMinutes} min`;
+    case "crowd": {
+      const level = crowdLabel(candidate.crowdScore);
+      return level === "unknown"
+        ? `Lower crowding · live crowd data unavailable for this route, ranked by transfers and time (${candidate.totalDurationMinutes} min).`
+        : `Lower crowding · ${CROWD_TEXT[level]} (LTA PCDRealTime) · ${candidate.totalDurationMinutes} min`;
+    }
     default:
       return `Fastest · ${candidate.totalDurationMinutes} min`;
   }
 }
+
 
 const pointSchema = z.object({
   lat: z.number(),
