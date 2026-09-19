@@ -43,6 +43,8 @@ import { compareJourneys, planJourney, type Journey } from "@/lib/journey.functi
 import { PlacePicker, placeLine, type ConfirmedPlace } from "./PlacePicker";
 import { CommuteAlertCard } from "./CommuteAlertCard";
 import { JourneyStatusCard } from "./JourneyStatusCard";
+import { useDisruptionWatch } from "@/lib/use-disruption";
+
 import { formatMinutes, parseTime } from "@/lib/disruption";
 import { RouteMap } from "./RouteMap";
 import { JourneyTimeline, RouteLegend } from "./JourneySteps";
@@ -298,8 +300,18 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
     return formatMinutes(reach + (Number(alarm.maxDelay) || 0));
   })();
 
-  const arrivalTime = alarm.arriveBy || "--:--";
-  const departureTime = preview ? shiftTime(alarm.arriveBy, preview.minutes) : "--:--";
+  const disruption = useDisruptionWatch({
+    journey: preview,
+    baselineJourney: recommendedJourney,
+    alternatives,
+    arriveBy: alarm.arriveBy,
+    maxDelay: alarm.maxDelay,
+  });
+  const assessment = disruption.assessment;
+
+  const departureTime = recommendedJourney ? shiftTime(alarm.arriveBy, recommendedJourney.minutes) : "--:--";
+  const arrivalTime = assessment ? assessment.predictedArrival : alarm.arriveBy || "--:--";
+
 
   return (
     <div className="pt-7">
