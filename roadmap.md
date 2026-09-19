@@ -4,3 +4,4 @@
 - [x] Verify persistence, custom days, mobile layout, and build health.
 - [x] Separate the primary route preference from route comparison and add persistent manual route selection.
 - [x] Add clear controls and selectable Home route alternatives while retaining the recommended route.
+- [x] Disruption-aware rerouting using Maximum delay (journey status card, demo incident switch)
