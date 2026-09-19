@@ -11,3 +11,5 @@
 - [x] Data source, last-updated time and "Estimated fare" labelling on the route card.
 - [x] Demo incident switch always available and clearly labelled as simulated.
 - [x] Anchor weather, arrivals and traffic to the active trip start with labelled fallbacks.
+
+- [ ] Reconnect Google Maps Platform in the new workspace
