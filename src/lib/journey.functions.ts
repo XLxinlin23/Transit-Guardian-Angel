@@ -459,8 +459,9 @@ async function buildCandidates(data: PlanInput): Promise<JourneyCandidate[]> {
   const destination: Point = { lat: data.to.lat, lng: data.to.lng, name: data.to.label };
 
   const candidates: JourneyCandidate[] = [];
-  const add = (legs: JourneyLeg[], fare?: number | null) => {
-    const candidate = toCandidate(legs, fare);
+  let source = "LTA DataMall";
+  const add = (legs: JourneyLeg[], fare?: number | null, from = source) => {
+    const candidate = toCandidate(legs, fare, from);
     if (!candidate) return;
     if (candidates.some((item) => item.signature === candidate.signature)) return;
     candidates.push(candidate);
@@ -469,11 +470,16 @@ async function buildCandidates(data: PlanInput): Promise<JourneyCandidate[]> {
   // 0. Google Maps walking/bus/MRT routes first — they follow real paths and timetables.
   try {
     const { googleRoutePlans } = await import("./google-routes.server");
-    for (const plan of await googleRoutePlans(origin, destination)) add(plan.legs, plan.fare);
+    for (const plan of await googleRoutePlans(origin, destination)) add(plan.legs, plan.fare, "Google Maps Routes");
   } catch (error) {
     console.error("Google route lookup failed", error);
   }
-  if (candidates.length) return candidates;
+  if (candidates.length) {
+    await attachCrowd(candidates);
+    return candidates;
+  }
+  source = "LTA DataMall";
+
 
 
 
