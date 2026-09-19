@@ -66,16 +66,35 @@ export type DisruptionAssessment = {
 
 type AlternativeInput = { preference?: string; journey: Journey };
 
+/** Lower is better — mirrors the ranking used by the planner. */
+function preferenceScore(journey: Journey, preference?: string): number {
+  switch (preference) {
+    case "walking":
+      return (journey.totalWalkingDistanceMetres ?? journey.walkMetres ?? 0) * 10 + journey.minutes;
+    case "transfers":
+      return (journey.numberOfTransfers ?? journey.transfers ?? 0) * 1000 + journey.minutes;
+    case "cost":
+      return (journey.fare ?? 0) * 100 + journey.minutes;
+    case "sheltered":
+      return (journey.totalWalkingDistanceMetres ?? journey.walkMetres ?? 0) * 12 + journey.minutes;
+    default:
+      return journey.minutes;
+  }
+}
+
 export function assessDisruption(params: {
   journey: Journey | null;
   alternatives: AlternativeInput[];
   incident: Incident | null;
   arriveBy: string;
   maxDelayMinutes: number;
+  /** The user's saved priority, applied only after disrupted and late routes are excluded. */
+  preference?: string | undefined;
   /** Duration of the originally planned route — fixes the departure time so every arrival lines up. */
   baselineMinutes?: number | undefined;
 }): DisruptionAssessment | null {
   const { journey, incident, arriveBy, maxDelayMinutes } = params;
+
   const reachBy = parseTime(arriveBy);
   if (!journey || reachBy === null) return null;
 
