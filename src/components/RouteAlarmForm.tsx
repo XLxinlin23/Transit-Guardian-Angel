@@ -576,7 +576,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
 
             <Button
               className="mt-6 h-11 w-full rounded-xl text-sm font-bold"
-              disabled={!bothConfirmed || looking}
+              disabled={!bothConfirmed || looking || pastReachBy}
               onClick={() => journeyQuery.refetch()}
             >
               <Navigation /> {looking ? "Finding best route…" : "Find best route"}
