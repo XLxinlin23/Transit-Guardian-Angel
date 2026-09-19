@@ -290,6 +290,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
     persistAlarms(exists ? alarms.map((item) => (item.id === editingId ? entry : item)) : [...alarms, entry]);
     setAlarmField("active", true);
     setSaved(true);
+    setFormOpen(false);
     setSyncing(true);
     try {
       await saveRemote({
@@ -326,6 +327,9 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
   const canSave = alarm.from.trim() && alarm.to.trim() && alarm.arriveBy && (alarm.repeat !== "custom" || alarm.days.length > 0);
   const repeatSummary = alarm.repeat === "custom" ? alarm.days.join(", ") : REPEAT_LABELS[alarm.repeat];
   const editingExisting = alarms.some((item) => item.id === editingId);
+  const editingEntry = alarms.find((item) => item.id === editingId) ?? null;
+  // The edit form only shows for a brand-new trip or after tapping a saved alarm.
+  const showForm = formOpen || !editingExisting;
   const settingsSummary = [
     `${alarm.notifyLeadMinutes} min before`,
     alarm.notifyWeather ? "weather" : null,
