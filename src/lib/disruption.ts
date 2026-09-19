@@ -133,12 +133,18 @@ export function assessDisruption(params: {
   }
 
   // Over the limit: look for a route that avoids the disrupted segment.
+  // Safety first — exclude disrupted routes, then late ones, and only then apply the preference.
   const clean = params.alternatives
     .filter((option) => !journeyAffected(option.journey, incident))
     .map((option) => ({ ...option, arrivalMinutes: arrivalOf(option.journey.minutes) }))
     .sort((a, b) => a.arrivalMinutes - b.arrivalMinutes);
 
-  const fitting = clean.find((option) => option.arrivalMinutes <= latest) ?? clean[0] ?? null;
+  const inTime = clean.filter((option) => option.arrivalMinutes <= latest);
+  const byPreference = [...inTime].sort(
+    (a, b) => preferenceScore(a.journey, params.preference) - preferenceScore(b.journey, params.preference),
+  );
+  const fitting = byPreference[0] ?? clean[0] ?? null;
+
   const overBy = predicted - latest;
 
   if (!fitting) {
