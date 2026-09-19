@@ -264,3 +264,49 @@
 .wayline-map .wayline-tooltip::before { display: none; }
 
 .wayline-map .wayline-tooltip-current { color: var(--brand); }
+
+.wayline-map .wayline-pin,
+.wayline-map .wayline-busdot {
+  background: none;
+  border: 0;
+}
+
+.wayline-map .wayline-pin-inner {
+  align-items: center;
+  border-radius: 999px;
+  box-shadow: 0 6px 16px rgb(11 42 74 / 25%);
+  color: #fff;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 700;
+  gap: 5px;
+  padding: 3px 9px 3px 3px;
+  transform: translate(-16px, -30px);
+  white-space: nowrap;
+}
+
+.wayline-map .wayline-pin-letter {
+  align-items: center;
+  background: rgb(255 255 255 / 92%);
+  border-radius: 999px;
+  color: #0b2a4a;
+  display: inline-flex;
+  font-size: 10px;
+  height: 16px;
+  justify-content: center;
+  width: 16px;
+}
+
+.wayline-map .wayline-pin-text { max-width: 9rem; overflow: hidden; text-overflow: ellipsis; }
+
+.wayline-map .wayline-busdot-inner {
+  align-items: center;
+  background: #fff;
+  border: 2.5px solid #16a36d;
+  border-radius: 999px;
+  box-shadow: 0 3px 8px rgb(11 42 74 / 20%);
+  display: inline-flex;
+  height: 16px;
+  justify-content: center;
+  width: 16px;
+}
