@@ -1,7 +1,7 @@
-import { BellRing, Bus, Check, Home, Monitor, Moon, SlidersHorizontal, Sun, X } from "lucide-react";
+import { BellRing, Bus, Check, FlaskConical, Home, Monitor, Moon, SlidersHorizontal, Sun, X } from "lucide-react";
 import { useTheme, type ThemeMode } from "../lib/theme";
 
-export type SubsystemKey = "home" | "preference" | "arrivals" | "alerts";
+export type SubsystemKey = "home" | "preference" | "arrivals" | "alerts" | "simulation";
 
 const SUBSYSTEMS: { key: SubsystemKey; label: string; hint: string; icon: typeof Home; chip: string; chipActive: string }[] = [
   { key: "home", label: "Route alarms", hint: "Plan and save your trips", icon: Home, chip: "bg-primary/12 text-primary", chipActive: "bg-primary text-primary-foreground" },
@@ -9,6 +9,7 @@ const SUBSYSTEMS: { key: SubsystemKey; label: string; hint: string; icon: typeof
 
   { key: "arrivals", label: "MRT & Bus arrival", hint: "Live stations and stops near you", icon: Bus, chip: "bg-brand-deep/10 text-brand-deep", chipActive: "bg-brand-deep text-primary-foreground" },
   { key: "alerts", label: "Disruption alert", hint: "Service status and weather", icon: BellRing, chip: "bg-destructive/12 text-destructive", chipActive: "bg-destructive text-destructive-foreground" },
+  { key: "simulation", label: "Simulation", hint: "Test alerts with a simulated clock", icon: FlaskConical, chip: "bg-route-orange/12 text-route-orange", chipActive: "bg-route-orange text-primary-foreground" },
 ];
 
 const THEMES: { key: ThemeMode; label: string; icon: typeof Sun }[] = [
