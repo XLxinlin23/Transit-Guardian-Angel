@@ -515,6 +515,18 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                   />
                 )}
               </Field>
+              {pastReachBy && (
+                <div className="rounded-xl border border-route-orange/40 bg-warning-soft px-3 py-2.5">
+                  <p className="text-xs font-bold text-brand-deep">{alarm.arriveBy} has already passed today.</p>
+                  <button
+                    type="button"
+                    onClick={() => update("dateMode", "tomorrow")}
+                    className="mt-1.5 text-xs font-bold text-primary underline underline-offset-4"
+                  >
+                    Use tomorrow instead
+                  </button>
+                </div>
+              )}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3">
                 <Field icon={AlarmClock} label="Reach by">
                   <Input type="time" value={alarm.arriveBy} onChange={(event) => update("arriveBy", event.target.value)} aria-label="Reach by" className="h-11 bg-card" />
