@@ -442,6 +442,16 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                 </li>
               ))}
             </ol>
+            {onSeeMoreRoutes && (
+              <button
+                type="button"
+                onClick={onSeeMoreRoutes}
+                className="flex w-full items-center justify-center gap-1 rounded-xl border border-primary/30 py-2.5 text-sm font-semibold text-primary hover:bg-primary/10"
+              >
+                See more routes… <ChevronRight className="size-4" />
+              </button>
+            )}
+
           </div>
         )}
 
