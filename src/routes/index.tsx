@@ -12,7 +12,7 @@ import { RoutePreferencePanel } from "../components/RoutePreferencePanel";
 import { NearbyBusStopsCard } from "../components/NearbyBusStopsCard";
 import { WeatherCard } from "../components/WeatherCard";
 import { TrafficIncidentsCard } from "../components/TrafficIncidentsCard";
-import { TripProvider } from "../lib/trip-store";
+import { TripProvider, useTrip } from "../lib/trip-store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
