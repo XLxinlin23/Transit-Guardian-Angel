@@ -162,6 +162,7 @@ export type CommuteBriefing = {
   disruption: string | null;
   crowd: string | null;
   bus: string | null;
+  traffic: string | null;
   alternative: string | null;
   routeSummary: string | null;
   checkedAt: string;
@@ -253,6 +254,7 @@ export const getCommuteBriefing = createServerFn({ method: "POST" })
         disruption: null,
         crowd: null,
         bus: null,
+        traffic: null,
         alternative: null,
         routeSummary: null,
         checkedAt,
