@@ -81,8 +81,8 @@ export function RouteMap({ stations, segments, title = "Route map", badge, foote
           expanded
             ? "fixed left-1/2 top-1/2 z-50 h-[85vh] w-screen -translate-x-1/2 -translate-y-1/2 rounded-none md:h-[80vh] md:w-[90vw] md:rounded-3xl"
             : compact
-              ? "relative mt-3 h-[220px] rounded-xl md:h-[260px]"
-              : "relative mt-3 h-[320px] rounded-2xl md:h-[420px]"
+              ? "relative z-0 mt-3 h-[220px] rounded-xl md:h-[260px]"
+              : "relative z-0 mt-3 h-[320px] rounded-2xl md:h-[420px]"
         }`}
         role={expanded ? "dialog" : undefined}
         aria-modal={expanded ? "true" : undefined}
