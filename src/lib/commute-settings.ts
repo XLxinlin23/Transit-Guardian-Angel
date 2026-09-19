@@ -1,4 +1,4 @@
-export type RepeatOption = "once" | "weekdays" | "weekends" | "custom";
+export type RepeatOption = "once" | "daily" | "weekdays" | "weekends" | "custom";
 
 /** A location the user confirmed from the suggestion list. */
 export type PlacePoint = {
@@ -95,7 +95,8 @@ export const PREFERENCE_STORAGE_KEY = "wayline-route-preferences";
 export const DRAFT_STORAGE_KEY = "wayline-route-draft";
 
 export const REPEAT_LABELS: Record<RepeatOption, string> = {
-  once: "Once",
+  once: "Select date",
+  daily: "Every day",
   weekdays: "Every weekday",
   weekends: "Every weekend",
   custom: "Custom days",

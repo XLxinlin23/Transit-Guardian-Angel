@@ -91,6 +91,7 @@ export function isoDateLabel(iso: string): string {
 
 /** The weekday short names a recurring alarm runs on; empty for one-off trips. */
 export function activeDays(alarm: Pick<RouteAlarm, "repeat" | "days">): string[] {
+  if (alarm.repeat === "daily") return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   if (alarm.repeat === "weekdays") return ["Mon", "Tue", "Wed", "Thu", "Fri"];
   if (alarm.repeat === "weekends") return ["Sat", "Sun"];
   if (alarm.repeat === "custom") return alarm.days;
@@ -105,6 +106,7 @@ export function isRecurring(repeat: RepeatOption): boolean {
 export function recurrenceLabel(alarm: Pick<RouteAlarm, "repeat" | "days">): string {
   const days = activeDays(alarm);
   if (!days.length) return "No days selected";
+  if (alarm.repeat === "daily") return "Runs every day";
   if (alarm.repeat === "weekdays") return "Runs Monday to Friday";
   if (alarm.repeat === "weekends") return "Runs Saturday and Sunday";
   return `Runs ${days.join(", ")}`;
