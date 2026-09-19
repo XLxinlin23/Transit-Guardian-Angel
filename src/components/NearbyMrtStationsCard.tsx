@@ -25,7 +25,12 @@ function distanceLabel(m: number) {
   return m < 1000 ? `${m} m` : `${(m / 1000).toFixed(1)} km`;
 }
 
-export function NearbyMrtStationsCard() {
+export function NearbyMrtStationsCard({
+  origin,
+}: {
+  /** Start of the active trip — stations are shown around it instead of the device location. */
+  origin?: { lat: number; lng: number; label: string } | null | undefined;
+} = {}) {
   const [coords, setCoords] = useState<Coords | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [selected, setSelected] = useState<NetworkStation | null>(null);
@@ -50,13 +55,17 @@ export function NearbyMrtStationsCard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const anchor: Coords | null = origin ? { lat: origin.lat, lng: origin.lng } : coords;
+  const anchorNote = origin ? `Stations near your trip start: ${origin.label}` : coords ? "Stations near your current location" : null;
+
   const nearest = useMemo(() => {
-    if (!coords) return [] as Array<NetworkStation & { distanceMetres: number }>;
+    if (!anchor) return [] as Array<NetworkStation & { distanceMetres: number }>;
     return [...STATION_INDEX.values()]
-      .map((station) => ({ ...station, distanceMetres: metres(coords, station) }))
+      .map((station) => ({ ...station, distanceMetres: metres(anchor, station) }))
       .sort((a, b) => a.distanceMetres - b.distanceMetres)
       .slice(0, 5);
-  }, [coords]);
+  }, [anchor]);
+
 
   const { data: detail, isFetching: detailLoading } = useQuery({
     queryKey: ["station-detail", selected?.name],
