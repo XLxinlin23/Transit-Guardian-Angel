@@ -556,33 +556,6 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
             </section>
           )}
 
-          {preview && alternatives.length > 0 && (
-            <section className="glass-panel rounded-2xl p-5">
-              <h2 className="font-display text-base font-bold text-brand-deep">Other routes</h2>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {alternatives.map(({ preference, journey }) => (
-                  <div key={preference} className="rounded-xl border border-border bg-card p-3">
-                    <p className="text-xs font-bold uppercase tracking-wide text-primary">{PREFERENCE_LABELS[preference as keyof typeof PREFERENCE_LABELS] ?? preference}</p>
-                    <p className="mt-1 text-sm font-bold text-brand-deep">{journey.minutes} min</p>
-                    <p className="text-[11px] font-semibold text-muted-foreground">
-                      Walk {journey.walkMinutes ?? 0} min · {journey.transfers ?? 0} transfer{(journey.transfers ?? 0) === 1 ? "" : "s"}
-                      {typeof journey.fare === "number" ? ` · $${journey.fare.toFixed(2)}` : ""}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              {onSeeMoreRoutes && (
-                <button
-                  type="button"
-                  onClick={onSeeMoreRoutes}
-                  className="mt-3 flex w-full items-center justify-center gap-1 rounded-xl border border-primary py-2.5 text-sm font-bold text-primary hover:bg-primary/5"
-                >
-                  Compare all routes <ChevronRight className="size-4" />
-                </button>
-              )}
-            </section>
-          )}
-
           {bothConfirmed && !preview && (
             <section className="glass-panel rounded-2xl p-5 text-sm text-muted-foreground">
               {looking ? "Working out the best way door to door…" : "Tap “Find best route” to see your route."}
