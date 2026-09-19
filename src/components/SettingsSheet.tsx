@@ -6,6 +6,7 @@ export type SubsystemKey = "home" | "preference" | "directions" | "arrivals" | "
 const SUBSYSTEMS: { key: SubsystemKey; label: string; hint: string; icon: typeof Home; chip: string; chipActive: string }[] = [
   { key: "home", label: "Route alarms", hint: "Plan and save your trips", icon: Home, chip: "bg-primary/12 text-primary", chipActive: "bg-primary text-primary-foreground" },
   { key: "preference", label: "Route preference", hint: "Fastest, least walking, sheltered", icon: SlidersHorizontal, chip: "bg-success/12 text-success", chipActive: "bg-success text-primary-foreground" },
+  { key: "directions", label: "Directions", hint: "Walking and transit directions", icon: Navigation, chip: "bg-route-orange/12 text-route-orange", chipActive: "bg-route-orange text-primary-foreground" },
   { key: "arrivals", label: "MRT & Bus arrival", hint: "Live stations and stops near you", icon: Bus, chip: "bg-brand-deep/10 text-brand-deep", chipActive: "bg-brand-deep text-primary-foreground" },
   { key: "alerts", label: "Disruption alert", hint: "Service status and weather", icon: BellRing, chip: "bg-destructive/12 text-destructive", chipActive: "bg-destructive text-destructive-foreground" },
 ];
