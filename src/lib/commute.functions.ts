@@ -353,6 +353,20 @@ export const getCommuteBriefing = createServerFn({ method: "POST" })
       delayMinutes += 3;
     }
 
+    // Road incidents only slow a trip that actually uses the roads.
+    const usesRoad = !base || base.legs.length === 0;
+    const topIncident = routeIncidents[0];
+    if (topIncident && usesRoad) {
+      travelMinutes += 7;
+      delayMinutes += 7;
+    }
+    const traffic = topIncident
+      ? `${topIncident.incident.type} on your route${routeIncidents.length > 1 ? ` (+${routeIncidents.length - 1} more)` : ""}: ${topIncident.incident.message}`
+      : trafficData.configured
+        ? "No road incidents on your route."
+        : null;
+
+
     const leaveAt = toClock(toMinutes(data.arriveBy) - travelMinutes - 3);
     const severity: CommuteBriefing["severity"] =
       delayMinutes >= data.maxDelay && delayMinutes > 0 ? "act" : delayMinutes >= 5 ? "watch" : "calm";
@@ -385,6 +399,7 @@ export const getCommuteBriefing = createServerFn({ method: "POST" })
           ? "Platform crowding normal on your line."
           : null,
       bus: bus ? `Bus ${bus.serviceNo} in ${bus.minutes} min at stop ${data.busStopCode}` : null,
+      traffic,
       alternative,
       routeSummary,
       checkedAt,
