@@ -273,7 +273,13 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
 
   const saveAlarm = async () => {
     const next = { ...alarm, active: true };
-    const entry: SavedRouteAlarm = { id: editingId, alarm: next, fromPlace, toPlace };
+    const entry: SavedRouteAlarm = {
+      id: editingId,
+      alarm: next,
+      fromPlace,
+      toPlace,
+      durationMinutes: preview?.totalDurationMinutes ?? preview?.minutes ?? null,
+    };
     const exists = alarms.some((item) => item.id === editingId);
     persistAlarms(exists ? alarms.map((item) => (item.id === editingId ? entry : item)) : [...alarms, entry]);
     setAlarmField("active", true);
