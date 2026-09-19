@@ -294,6 +294,116 @@ const pointSchema = z.object({
   label: z.string().min(1).max(120),
 });
 
+type PlanInput = {
+  from: { lat: number; lng: number; label: string };
+  to: { lat: number; lng: number; label: string };
+};
+
+async function buildCandidates(data: PlanInput): Promise<Candidate[]> {
+  const key = process.env["LTA_ACCOUNT_KEY"] ?? "";
+  const lookupHop = hopCache(key);
+
+  const origin: Point = { lat: data.from.lat, lng: data.from.lng, name: data.from.label };
+  const destination: Point = { lat: data.to.lat, lng: data.to.lng, name: data.to.label };
+
+  const candidates: Candidate[] = [];
+  const add = (legs: JourneyLeg[]) => {
+    const candidate = toCandidate(legs);
+    if (!candidate) return;
+    if (candidates.some((item) => item.signature === candidate.signature)) return;
+    candidates.push(candidate);
+  };
+
+  // 1. Straight walk door to door.
+  const directMetres = distanceMetres(origin.lat, origin.lng, destination.lat, destination.lng);
+  if (directMetres < 3000) add(walkLegBetween(origin, destination));
+
+  // 2. One direct bus door to door.
+  const directHop = await lookupHop(origin, destination);
+  if (directHop) add(hopToLegs(directHop, origin, destination));
+
+  // 3. Rail options, with walking access and with bus access to/from the stations.
+  const fromStation = nearestStation(origin.lat, origin.lng);
+  const toStation = nearestStation(destination.lat, destination.lng);
+
+  if (fromStation && toStation && fromStation.name !== toStation.name) {
+    const fromNode = STATION_INDEX.get(fromStation.name) ?? fromStation;
+    const toNode = STATION_INDEX.get(toStation.name) ?? toStation;
+    const headPoint: Point = { lat: fromNode.lat, lng: fromNode.lng, name: `${fromStation.name} station` };
+    const tailPoint: Point = { lat: toNode.lat, lng: toNode.lng, name: `${toStation.name} station` };
+
+    const railVariants = ["speed", "transfers", "walking", "cost"].map((value) =>
+      planRoute(fromStation.name, toStation.name, [value] as never),
+    );
+
+    const headWalk = walkLegBetween(origin, headPoint);
+    const tailWalk = walkLegBetween(tailPoint, destination);
+    const headHop = await lookupHop(origin, headPoint);
+    const tailHop = await lookupHop(tailPoint, destination);
+    const headBus = headHop ? hopToLegs(headHop, origin, headPoint) : null;
+    const tailBus = tailHop ? hopToLegs(tailHop, tailPoint, destination) : null;
+
+    const seenRail = new Set<string>();
+    for (const rail of railVariants) {
+      if (!rail) continue;
+      const railKey = rail.stations.map((station) => station.name).join(">");
+      if (seenRail.has(railKey)) continue;
+      seenRail.add(railKey);
+
+      const railLegs: JourneyLeg[] = rail.legs.map((leg) => {
+        const stops = leg.stations.length - 1;
+        return {
+          mode: LRT_LINES.has(leg.line) ? "lrt" : "mrt",
+          badge: leg.line,
+          from: leg.stations[0]!.name,
+          to: leg.stations[leg.stations.length - 1]!.name,
+          detail: `${stops} stop${stops > 1 ? "s" : ""}`,
+          minutes: Math.max(2, Math.round(stops * 2.4)),
+          points: leg.stations.map((station) => ({ lat: station.lat, lng: station.lng, name: station.name })),
+        };
+      });
+
+      for (const head of [headWalk, headBus].filter(Boolean) as JourneyLeg[][]) {
+        for (const tail of [tailWalk, tailBus].filter(Boolean) as JourneyLeg[][]) {
+          add([...head, ...railLegs, ...tail]);
+        }
+      }
+    }
+  }
+
+  if (!candidates.length) {
+    const fallback = toCandidate(walkLegBetween(origin, destination));
+    if (fallback) candidates.push(fallback);
+  }
+
+  return candidates;
+}
+
+function pickJourney(candidates: Candidate[], preference: string): Journey | null {
+  if (!candidates.length) return null;
+  const ranked = [...candidates].sort((a, b) => scoreFor(a, preference) - scoreFor(b, preference));
+  const winner = ranked[0]!;
+
+  const journey: Journey = {
+    legs: winner.legs,
+    minutes: winner.minutes,
+    walkMetres: Math.round(winner.walkMetres),
+    walkMinutes: winner.walkMinutes,
+    fare: winner.fare,
+    transfers: winner.transfers,
+    reason: candidates.length < 2 ? "Only one route is currently available." : reasonFor(winner, preference),
+    alternatives: candidates.length,
+  };
+
+  const busOnly = winner.legs.every((leg) => leg.mode === "walk" || leg.mode === "bus");
+  const busLeg = winner.legs.find((leg) => leg.mode === "bus");
+  if (busOnly && busLeg && candidates.length > 1) {
+    journey.note = `Direct bus ${busLeg.badge} beats the train on this trip.`;
+  }
+
+  return journey;
+}
+
 export const planJourney = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) =>
     z
@@ -305,108 +415,28 @@ export const planJourney = createServerFn({ method: "GET" })
       .parse(data),
   )
   .handler(async ({ data }): Promise<Journey | null> => {
-    const key = process.env["LTA_ACCOUNT_KEY"] ?? "";
-    const preference = primaryPreference(data.preferences);
-    const lookupHop = hopCache(key);
+    const candidates = await buildCandidates(data);
+    return pickJourney(candidates, primaryPreference(data.preferences));
+  });
 
-    const origin: Point = { lat: data.from.lat, lng: data.from.lng, name: data.from.label };
-    const destination: Point = { lat: data.to.lat, lng: data.to.lng, name: data.to.label };
+export type JourneyOption = { preference: string; journey: Journey };
 
-    const candidates: Candidate[] = [];
-    const add = (legs: JourneyLeg[]) => {
-      const candidate = toCandidate(legs);
-      if (!candidate) return;
-      if (candidates.some((item) => item.signature === candidate.signature)) return;
-      candidates.push(candidate);
-    };
-
-    // 1. Straight walk door to door.
-    const directMetres = distanceMetres(origin.lat, origin.lng, destination.lat, destination.lng);
-    if (directMetres < 3000) add(walkLegBetween(origin, destination));
-
-    // 2. One direct bus door to door.
-    const directHop = await lookupHop(origin, destination);
-    if (directHop) add(hopToLegs(directHop, origin, destination));
-
-    // 3. Rail options, with walking access and with bus access to/from the stations.
-    const fromStation = nearestStation(origin.lat, origin.lng);
-    const toStation = nearestStation(destination.lat, destination.lng);
-
-    if (fromStation && toStation && fromStation.name !== toStation.name) {
-      const fromNode = STATION_INDEX.get(fromStation.name) ?? fromStation;
-      const toNode = STATION_INDEX.get(toStation.name) ?? toStation;
-      const headPoint: Point = { lat: fromNode.lat, lng: fromNode.lng, name: `${fromStation.name} station` };
-      const tailPoint: Point = { lat: toNode.lat, lng: toNode.lng, name: `${toStation.name} station` };
-
-      const railVariants = ["speed", "transfers", "walking", "cost"].map((value) =>
-        planRoute(fromStation.name, toStation.name, [value] as never),
-      );
-
-      const headWalk = walkLegBetween(origin, headPoint);
-      const tailWalk = walkLegBetween(tailPoint, destination);
-      const headHop = await lookupHop(origin, headPoint);
-      const tailHop = await lookupHop(tailPoint, destination);
-      const headBus = headHop ? hopToLegs(headHop, origin, headPoint) : null;
-      const tailBus = tailHop ? hopToLegs(tailHop, tailPoint, destination) : null;
-
-      const seenRail = new Set<string>();
-      for (const rail of railVariants) {
-        if (!rail) continue;
-        const railKey = rail.stations.map((station) => station.name).join(">");
-        if (seenRail.has(railKey)) continue;
-        seenRail.add(railKey);
-
-        const railLegs: JourneyLeg[] = rail.legs.map((leg) => {
-          const stops = leg.stations.length - 1;
-          return {
-            mode: LRT_LINES.has(leg.line) ? "lrt" : "mrt",
-            badge: leg.line,
-            from: leg.stations[0]!.name,
-            to: leg.stations[leg.stations.length - 1]!.name,
-            detail: `${stops} stop${stops > 1 ? "s" : ""}`,
-            minutes: Math.max(2, Math.round(stops * 2.4)),
-            points: leg.stations.map((station) => ({ lat: station.lat, lng: station.lng, name: station.name })),
-          };
-        });
-
-        for (const head of [headWalk, headBus].filter(Boolean) as JourneyLeg[][]) {
-          for (const tail of [tailWalk, tailBus].filter(Boolean) as JourneyLeg[][]) {
-            add([...head, ...railLegs, ...tail]);
-          }
-        }
-      }
+/** One best route per preference, so the user can compare side by side. */
+export const compareJourneys = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) =>
+    z.object({ from: pointSchema, to: pointSchema }).parse(data),
+  )
+  .handler(async ({ data }): Promise<JourneyOption[]> => {
+    const candidates = await buildCandidates(data);
+    if (!candidates.length) return [];
+    const options: JourneyOption[] = [];
+    for (const preference of PRIMARY_ORDER) {
+      const journey = pickJourney(candidates, preference);
+      if (journey) options.push({ preference, journey });
     }
+    return options;
+  });
 
-    if (!candidates.length) {
-      const fallback = toCandidate(walkLegBetween(origin, destination));
-      if (!fallback) return null;
-      return {
-        legs: fallback.legs,
-        minutes: fallback.minutes,
-        walkMetres: fallback.walkMetres,
-        transfers: fallback.transfers,
-        reason: "Only one route is currently available.",
-        alternatives: 1,
-      };
-    }
-
-    const ranked = [...candidates].sort((a, b) => scoreFor(a, preference) - scoreFor(b, preference));
-    const winner = ranked[0]!;
-
-    const journey: Journey = {
-      legs: winner.legs,
-      minutes: winner.minutes,
-      walkMetres: Math.round(winner.walkMetres),
-      transfers: winner.transfers,
-      reason: candidates.length < 2 ? "Only one route is currently available." : reasonFor(winner, preference),
-      alternatives: candidates.length,
-    };
-
-    const busOnly = winner.legs.every((leg) => leg.mode === "walk" || leg.mode === "bus");
-    const busLeg = winner.legs.find((leg) => leg.mode === "bus");
-    if (busOnly && busLeg && candidates.length > 1) {
-      journey.note = `Direct bus ${busLeg.badge} beats the train on this trip.`;
-    }
 
     return journey;
   });
