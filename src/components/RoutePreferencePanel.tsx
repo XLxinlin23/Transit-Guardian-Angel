@@ -222,12 +222,18 @@ export function RoutePreferencePanel({
 
                   {open && (
                     <div className="mt-4 border-t border-border pt-4">
-                      <RouteMap stations={[]} segments={segments} embedded compact title={`${labels[0]} route map`} />
-                      <div className="mt-3"><RouteLegend legs={journey.legs} /></div>
-                      <div className="mt-3"><JourneyTimeline legs={journey.legs} /></div>
+                      <RouteDetails
+                        journey={journey}
+                        segments={segments}
+                        title={`${labels[0]} route map`}
+                        preference={routePreferences[0] ?? applied}
+                        from={fromPlace}
+                        to={toPlace}
+                      />
                       <Button className="mt-4 h-11 w-full rounded-xl" onClick={() => setPendingJourney(journey)}>Use this route</Button>
                     </div>
                   )}
+
                 </article>
               );
             })}
