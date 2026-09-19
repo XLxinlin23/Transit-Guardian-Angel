@@ -31,17 +31,26 @@ export type Journey = {
   /** Total time spent on foot. */
   walkMinutes: number;
   totalWalkingTimeMinutes: number;
-  /** Estimated adult fare in SGD. */
+  /** Adult fare in SGD — from the operator when available, otherwise estimated. */
   fare: number;
+  /** True when the fare is our own distance estimate rather than published data. */
+  fareEstimated: boolean;
   /** Number of vehicle-to-vehicle changes. */
   transfers: number;
   numberOfTransfers: number;
+  /** Live platform crowding from LTA PCDRealTime, when the route uses rail. */
+  crowdLevel: "low" | "moderate" | "high" | "unknown";
+  /** Where the route data came from, shown to the user. */
+  dataSource: string;
+  /** ISO timestamp of when this route was calculated. */
+  updatedAt: string;
   /** One line explaining why this option won, e.g. "Fastest · 54 min". */
   reason: string;
   /** How many distinct options were compared. */
   alternatives: number;
   note?: string;
 };
+
 
 
 const LRT_LINES = new Set(["BP", "SE", "SW", "PE", "PW", "PTC", "STC"]);
