@@ -2,6 +2,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlarmClock,
+  AlertTriangle,
+
   BellRing,
   Bus,
   CalendarDays,
@@ -43,6 +45,8 @@ import { compareJourneys, planJourney, type Journey } from "@/lib/journey.functi
 import { PlacePicker, placeLine, type ConfirmedPlace } from "./PlacePicker";
 import { CommuteAlertCard } from "./CommuteAlertCard";
 import { JourneyStatusCard } from "./JourneyStatusCard";
+import { useDisruptionWatch } from "@/lib/use-disruption";
+
 import { formatMinutes, parseTime } from "@/lib/disruption";
 import { RouteMap } from "./RouteMap";
 import { JourneyTimeline, RouteLegend } from "./JourneySteps";
@@ -298,8 +302,18 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
     return formatMinutes(reach + (Number(alarm.maxDelay) || 0));
   })();
 
-  const arrivalTime = alarm.arriveBy || "--:--";
-  const departureTime = preview ? shiftTime(alarm.arriveBy, preview.minutes) : "--:--";
+  const disruption = useDisruptionWatch({
+    journey: preview,
+    baselineJourney: recommendedJourney,
+    alternatives,
+    arriveBy: alarm.arriveBy,
+    maxDelay: alarm.maxDelay,
+  });
+  const assessment = disruption.assessment;
+
+  const departureTime = recommendedJourney ? shiftTime(alarm.arriveBy, recommendedJourney.minutes) : "--:--";
+  const arrivalTime = assessment ? assessment.predictedArrival : alarm.arriveBy || "--:--";
+
 
   return (
     <div className="pt-7">
@@ -477,9 +491,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
         <div className="space-y-4">
           {preview && (
             <JourneyStatusCard
-              journey={preview}
-              alternatives={alternatives}
-              arriveBy={alarm.arriveBy}
+              watch={disruption}
               maxDelay={alarm.maxDelay}
               onUseAlternative={(journey) => setManualJourney(journey)}
             />
@@ -494,13 +506,28 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                 </span>
               </div>
 
+              {disruption.disrupted && assessment && (
+                <p className="mt-3 flex items-start gap-2 rounded-xl border border-route-red/35 bg-route-red/10 px-3 py-2 text-xs font-bold text-brand-deep">
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0 text-route-red" />
+                  <span>
+                    Current status: {assessment.headline}
+                    {disruption.incident?.source === "demo" ? " (simulated)" : ""}
+                  </span>
+                </p>
+              )}
+
               <div className="mt-3 flex items-baseline gap-2">
                 <p className="font-display text-2xl font-bold text-primary">{departureTime}</p>
                 <span className="text-sm text-muted-foreground">→</span>
-                <p className="font-display text-2xl font-bold text-brand-deep">{arrivalTime}</p>
+                <p className={`font-display text-2xl font-bold ${disruption.disrupted ? "text-route-red" : "text-brand-deep"}`}>{arrivalTime}</p>
                 <p className="ml-auto text-sm font-bold text-brand-deep">{preview.minutes} min</p>
               </div>
-              <p className="mt-1 text-xs font-semibold text-muted-foreground">Leave at {departureTime} to reach by {arrivalTime}</p>
+              <p className="mt-1 text-xs font-semibold text-muted-foreground">
+                {disruption.disrupted
+                  ? `Leave at ${departureTime} · expected arrival ${arrivalTime} (planned ${alarm.arriveBy})`
+                  : `Leave at ${departureTime} to reach by ${arrivalTime}`}
+              </p>
+
 
               <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
                 <Stat label="Walking" value={`${preview.totalWalkingDistanceMetres ?? preview.walkMetres ?? 0} m · ${preview.totalWalkingTimeMinutes ?? preview.walkMinutes ?? 0} min`} />
@@ -535,9 +562,14 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                   segments={segments}
                   embedded
                   title="Route map"
-                  badge={manualJourney ? "Chosen by you" : preferenceSummary}
-                  footer={`About ${preview.minutes} min door to door · ${preview.legs.length} leg${preview.legs.length > 1 ? "s" : ""} · route when no disruptions`}
+                  badge={disruption.disrupted ? "Disruption on this route" : manualJourney ? "Chosen by you" : preferenceSummary}
+                  footer={
+                    disruption.disrupted && assessment
+                      ? `${disruption.incident?.line ? `${disruption.incident.line} line disruption` : "Disruption"} · about ${preview.minutes + assessment.delayMinutes} min door to door · arrive ${assessment.predictedArrival}`
+                      : `About ${preview.minutes} min door to door · ${preview.legs.length} leg${preview.legs.length > 1 ? "s" : ""} · route when no disruptions`
+                  }
                 />
+
                 <div className="mt-3 px-1">
                   <RouteLegend legs={preview.legs} />
                 </div>

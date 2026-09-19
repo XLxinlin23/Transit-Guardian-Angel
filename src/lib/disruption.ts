@@ -72,10 +72,18 @@ export function assessDisruption(params: {
   incident: Incident | null;
   arriveBy: string;
   maxDelayMinutes: number;
+  /** Duration of the originally planned route — fixes the departure time so every arrival lines up. */
+  baselineMinutes?: number | undefined;
 }): DisruptionAssessment | null {
   const { journey, incident, arriveBy, maxDelayMinutes } = params;
   const reachBy = parseTime(arriveBy);
   if (!journey || reachBy === null) return null;
+
+  const baseline = params.baselineMinutes ?? journey.minutes;
+  // Departure is fixed by the planned route; every arrival below is measured from it.
+  const departure = reachBy - baseline;
+  const arrivalOf = (minutes: number) => departure + minutes;
+  const plannedArrival = arrivalOf(journey.minutes);
 
   const latest = reachBy + Math.max(0, maxDelayMinutes);
   const base: Omit<DisruptionAssessment, "level" | "headline" | "detail"> = {
@@ -84,8 +92,8 @@ export function assessDisruption(params: {
     delayMinutes: 0,
     reachBy: formatMinutes(reachBy),
     latestAcceptable: formatMinutes(latest),
-    originalArrival: formatMinutes(reachBy),
-    predictedArrival: formatMinutes(reachBy),
+    originalArrival: formatMinutes(plannedArrival),
+    predictedArrival: formatMinutes(plannedArrival),
     overLimitMinutes: 0,
     alternative: null,
   };
@@ -95,12 +103,15 @@ export function assessDisruption(params: {
       ...base,
       level: "none",
       headline: "No disruption affecting your journey.",
-      detail: `On track to arrive by ${formatMinutes(reachBy)}.`,
+      detail:
+        plannedArrival <= reachBy
+          ? `On track to arrive by ${formatMinutes(plannedArrival)}.`
+          : `Arriving ${formatMinutes(plannedArrival)}, ${plannedArrival - reachBy} min after your ${formatMinutes(reachBy)} target.`,
     };
   }
 
   const delay = incident.addedMinutes;
-  const predicted = reachBy + delay;
+  const predicted = plannedArrival + delay;
   const affectedBase = { ...base, affected: true, delayMinutes: delay, predictedArrival: formatMinutes(predicted) };
 
   if (predicted <= reachBy) {
@@ -116,7 +127,7 @@ export function assessDisruption(params: {
     return {
       ...affectedBase,
       level: "within",
-      headline: `Expected delay: ${delay} min — within your ${maxDelayMinutes} min limit.`,
+      headline: `Expected delay: ${predicted - reachBy} min — within your ${maxDelayMinutes} min limit.`,
       detail: `${incident.message} Predicted arrival ${formatMinutes(predicted)}.`,
     };
   }
@@ -124,7 +135,7 @@ export function assessDisruption(params: {
   // Over the limit: look for a route that avoids the disrupted segment.
   const clean = params.alternatives
     .filter((option) => !journeyAffected(option.journey, incident))
-    .map((option) => ({ ...option, arrivalMinutes: reachBy - journey.minutes + option.journey.minutes }))
+    .map((option) => ({ ...option, arrivalMinutes: arrivalOf(option.journey.minutes) }))
     .sort((a, b) => a.arrivalMinutes - b.arrivalMinutes);
 
   const fitting = clean.find((option) => option.arrivalMinutes <= latest) ?? clean[0] ?? null;
@@ -153,7 +164,7 @@ export function assessDisruption(params: {
       overLimitMinutes: overBy,
       alternative,
       headline: `No available route can arrive before ${formatMinutes(latest)}.`,
-      detail: `${incident.message} The earliest option arrives at ${alternative.arrival}.`,
+      detail: `${incident.message} The earliest option leaves at ${formatMinutes(departure)} and arrives at ${alternative.arrival}.`,
     };
   }
 
@@ -163,6 +174,7 @@ export function assessDisruption(params: {
     overLimitMinutes: overBy,
     alternative,
     headline: `Your original route may arrive at ${formatMinutes(predicted)}, exceeding your limit by ${overBy} min.`,
-    detail: `Recommended alternative arrives at ${alternative.arrival}.`,
+    detail: `Recommended alternative leaves at ${formatMinutes(departure)} and arrives at ${alternative.arrival}.`,
   };
 }
+

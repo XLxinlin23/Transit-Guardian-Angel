@@ -1,74 +1,28 @@
-import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { AlertTriangle, CheckCircle2, ChevronDown, ShieldAlert, TrainFront } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { getTrainAlerts } from "@/lib/singapore.functions";
-import { assessDisruption, DEMO_INCIDENT, type Incident } from "@/lib/disruption";
+import type { DisruptionWatch } from "@/lib/use-disruption";
 import { PREFERENCE_LABELS, type RoutePreference } from "@/lib/commute-settings";
 import type { Journey } from "@/lib/journey.functions";
 
-/** Minutes a live rail disruption is assumed to add to an affected route. */
-const LIVE_DELAY_MINUTES = 15;
-
 export function JourneyStatusCard({
-  journey,
-  alternatives,
-  arriveBy,
+  watch,
   maxDelay,
   onUseAlternative,
 }: {
-  journey: Journey | null;
-  alternatives: Array<{ preference?: string; journey: Journey }>;
-  arriveBy: string;
+  watch: DisruptionWatch;
   maxDelay: string;
   onUseAlternative: (journey: Journey) => void;
 }) {
-  const [demo, setDemo] = useState(false);
   const [keptCurrent, setKeptCurrent] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
-  const alertsFn = useServerFn(getTrainAlerts);
-  const alertsQuery = useQuery({
-    queryKey: ["train-alerts", "journey-status"],
-    queryFn: () => alertsFn(),
-    refetchInterval: 120_000,
-    staleTime: 60_000,
-  });
-
-  const incident: Incident | null = useMemo(() => {
-    if (demo) return DEMO_INCIDENT;
-    const data = alertsQuery.data;
-    if (!data || data.status !== "disrupted") return null;
-    return {
-      source: "live",
-      line: (data.line ?? "").trim(),
-      stations: (data.stations ?? "")
-        .split(/[,;]+/)
-        .map((item) => item.trim())
-        .filter(Boolean),
-      message: data.message ?? "Train service disruption reported.",
-      addedMinutes: LIVE_DELAY_MINUTES,
-    };
-  }, [alertsQuery.data, demo]);
-
-  const assessment = useMemo(
-    () =>
-      assessDisruption({
-        journey,
-        alternatives,
-        incident,
-        arriveBy,
-        maxDelayMinutes: Number(maxDelay) || 0,
-      }),
-    [alternatives, arriveBy, incident, journey, maxDelay],
-  );
-
-  const demoAvailable = import.meta.env.DEV;
+  const { assessment, incident, demo, setDemo, demoAvailable } = watch;
   if (!assessment) return null;
+
 
   const good = assessment.level === "none";
   const severe = assessment.level === "exceeds" || assessment.level === "impossible";
