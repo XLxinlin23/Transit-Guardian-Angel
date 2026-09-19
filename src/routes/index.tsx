@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { BellRing, Bus, Home, Navigation, Settings, SlidersHorizontal } from "lucide-react";
-import { GoogleDirectionsPanel } from "../components/GoogleDirectionsPanel";
+import { BellRing, Bus, Home, Settings, SlidersHorizontal } from "lucide-react";
+
 import { SettingsSheet } from "../components/SettingsSheet";
 import { ThemeProvider } from "../lib/theme";
 import { useEffect, useState } from "react";
@@ -28,7 +28,7 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-type Tab = "home" | "preference" | "directions" | "arrivals" | "alerts";
+type Tab = "home" | "preference" | "arrivals" | "alerts";
 
 function Index() {
   return (
@@ -79,7 +79,7 @@ function IndexShell() {
 
         {tab === "home" && <RouteAlarmForm onSeeMoreRoutes={() => { setCompareRequest((value) => value + 1); setTab("preference"); }} />}
         {tab === "preference" && <RoutePreferencePanel focusCompareRequest={compareRequest} onBackToPlan={() => setTab("home")} />}
-        {tab === "directions" && <GoogleDirectionsPanel />}
+        {tab === "arrivals" && <ArrivalsView />}
         {tab === "arrivals" && <ArrivalsView />}
         {tab === "alerts" && <AlertsView />}
       </main>
