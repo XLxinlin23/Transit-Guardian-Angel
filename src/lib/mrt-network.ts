@@ -329,6 +329,7 @@ export function planRoute(
       break;
     }
     for (const edge of GRAPH.get(node.station) ?? []) {
+      if (blocked.has(segmentKey(edge.line, node.station, edge.to))) continue;
       const a = STATION_INDEX.get(node.station)!;
       const b = STATION_INDEX.get(edge.to)!;
       let hop = weights.useDistance ? distanceKm(a, b) * 2.2 : 2.2;
