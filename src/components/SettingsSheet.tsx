@@ -1,7 +1,7 @@
-import { BellRing, Bus, Check, Home, Monitor, Moon, SlidersHorizontal, Sun, X } from "lucide-react";
+import { BellRing, Bus, Check, Home, Monitor, Moon, Navigation, SlidersHorizontal, Sun, X } from "lucide-react";
 import { useTheme, type ThemeMode } from "../lib/theme";
 
-export type SubsystemKey = "home" | "preference" | "arrivals" | "alerts";
+export type SubsystemKey = "home" | "preference" | "directions" | "arrivals" | "alerts";
 
 const SUBSYSTEMS: { key: SubsystemKey; label: string; hint: string; icon: typeof Home; chip: string; chipActive: string }[] = [
   { key: "home", label: "Route alarms", hint: "Plan and save your trips", icon: Home, chip: "bg-primary/12 text-primary", chipActive: "bg-primary text-primary-foreground" },
