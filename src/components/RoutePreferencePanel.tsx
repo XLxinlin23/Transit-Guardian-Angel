@@ -30,6 +30,15 @@ import { PREFERENCE_LABELS, type RoutePreference } from "@/lib/commute-settings"
 import { compareJourneys, type Journey } from "@/lib/journey.functions";
 import { getTrainAlerts } from "@/lib/singapore.functions";
 import { useTrip } from "@/lib/trip-store";
+import {
+  arrivalFromDeparture,
+  arrivalStatus,
+  filterEligible,
+  journeyDateTimeLabel,
+  primaryMetric,
+  STATUS_CLASS,
+  toMinutes,
+} from "@/lib/journey-time";
 import { JourneyTimeline, LegBadge, RouteLegend } from "./JourneySteps";
 import { RouteMap } from "./RouteMap";
 
@@ -62,7 +71,7 @@ export function RoutePreferencePanel({
   onBackToPlan?: () => void;
   focusCompareRequest?: number;
 }) {
-  const { preferences, setPreferences, fromPlace, toPlace, alarm, setManualJourney } = useTrip();
+  const { preferences, setPreferences, fromPlace, toPlace, alarm, manualJourney, setManualJourney } = useTrip();
   const applied = preferences[0] ?? "speed";
   const [pending, setPending] = useState<RoutePreference>(applied);
   const [confirmation, setConfirmation] = useState<string | null>(null);
