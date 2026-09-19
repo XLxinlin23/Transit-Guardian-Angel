@@ -302,6 +302,7 @@ export function planRoute(
   if (!from || !to || from.name === to.name) return null;
 
   const avoid = new Set(avoidLines);
+  const blocked = new Set(blockedSegments.map((segment) => segmentKey(segment.line, segment.a, segment.b)));
   const weights = weightsFor(preferences);
   type NodeKey = string; // `${station}|${line}`
   const cost = new Map<NodeKey, number>();
