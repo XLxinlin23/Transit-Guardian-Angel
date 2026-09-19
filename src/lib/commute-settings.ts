@@ -65,7 +65,7 @@ export function journeyDateLabel(alarm: Pick<RouteAlarm, "dateMode" | "date">): 
   return formatted;
 }
 
-export type RoutePreference = "speed" | "cost" | "walking" | "sheltered" | "transfers" | "crowd";
+export type RoutePreference = "speed" | "cost" | "walking" | "sheltered" | "transfers" | "crowd" | "disruption";
 
 
 export const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -110,4 +110,5 @@ export const PREFERENCE_LABELS: Record<RoutePreference, string> = {
   sheltered: "Most sheltered",
   transfers: "Fewest transfers",
   crowd: "Lower crowding",
+  disruption: "Disruption-safe",
 };

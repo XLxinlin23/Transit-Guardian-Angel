@@ -242,7 +242,7 @@ export function SimulationView() {
 
             <Label className="mt-2 flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-xl border border-dashed border-route-orange/50 bg-card px-3">
               <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-                <ShieldAlert className="size-4 text-route-orange" /> Demo incident (simulated East–West Line disruption)
+                <ShieldAlert className="size-4 text-route-orange" /> Demo incident (no train service between Simei and Tanah Merah, East–West Line)
               </span>
               <Switch checked={demo} onCheckedChange={setDemo} aria-label="Demo incident" />
             </Label>

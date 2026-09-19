@@ -281,6 +281,11 @@ const segmentKey = (line: string, a: string, b: string) =>
   `${line.toUpperCase()}|${[a.toLowerCase(), b.toLowerCase()].sort().join("|")}`;
 
 /** Every station between two stations on a line, inclusive, in travel order. */
+/** All stations on a line with their coordinates — used for geographic disruption checks. */
+export function lineStations(line: string): NetworkStation[] {
+  return (LINES[line.toUpperCase()] ?? []).map(([name, lat, lng]) => ({ name, lat, lng, lines: [line.toUpperCase()] }));
+}
+
 export function stationsBetween(line: string, a: string, b: string): string[] {
   const stations = LINES[line.toUpperCase()];
   if (!stations) return [];

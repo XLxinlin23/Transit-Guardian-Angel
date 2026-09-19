@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { STATION_INDEX, nearestStation, planRoute, type BlockedSegment } from "./mrt-network";
+import { STATION_INDEX, nearestStation, planRoute, stationsBetween, type BlockedSegment } from "./mrt-network";
 import { distanceMetres, loadBusRoutes, loadBusStops, type BusStopRecord } from "./lta-static.server";
 
 /** Stretches of track the fallback route must not use (matches the simulated incident). */
@@ -683,6 +683,19 @@ export const planJourney = createServerFn({ method: "GET" })
 
 export type JourneyOption = { preference: string; journey: Journey };
 
+/** True when any rail leg of this route rides straight through a closed stretch of track. */
+function crossesClosedSegment(legs: JourneyLeg[]): boolean {
+  const clean = (name: string) => name.toLowerCase().replace(/\s*(mrt|lrt)?\s*station$/i, "").trim();
+  return legs.some((leg) => {
+    if (leg.mode !== "mrt" && leg.mode !== "lrt") return false;
+    return CLOSED_SEGMENTS.some((segment) => {
+      if (leg.badge.toUpperCase() !== segment.line.toUpperCase()) return false;
+      const travelled = stationsBetween(segment.line, clean(leg.from), clean(leg.to));
+      return travelled.includes(segment.a) && travelled.includes(segment.b);
+    });
+  });
+}
+
 /** One best route per preference, so the user can compare side by side. */
 export const compareJourneys = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) =>
@@ -697,6 +710,19 @@ export const compareJourneys = createServerFn({ method: "GET" })
     for (const preference of PRIMARY_ORDER) {
       const journey = pickJourney(candidates, preference);
       if (journey) options.push({ preference, journey });
+    }
+    // Always surface the routes that steer clear of the closed stretch, even when they
+    // win no preference — during a disruption they are the only routes worth showing.
+    const included = new Set(options.map((option) => option.journey.id));
+    const safeExtras = candidates
+      .filter((candidate) => !included.has(candidate.id) && !crossesClosedSegment(candidate.legs))
+      .sort((a, b) => a.totalDurationMinutes - b.totalDurationMinutes)
+      .slice(0, 2);
+    for (const candidate of safeExtras) {
+      const journey = pickJourney([candidate], "speed");
+      if (!journey) continue;
+      journey.reason = "Avoids the closed Simei–Tanah Merah stretch.";
+      options.push({ preference: "disruption", journey });
     }
     return options;
   });

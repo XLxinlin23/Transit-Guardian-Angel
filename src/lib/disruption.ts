@@ -1,5 +1,5 @@
 import type { Journey, JourneyLeg } from "./journey.functions";
-import { stationsBetween } from "./mrt-network";
+import { lineStations, stationsBetween } from "./mrt-network";
 
 /** A disruption we can reason about — either live from LTA or a clearly-labelled demo. */
 export type Incident = {
@@ -50,6 +50,18 @@ export function legAffected(leg: JourneyLeg, incident: Incident): boolean {
 
   const named = leg.points.map((point) => norm(point.name)).filter(Boolean);
   if (named.some((name) => affected.has(name))) return true;
+
+  // Geographic fallback: stop names from live routing do not always match our station
+  // list, so also flag the leg when its path passes right by an affected station.
+  const affectedCoords = lineStations(line).filter((station) => affected.has(norm(station.name)));
+  if (affectedCoords.length) {
+    const near = (lat: number, lng: number, station: { lat: number; lng: number }) => {
+      const dLat = (lat - station.lat) * 111320;
+      const dLng = (lng - station.lng) * 111320 * Math.cos((station.lat * Math.PI) / 180);
+      return Math.hypot(dLat, dLng) <= 400;
+    };
+    if (leg.points.some((point) => affectedCoords.some((station) => near(point.lat, point.lng, station)))) return true;
+  }
 
   // Expand the ridden stretch station by station and see if it crosses the closure.
   const endpoints = [norm(leg.from), norm(leg.to), ...named].filter(Boolean);
@@ -143,12 +155,26 @@ export function assessDisruption(params: {
     // user never thinks a simulated or live incident has quietly disappeared.
     const avoiding = Boolean(incident);
     const label = incident?.source === "demo" ? "Demo incident active." : "Incident active.";
+    // The route may still ride the disrupted line outside the closed stretch — say so
+    // explicitly, or a line badge on the route looks like the disruption was ignored.
+    const ridesLine = Boolean(
+      incident &&
+        journey.legs.some(
+          (leg) => (leg.mode === "mrt" || leg.mode === "lrt") && leg.badge.toUpperCase() === incident.line.toUpperCase(),
+        ),
+    );
+    const stretch =
+      incident && incident.stations.length >= 2
+        ? `${incident.stations[0]}–${incident.stations[incident.stations.length - 1]}`
+        : null;
+    const avoidText =
+      ridesLine && stretch
+        ? `Your route still uses the ${incident!.line} Line, but only outside the closed ${stretch} stretch.`
+        : `Your selected route avoids the affected ${incident?.line || "disrupted"} Line segment.`;
     return {
       ...base,
       level: "none",
-      headline: avoiding
-        ? `${label} Your selected route avoids the affected ${incident!.line || "disrupted"} Line segment.`
-        : "No disruption affecting your journey.",
+      headline: avoiding ? `${label} ${avoidText}` : "No disruption affecting your journey.",
       detail:
         plannedArrival <= reachBy
           ? `On track to arrive by ${formatMinutes(plannedArrival)}.`
