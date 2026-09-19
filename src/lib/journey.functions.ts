@@ -436,7 +436,3 @@ export const compareJourneys = createServerFn({ method: "GET" })
     }
     return options;
   });
-
-
-    return journey;
-  });
