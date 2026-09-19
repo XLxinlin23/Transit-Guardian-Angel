@@ -258,7 +258,8 @@ function scoreFor(candidate: Candidate, preference: string): number {
     case "transfers":
       return candidate.transfers * 1000 + candidate.minutes;
     case "cost":
-      return candidate.transfers * 60 + candidate.minutes;
+      return candidate.fare * 100 + candidate.minutes;
+
     case "crowd":
       return candidate.transfers * 80 + candidate.minutes;
     default:
