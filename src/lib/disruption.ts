@@ -155,12 +155,26 @@ export function assessDisruption(params: {
     // user never thinks a simulated or live incident has quietly disappeared.
     const avoiding = Boolean(incident);
     const label = incident?.source === "demo" ? "Demo incident active." : "Incident active.";
+    // The route may still ride the disrupted line outside the closed stretch — say so
+    // explicitly, or a line badge on the route looks like the disruption was ignored.
+    const ridesLine = Boolean(
+      incident &&
+        journey.legs.some(
+          (leg) => (leg.mode === "mrt" || leg.mode === "lrt") && leg.badge.toUpperCase() === incident.line.toUpperCase(),
+        ),
+    );
+    const stretch =
+      incident && incident.stations.length >= 2
+        ? `${incident.stations[0]}–${incident.stations[incident.stations.length - 1]}`
+        : null;
+    const avoidText =
+      ridesLine && stretch
+        ? `Your route still uses the ${incident!.line} Line, but only outside the closed ${stretch} stretch.`
+        : `Your selected route avoids the affected ${incident?.line || "disrupted"} Line segment.`;
     return {
       ...base,
       level: "none",
-      headline: avoiding
-        ? `${label} Your selected route avoids the affected ${incident!.line || "disrupted"} Line segment.`
-        : "No disruption affecting your journey.",
+      headline: avoiding ? `${label} ${avoidText}` : "No disruption affecting your journey.",
       detail:
         plannedArrival <= reachBy
           ? `On track to arrive by ${formatMinutes(plannedArrival)}.`
