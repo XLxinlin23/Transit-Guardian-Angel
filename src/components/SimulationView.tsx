@@ -1,6 +1,7 @@
-import { AlertTriangle, BellRing, Clock, PlayCircle, ShieldAlert, TrainFront } from "lucide-react";
+import { AlertTriangle, BellRing, Clock, CloudRain, Footprints, PlayCircle, RotateCcw, ShieldAlert, TrainFront } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -32,7 +33,7 @@ function readAlarms(): SavedRouteAlarm[] {
 }
 
 export function SimulationView() {
-  const { demo, setDemo, clockMinutes, setClockMinutes, clockActive, setClockActive } = useSimulation();
+  const { demo, setDemo, clockMinutes, setClockMinutes, clockActive, setClockActive, rain, setRain, departedAt, setDepartedAt } = useSimulation();
   const [alarms, setAlarms] = useState<SavedRouteAlarm[]>([]);
 
   useEffect(() => {
