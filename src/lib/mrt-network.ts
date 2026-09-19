@@ -235,6 +235,12 @@ const GRAPH: Map<string, Edge[]> = (() => {
       push(b, { to: a, line });
     }
   }
+  // Circle Line Marina Bay branch: Promenade → Bayfront → Marina Bay.
+  // Kept as explicit edges because the LINES list order is the main loop only.
+  for (const [a, b] of [["Promenade", "Bayfront"], ["Bayfront", "Marina Bay"]] as const) {
+    push(a, { to: b, line: "CC" });
+    push(b, { to: a, line: "CC" });
+  }
   return graph;
 })();
 

@@ -514,6 +514,9 @@ async function buildCandidates(data: PlanInput): Promise<JourneyCandidate[]> {
     // Keep at least one option clear of the closed stretch, so a disrupted trip can be
     // compared against a genuinely different set of legs and line badges.
     addRailAvoiding([], CLOSED_SEGMENTS);
+    // Second fallback that keeps off the East West Line entirely, e.g.
+    // Downtown Line to MacPherson → Circle Line to Marina Bay → North South Line.
+    addRailAvoiding(["EW"], CLOSED_SEGMENTS);
     await attachCrowd(candidates);
     return candidates;
   }
@@ -580,6 +583,7 @@ async function buildCandidates(data: PlanInput): Promise<JourneyCandidate[]> {
   }
 
   addRailAvoiding([], CLOSED_SEGMENTS);
+  addRailAvoiding(["EW"], CLOSED_SEGMENTS);
 
   if (!candidates.length) {
     const fallback = toCandidate(walkLegBetween(origin, destination));
