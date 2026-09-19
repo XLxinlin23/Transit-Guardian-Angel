@@ -83,9 +83,10 @@ function IndexShell() {
         {tab === "alerts" && <AlertsView />}
       </main>
 
-      <nav className="glass-control fixed inset-x-4 bottom-4 z-20 mx-auto grid max-w-[440px] grid-cols-4 rounded-2xl p-1.5" aria-label="Primary navigation">
+      <nav className="glass-control fixed inset-x-4 bottom-4 z-20 mx-auto grid max-w-[520px] grid-cols-5 rounded-2xl p-1.5" aria-label="Primary navigation">
         <NavButton active={tab === "home"} icon={Home} label="Home" onClick={() => setTab("home")} />
         <NavButton active={tab === "preference"} icon={SlidersHorizontal} label="Preferences" onClick={() => setTab("preference")} />
+        <NavButton active={tab === "directions"} icon={Navigation} label="Directions" onClick={() => setTab("directions")} />
         <NavButton active={tab === "arrivals"} icon={Bus} label="Arrivals" onClick={() => setTab("arrivals")} />
         <NavButton active={tab === "alerts"} icon={BellRing} label="Alerts" onClick={() => setTab("alerts")} />
       </nav>
