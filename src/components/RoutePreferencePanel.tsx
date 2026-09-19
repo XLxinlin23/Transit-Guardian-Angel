@@ -1,5 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowLeft,
   Banknote,
@@ -13,7 +11,7 @@ import {
   TrainFront,
   Users,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   AlertDialog,
@@ -27,18 +25,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { PREFERENCE_LABELS, type RoutePreference } from "@/lib/commute-settings";
-import { compareJourneys, type Journey } from "@/lib/journey.functions";
-import { getTrainAlerts } from "@/lib/singapore.functions";
+import type { Journey } from "@/lib/journey.functions";
+import { useRouteStore } from "@/lib/route-state";
 import { useTrip } from "@/lib/trip-store";
-import {
-  arrivalFromDeparture,
-  arrivalStatus,
-  filterEligible,
-  journeyDateTimeLabel,
-  primaryMetric,
-  STATUS_CLASS,
-  toMinutes,
-} from "@/lib/journey-time";
+import { journeyDateTimeLabel, primaryMetric, STATUS_CLASS } from "@/lib/journey-time";
 import { JourneyTimeline, LegBadge, RouteLegend } from "./JourneySteps";
 import { RouteMap } from "./RouteMap";
 
@@ -50,19 +40,6 @@ const OPTIONS: { value: RoutePreference; icon: typeof Gauge; detail: string }[] 
   { value: "sheltered", icon: ShieldCheck, detail: "Less outdoor walking" },
   { value: "crowd", icon: Users, detail: "Avoid busier services" },
 ];
-
-type RouteGroup = {
-  journey: Journey;
-  preferences: RoutePreference[];
-};
-
-function shiftTime(hhmm: string, minusMinutes: number): string {
-  const [h = NaN, m = NaN] = hhmm.split(":").map(Number);
-  if (Number.isNaN(h) || Number.isNaN(m)) return "--:--";
-  let total = h * 60 + m - minusMinutes;
-  total = ((total % 1440) + 1440) % 1440;
-  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
-}
 
 export function RoutePreferencePanel({
   onBackToPlan,
