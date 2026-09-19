@@ -337,6 +337,11 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
     return formatMinutes(reach + (Number(alarm.maxDelay) || 0));
   })();
 
+  const simulation = useSimulationOptional();
+  const simClock = simulation?.clockActive ? simulation.clockMinutes : null;
+  const departedAt = simulation?.departedAt ?? null;
+  const rainDelay = simulation?.rain ? 5 : 0;
+
   const disruption = useDisruptionWatch({
     journey: preview,
     baselineJourney: recommendedJourney,
@@ -344,14 +349,10 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
     arriveBy: alarm.arriveBy,
     maxDelay: alarm.maxDelay,
     preference: preferences[0] ?? "speed",
+    // Once the user has left, every predicted arrival is measured from that exact moment.
+    departureMinutes: departedAt,
   });
   const assessment = disruption.assessment;
-
-
-  const simulation = useSimulationOptional();
-  const simClock = simulation?.clockActive ? simulation.clockMinutes : null;
-  const departedAt = simulation?.departedAt ?? null;
-  const rainDelay = simulation?.rain ? 5 : 0;
 
   const previewMinutes = preview?.totalDurationMinutes ?? preview?.minutes ?? null;
   const setRouteMinutes = simulation?.setRouteMinutes;
