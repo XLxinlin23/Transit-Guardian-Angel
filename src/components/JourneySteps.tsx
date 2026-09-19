@@ -53,6 +53,42 @@ export function RouteLegend({ legs }: { legs: JourneyStep[] }) {
   );
 }
 
+/** Distance text out of a leg detail such as "121 m on foot". */
+function distanceText(detail: string): string | null {
+  const match = /(\d[\d.,]*)\s*(m|km)\b/i.exec(detail || "");
+  return match ? `${match[1]} ${match[2]!.toLowerCase()}` : null;
+}
+
+function sameStation(a: string, b: string): boolean {
+  const clean = (value: string) => value.toLowerCase().replace(/\b(mrt|lrt|station|interchange)\b/g, "").trim();
+  return Boolean(a && b && clean(a) === clean(b));
+}
+
+/** Full instruction for a step — walking legs get start, end, distance and time. */
+function stepText(legs: JourneyStep[], index: number): { title: string; detail: string } {
+  const leg = legs[index]!;
+  const previous = legs[index - 1];
+  const next = legs[index + 1];
+  const distance = distanceText(leg.detail);
+  const time = `${leg.minutes} min`;
+
+  if (leg.mode !== "walk") {
+    return {
+      title: `${leg.from || "Board"} → ${leg.to || "Alight"}`,
+      detail: [leg.detail, time].filter(Boolean).join(" · "),
+    };
+  }
+
+  const start = leg.from || previous?.to || "your starting point";
+  const end = leg.to || next?.from || "your destination";
+  const transferInside = previous && next && sameStation(previous.to, next.from);
+  const title = transferInside
+    ? `Walk within ${previous!.to} to the ${next!.badge} ${next!.mode === "bus" ? "bus stop" : "platform"}`
+    : `Walk from ${start} to ${end}`;
+
+  return { title, detail: [distance, time].filter(Boolean).join(" · ") };
+}
+
 /** Vertical timeline of journey steps, colour-matched to the map. */
 export function JourneyTimeline({ legs }: { legs: JourneyStep[] }) {
   return (
@@ -60,6 +96,7 @@ export function JourneyTimeline({ legs }: { legs: JourneyStep[] }) {
       {legs.map((leg, index) => {
         const color = legColor(leg.mode, leg.badge);
         const last = index === legs.length - 1;
+        const { title, detail } = stepText(legs, index);
         return (
           <li key={`${leg.badge}-${index}`} className="relative flex gap-3 pb-4 last:pb-0">
             {!last && (
@@ -78,13 +115,9 @@ export function JourneyTimeline({ legs }: { legs: JourneyStep[] }) {
             <span className="min-w-0 flex-1 text-sm">
               <span className="flex flex-wrap items-center gap-2">
                 <LegBadge mode={leg.mode} badge={leg.badge} size="sm" />
-                <span className="font-bold text-brand-deep">
-                  {leg.from} → {leg.to}
-                </span>
+                <span className="font-bold text-brand-deep">{title}</span>
               </span>
-              <span className="mt-0.5 block text-xs font-semibold text-muted-foreground">
-                {leg.detail} · {leg.minutes} min
-              </span>
+              <span className="mt-0.5 block text-xs font-semibold text-muted-foreground">{detail}</span>
             </span>
           </li>
         );
