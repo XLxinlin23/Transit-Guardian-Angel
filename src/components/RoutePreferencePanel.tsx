@@ -28,6 +28,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { PREFERENCE_LABELS, type RoutePreference } from "@/lib/commute-settings";
 import { compareJourneys, type Journey } from "@/lib/journey.functions";
+import { getTrainAlerts } from "@/lib/singapore.functions";
 import { useTrip } from "@/lib/trip-store";
 import { JourneyTimeline, LegBadge, RouteLegend } from "./JourneySteps";
 import { RouteMap } from "./RouteMap";
@@ -77,6 +78,12 @@ export function RoutePreferencePanel({
   }, [focusCompareRequest]);
 
   const compare = useServerFn(compareJourneys);
+  const fetchTrainAlerts = useServerFn(getTrainAlerts);
+  const alertsQuery = useQuery({
+    queryKey: ["train-alerts"],
+    queryFn: () => fetchTrainAlerts(),
+    refetchInterval: 60_000,
+  });
   const routesQuery = useQuery({
     queryKey: ["journey-options", fromPlace?.lat, fromPlace?.lng, toPlace?.lat, toPlace?.lng],
     enabled: Boolean(fromPlace && toPlace),
@@ -177,6 +184,9 @@ export function RoutePreferencePanel({
               const segments = journey.legs.map((leg) => ({ mode: leg.mode, badge: leg.badge, points: leg.points }));
               const labels = routePreferences.map((value) => PREFERENCE_LABELS[value]);
               const leaveAt = shiftTime(alarm.arriveBy, journey.totalDurationMinutes ?? journey.minutes);
+              const routeLines = new Set(journey.legs.filter((leg) => leg.mode === "mrt" || leg.mode === "lrt").map((leg) => leg.badge.toUpperCase()));
+              const affectedLines = (alertsQuery.data?.line ?? "").split(/[\s,;/]+/).filter(Boolean).map((line) => line.toUpperCase());
+              const disrupted = alertsQuery.data?.status === "disrupted" && (!affectedLines.length || affectedLines.some((line) => routeLines.has(line)));
               return (
                 <article key={journey.id} className={`glass-panel rounded-2xl p-4 ${routePreferences.includes(applied) ? "border-primary/50" : ""}`}>
                   <div className="flex items-start justify-between gap-3">
@@ -191,7 +201,7 @@ export function RoutePreferencePanel({
                     <Metric icon={Footprints} label="Walking" value={`${journey.totalWalkingDistanceMetres ?? journey.walkMetres} m · ${journey.totalWalkingTimeMinutes ?? journey.walkMinutes} min`} />
                     <Metric icon={TrainFront} label="Transfers" value={String(journey.numberOfTransfers ?? journey.transfers)} />
                     <Metric icon={Banknote} label="Fare" value={typeof journey.fare === "number" ? `$${journey.fare.toFixed(2)}` : "—"} />
-                    <Metric icon={Clock3} label="Disruption" value="None reported" />
+                    <Metric icon={Clock3} label="Disruption" value={disrupted ? "Current disruption" : alertsQuery.data?.configured ? "None reported" : "Checking…"} />
                   </div>
 
                   <div className="mt-3 flex flex-wrap gap-1.5">

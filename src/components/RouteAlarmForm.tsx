@@ -181,7 +181,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
   const typedBoth = Boolean(alarm.from.trim() && alarm.to.trim());
   const bothConfirmed = Boolean(fromPlace && toPlace);
   const looking = journeyQuery.isFetching;
-  const preferenceSummary = PREFERENCE_LABELS[preferences[0] ?? DEFAULT_PREFERENCES[0]];
+  const preferenceSummary = PREFERENCE_LABELS[preferences[0] ?? "speed"];
 
   const update = <Key extends keyof RouteAlarm>(key: Key, value: RouteAlarm[Key]) => {
     setAlarmField(key, value);

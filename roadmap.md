@@ -2,4 +2,4 @@
 - [x] Replace the second tab with device-saved route priorities.
 - [x] Remove fixed-route wording while preserving alerts, dashboard, and map access.
 - [x] Verify persistence, custom days, mobile layout, and build health.
-- [ ] Separate the primary route preference from route comparison and add persistent manual route selection.
+- [x] Separate the primary route preference from route comparison and add persistent manual route selection.

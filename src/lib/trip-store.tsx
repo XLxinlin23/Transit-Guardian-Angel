@@ -13,6 +13,7 @@ import {
 import type { Journey } from "./journey.functions";
 
 const MANUAL_ROUTE_STORAGE_KEY = "wayline-manual-route";
+const DEFAULT_PRIMARY_PREFERENCE: RoutePreference = "speed";
 
 export const BLANK_ALARM: RouteAlarm = { ...DEFAULT_ALARM, from: "", to: "", active: false };
 
@@ -83,7 +84,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
     const stored = readDraft();
     if (stored) setDraft(stored);
     const prefs = readPreferences();
-    if (prefs) setPreferencesState([prefs[0] ?? DEFAULT_PREFERENCES[0]]);
+    if (prefs) setPreferencesState([prefs[0] ?? DEFAULT_PRIMARY_PREFERENCE]);
     try {
       const manual = window.localStorage.getItem(MANUAL_ROUTE_STORAGE_KEY);
       if (manual) setManualJourneyState(JSON.parse(manual) as Journey);
@@ -135,7 +136,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setPreferences = useCallback((values: RoutePreference[]) => {
-    const primary = values[0] ?? DEFAULT_PREFERENCES[0];
+    const primary = values[0] ?? DEFAULT_PRIMARY_PREFERENCE;
     setPreferencesState([primary]);
     window.localStorage.setItem(PREFERENCE_STORAGE_KEY, JSON.stringify([primary]));
   }, []);
