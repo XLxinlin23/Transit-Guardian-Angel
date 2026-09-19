@@ -33,7 +33,6 @@ import {
   REPEAT_LABELS,
   WEEKDAYS,
   journeyDateLabel,
-  type JourneyDateMode,
   type RepeatOption,
   DEFAULT_PREFERENCES,
   PREFERENCE_LABELS,
@@ -58,12 +57,11 @@ import {
   filterEligible,
   journeyDateTimeLabel,
   primaryMetric,
-  reachByHasPassed,
   STATUS_CLASS,
   toMinutes,
 } from "@/lib/journey-time";
 import { buildRouteMetrics } from "@/lib/route-metrics";
-import { departureHasPassed, isRecurring, nextRunLabel, recurrenceLabel, sgTomorrowISO } from "@/lib/sg-time";
+import { departureHasPassed, isRecurring, recurrenceLabel } from "@/lib/sg-time";
 import { RouteMap } from "./RouteMap";
 import { JourneyTimeline, RouteLegend } from "./JourneySteps";
 
@@ -207,6 +205,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
     update("repeat", value);
     if (value === "custom") setCustomDraft(alarm.days);
     if (value === "date") setAlarmField("dateMode", "date");
+    if (value === "once") setAlarmField("dateMode", "today");
   };
 
   const editAlarm = (entry: SavedRouteAlarm) => {
@@ -335,7 +334,6 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
     setRouteMinutes?.(previewMinutes);
   }, [previewMinutes, setRouteMinutes]);
 
-  const pastReachBy = reachByHasPassed(alarm);
   const baselineMinutes = recommendedJourney?.totalDurationMinutes ?? recommendedJourney?.minutes ?? null;
 
   // One metrics object per route — every figure on this page reads from it.
@@ -508,14 +506,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                   ariaLabel="To"
                 />
               </Field>
-              {isRecurring(alarm.repeat) ? (
-                <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5">
-                  <p className="text-xs font-bold text-brand-deep">{recurrenceLabel(alarm)}</p>
-                  <p className="mt-1 text-[11px] font-semibold text-muted-foreground">
-                    Repeating trip · next journey {nextRunLabel(alarm)}
-                  </p>
-                </div>
-              ) : alarm.repeat === "date" ? (
+              {alarm.repeat === "date" && (
                 <Field icon={CalendarDays} label="Journey date">
                   <Input
                     type="date"
@@ -525,51 +516,6 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                     className="h-11 bg-card"
                   />
                 </Field>
-              ) : (
-                <Field icon={CalendarDays} label="Journey date">
-                  <div className="grid grid-cols-2 gap-2">
-                    {([
-                      ["today", "Today"],
-                      ["date", "Select date"],
-                    ] as Array<[JourneyDateMode, string]>).map(([mode, label]) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        onClick={() => update("dateMode", mode)}
-                        aria-pressed={alarm.dateMode === mode}
-                        className={`min-h-10 rounded-lg border px-2 text-xs font-bold ${
-                          alarm.dateMode === mode ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-muted-foreground"
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  {alarm.dateMode === "date" && (
-                    <Input
-                      type="date"
-                      value={alarm.date}
-                      onChange={(event) => update("date", event.target.value)}
-                      aria-label="Journey date"
-                      className="mt-2 h-11 bg-card"
-                    />
-                  )}
-                </Field>
-              )}
-              {pastReachBy && (
-                <div className="rounded-xl border border-route-orange/40 bg-warning-soft px-3 py-2.5">
-                  <p className="text-xs font-bold text-brand-deep">This arrival time has already passed.</p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      update("date", sgTomorrowISO());
-                      update("dateMode", "date");
-                    }}
-                    className="mt-1.5 text-xs font-bold text-primary underline underline-offset-4"
-                  >
-                    Use tomorrow instead
-                  </button>
-                </div>
               )}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3">
                 <Field icon={AlarmClock} label="Reach by">
@@ -632,7 +578,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
 
             <Button
               className="mt-6 h-11 w-full rounded-xl text-sm font-bold"
-              disabled={!bothConfirmed || looking || pastReachBy}
+              disabled={!bothConfirmed || looking}
               onClick={() => store.refetch()}
             >
               <Navigation /> {looking ? "Finding best route…" : "Find best route"}
