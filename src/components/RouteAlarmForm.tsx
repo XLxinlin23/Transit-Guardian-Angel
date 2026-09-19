@@ -689,10 +689,11 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
               Clear trip
             </button>
           </section>
+          )}
         </div>
 
         {/* Right column — route result, map and alerts */}
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           {preview && (
             <JourneyStatusCard
               watch={disruption}
@@ -891,7 +892,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                 disabled={!canSave || syncing}
                 onClick={saveAlarm}
               >
-                <BellRing /> {syncing ? "Saving…" : "Save route alarm"}
+                <BellRing /> {syncing ? "Saving…" : editingExisting ? "Update route alarm" : "Save route alarm"}
               </Button>
             </section>
           )}
