@@ -100,6 +100,10 @@ export function TripProvider({ children }: { children: ReactNode }) {
 
   const setAlarmField = useCallback<TripContextValue["setAlarmField"]>(
     (key, value) => {
+      if (key === "from" || key === "to") {
+        setManualJourneyState(null);
+        window.localStorage.removeItem(MANUAL_ROUTE_STORAGE_KEY);
+      }
       setDraft((current) => {
         const next: TripDraft = {
           ...current,
@@ -116,6 +120,8 @@ export function TripProvider({ children }: { children: ReactNode }) {
   );
 
   const setPlace = useCallback<TripContextValue["setPlace"]>((field, place) => {
+    setManualJourneyState(null);
+    window.localStorage.removeItem(MANUAL_ROUTE_STORAGE_KEY);
     setDraft((current) => {
       const next: TripDraft = {
         ...current,
@@ -141,7 +147,11 @@ export function TripProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loadDraft = useCallback((next: TripDraft) => persist(next), [persist]);
-  const startNewTrip = useCallback(() => persist(emptyDraft()), [persist]);
+  const startNewTrip = useCallback(() => {
+    setManualJourneyState(null);
+    window.localStorage.removeItem(MANUAL_ROUTE_STORAGE_KEY);
+    persist(emptyDraft());
+  }, [persist]);
   const clearTrip = useCallback(() => {
     window.localStorage.removeItem(DRAFT_STORAGE_KEY);
     window.localStorage.removeItem(MANUAL_ROUTE_STORAGE_KEY);

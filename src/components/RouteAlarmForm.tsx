@@ -52,6 +52,8 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
     fromPlace,
     toPlace,
     preferences,
+    manualJourney,
+    setManualJourney,
     setAlarmField,
     setPlace,
     loadDraft,
@@ -138,12 +140,13 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
         },
       }),
   });
-  const preview: Journey | null = journeyQuery.data ?? null;
+  const recommendedJourney: Journey | null = journeyQuery.data ?? null;
+  const preview: Journey | null = manualJourney ?? recommendedJourney;
 
   const compareFn = useServerFn(compareJourneys);
   const optionsQuery = useQuery({
     queryKey: ["journey-options", fromPlace?.lat, fromPlace?.lng, toPlace?.lat, toPlace?.lng],
-    enabled: Boolean(fromPlace && toPlace && preview),
+    enabled: Boolean(fromPlace && toPlace && recommendedJourney),
     staleTime: 5 * 60_000,
     queryFn: () =>
       compareFn({
@@ -178,9 +181,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
   const typedBoth = Boolean(alarm.from.trim() && alarm.to.trim());
   const bothConfirmed = Boolean(fromPlace && toPlace);
   const looking = journeyQuery.isFetching;
-  const preferenceSummary = (preferences.length ? preferences : DEFAULT_PREFERENCES)
-    .map((value) => PREFERENCE_LABELS[value])
-    .join(" · ");
+  const preferenceSummary = PREFERENCE_LABELS[preferences[0] ?? DEFAULT_PREFERENCES[0]];
 
   const update = <Key extends keyof RouteAlarm>(key: Key, value: RouteAlarm[Key]) => {
     setAlarmField(key, value);
@@ -456,7 +457,9 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
             <section className="glass-panel rounded-2xl p-5">
               <div className="flex items-baseline justify-between gap-3">
                 <h2 className="font-display text-base font-bold text-brand-deep">Your route</h2>
-                <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">{preferenceSummary}</span>
+                <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${manualJourney ? "bg-success-soft text-success" : "bg-primary/10 text-primary"}`}>
+                  {manualJourney ? "Chosen by you" : `Recommended for: ${preferenceSummary}`}
+                </span>
               </div>
 
               <div className="mt-3 flex items-baseline gap-2">
@@ -474,8 +477,21 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
               </dl>
 
               <p className="mt-3 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-semibold text-foreground">
-                {preview.reason ?? ((preview.alternatives ?? 0) > 1 ? `Recommended from ${preview.alternatives} routes.` : "Only one route is currently available.")}
+                {manualJourney
+                  ? "Chosen by you. Your saved primary preference is unchanged."
+                  : preview.reason ?? ((preview.alternatives ?? 0) > 1 ? `Recommended from ${preview.alternatives} routes.` : "Only one route is currently available.")}
               </p>
+
+              {manualJourney && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="mt-2 h-9 w-full text-sm font-bold text-primary"
+                  onClick={() => setManualJourney(null)}
+                >
+                  Return to recommended route
+                </Button>
+              )}
 
               {toPlace && (
                 <p className="mt-2 text-xs text-muted-foreground">Destination confirmed: {placeLine(toPlace)}</p>
@@ -487,7 +503,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                   segments={segments}
                   embedded
                   title="Route map"
-                  badge={preferenceSummary}
+                  badge={manualJourney ? "Chosen by you" : preferenceSummary}
                   footer={`About ${preview.minutes} min door to door · ${preview.legs.length} leg${preview.legs.length > 1 ? "s" : ""} · currently no disruption`}
                 />
                 <div className="mt-3 px-1">

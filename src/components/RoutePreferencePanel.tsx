@@ -105,6 +105,7 @@ export function RoutePreferencePanel({
 
   const applyPreference = () => {
     setPreferences([pending]);
+    setManualJourney(null);
     const label = PREFERENCE_LABELS[pending].toLowerCase();
     setConfirmation(`Preference updated. Your Home recommendation now prioritises ${label}.`);
   };
