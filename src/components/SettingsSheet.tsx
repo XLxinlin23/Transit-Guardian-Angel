@@ -3,11 +3,11 @@ import { useTheme, type ThemeMode } from "../lib/theme";
 
 export type SubsystemKey = "home" | "preference" | "arrivals" | "alerts";
 
-const SUBSYSTEMS: { key: SubsystemKey; label: string; hint: string; icon: typeof Home }[] = [
-  { key: "home", label: "Route alarms", hint: "Plan and save your trips", icon: Home },
-  { key: "preference", label: "Route preference", hint: "Fastest, least walking, sheltered", icon: SlidersHorizontal },
-  { key: "arrivals", label: "MRT & Bus arrival", hint: "Live stations and stops near you", icon: Bus },
-  { key: "alerts", label: "Disruption alert", hint: "Service status and weather", icon: BellRing },
+const SUBSYSTEMS: { key: SubsystemKey; label: string; hint: string; icon: typeof Home; chip: string; chipActive: string }[] = [
+  { key: "home", label: "Route alarms", hint: "Plan and save your trips", icon: Home, chip: "bg-primary/12 text-primary", chipActive: "bg-primary text-primary-foreground" },
+  { key: "preference", label: "Route preference", hint: "Fastest, least walking, sheltered", icon: SlidersHorizontal, chip: "bg-success/12 text-success", chipActive: "bg-success text-primary-foreground" },
+  { key: "arrivals", label: "MRT & Bus arrival", hint: "Live stations and stops near you", icon: Bus, chip: "bg-brand-deep/10 text-brand-deep", chipActive: "bg-brand-deep text-primary-foreground" },
+  { key: "alerts", label: "Disruption alert", hint: "Service status and weather", icon: BellRing, chip: "bg-destructive/12 text-destructive", chipActive: "bg-destructive text-destructive-foreground" },
 ];
 
 const THEMES: { key: ThemeMode; label: string; icon: typeof Sun }[] = [
@@ -67,7 +67,7 @@ export function SettingsSheet({
                     isActive ? "border-primary bg-primary/12" : "border-border bg-card hover:bg-secondary"
                   }`}
                 >
-                  <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${isActive ? "bg-primary text-primary-foreground" : "bg-secondary text-primary"}`}>
+                  <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${isActive ? item.chipActive : item.chip}`}>
                     <Icon className="size-4" />
                   </span>
                   <span className="min-w-0 flex-1">
