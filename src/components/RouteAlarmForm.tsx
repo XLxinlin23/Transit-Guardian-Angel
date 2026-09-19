@@ -314,6 +314,19 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
   const departureTime = recommendedJourney ? shiftTime(alarm.arriveBy, recommendedJourney.minutes) : "--:--";
   const arrivalTime = assessment ? assessment.predictedArrival : alarm.arriveBy || "--:--";
 
+  // Minutes past the latest acceptable arrival for the route currently shown —
+  // applies to any route on screen, disrupted or not.
+  const reachMin = parseTime(alarm.arriveBy);
+  const arrivalMin = parseTime(arrivalTime);
+  const latestMin = reachMin !== null ? reachMin + (Number(alarm.maxDelay) || 0) : null;
+  const lateBy = arrivalMin !== null && latestMin !== null ? Math.max(0, arrivalMin - latestMin) : 0;
+  const routeLate = lateBy > 0;
+  const statusLine = disruption.disrupted && assessment
+    ? `${assessment.headline}${disruption.incident?.source === "demo" ? " (simulated)" : ""}`
+    : routeLate
+      ? `Arrives ${arrivalTime} — ${lateBy} min past your latest ${latestAcceptableArrival}. Leave earlier or pick another route.`
+      : null;
+
 
   return (
     <div className="pt-7">
