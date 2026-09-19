@@ -16,7 +16,7 @@ import { useSimulation } from "@/lib/simulation";
 
 type SimNotification = {
   at: number;
-  tone: "info" | "warn" | "alert";
+  tone: "info" | "warn" | "alert" | "rain";
   title: string;
   body: string;
 };
@@ -60,17 +60,20 @@ export function SimulationView() {
       // Leave early enough to absorb the disruption and the wet-weather allowance.
       const departure = reach - duration - delay - rainDelay;
 
-      list.push({
-        at: Math.max(0, departure - lead),
-        tone: "info",
-        title: `Leave in ${lead} min · ${trip}`,
-        body: `${duration + delay + rainDelay} min journey. Leave at ${formatMinutes(departure)} to arrive by ${alarm.arriveBy}.${rain && alarm.notifyWeather ? " Rain near your start — 5 min added." : ""}`,
-      });
+      // Leave-early nudges are pointless once the user has already left.
+      if (departedAt === null || departedAt > departure) {
+        list.push({
+          at: Math.max(0, departure - lead),
+          tone: "info",
+          title: `Leave in ${lead} min · ${trip}`,
+          body: `${duration + delay + rainDelay} min journey. Leave at ${formatMinutes(departure)} to arrive by ${alarm.arriveBy}.${rain && alarm.notifyWeather ? " Rain near your start — 5 min added." : ""}`,
+        });
+      }
 
       if (rain && alarm.notifyWeather) {
         list.push({
           at: Math.max(0, departure - lead - 5),
-          tone: "warn",
+          tone: "rain",
           title: `Rain near your start · ${trip}`,
           body: "Simulated weather. Walking legs take about 5 min longer — leave a little earlier.",
         });
@@ -259,13 +262,17 @@ export function SimulationView() {
                   className={`rounded-xl border p-3 ${
                     event.tone === "alert"
                       ? "border-route-red/35 bg-route-red/10"
-                      : event.tone === "warn"
-                        ? "border-route-orange/35 bg-warning-soft"
-                        : "border-border bg-card"
+                      : event.tone === "rain"
+                        ? "border-primary/35 bg-primary/10"
+                        : event.tone === "warn"
+                          ? "border-route-orange/35 bg-warning-soft"
+                          : "border-border bg-card"
                   }`}
                 >
                   <div className="flex items-start gap-2">
-                    {event.tone === "info" ? (
+                    {event.tone === "rain" ? (
+                      <CloudRain className="mt-0.5 size-4 shrink-0 text-primary" />
+                    ) : event.tone === "info" ? (
                       <BellRing className="mt-0.5 size-4 shrink-0 text-primary" />
                     ) : (
                       <AlertTriangle className="mt-0.5 size-4 shrink-0 text-route-red" />
