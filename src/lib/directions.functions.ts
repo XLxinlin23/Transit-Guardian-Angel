@@ -99,11 +99,34 @@ function vehicleMode(type: string | undefined, name: string): TravelModeKey {
   return "mrt";
 }
 
-const inputSchema = z.object({
-  origin: z.string().min(2).max(200),
-  destination: z.string().min(2).max(200),
-  mode: z.enum(["WALK", "TRANSIT"]).default("TRANSIT"),
+const placeSchema = z.object({
+  label: z.string().min(1).max(200),
+  lat: z.number().optional(),
+  lng: z.number().optional(),
 });
+
+const inputSchema = z.object({
+  origin: placeSchema,
+  destination: placeSchema,
+  mode: z.enum(["WALK", "TRANSIT"]).default("TRANSIT"),
+  /** The user's route priority — maps onto Google's transit routing preference. */
+  preference: z.enum(["speed", "walking", "transfers", "cost", "sheltered", "crowd"]).default("speed"),
+});
+
+type PlaceInput = z.infer<typeof placeSchema>;
+
+function waypoint(place: PlaceInput) {
+  if (typeof place.lat === "number" && typeof place.lng === "number") {
+    return { location: { latLng: { latitude: place.lat, longitude: place.lng } } };
+  }
+  return { address: `${place.label}, Singapore` };
+}
+
+function transitRoutingPreference(preference: z.infer<typeof inputSchema>["preference"]): string | null {
+  if (preference === "walking" || preference === "sheltered") return "LESS_WALKING";
+  if (preference === "transfers" || preference === "crowd") return "FEWER_TRANSFERS";
+  return null;
+}
 
 export const getGoogleDirections = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => inputSchema.parse(data))
@@ -126,6 +149,8 @@ export const getGoogleDirections = createServerFn({ method: "POST" })
       return { ...empty, message: "Google Maps is not connected yet." };
     }
 
+    const routingPreference = transitRoutingPreference(data.preference);
+
     const response = await fetch(`${GATEWAY_URL}/routes/directions/v2:computeRoutes`, {
       method: "POST",
       headers: {
@@ -135,14 +160,22 @@ export const getGoogleDirections = createServerFn({ method: "POST" })
         "X-Goog-FieldMask": FIELD_MASK,
       },
       body: JSON.stringify({
-        origin: { address: `${data.origin}, Singapore` },
-        destination: { address: `${data.destination}, Singapore` },
+        origin: waypoint(data.origin),
+        destination: waypoint(data.destination),
         travelMode: data.mode,
         regionCode: "SG",
         languageCode: "en-SG",
-        ...(data.mode === "WALK" ? {} : { transitPreferences: { allowedTravelModes: ["BUS", "SUBWAY", "TRAIN", "LIGHT_RAIL", "RAIL"] } }),
+        ...(data.mode === "WALK"
+          ? {}
+          : {
+              transitPreferences: {
+                allowedTravelModes: ["BUS", "SUBWAY", "TRAIN", "LIGHT_RAIL", "RAIL"],
+                ...(routingPreference ? { routingPreference } : {}),
+              },
+            }),
       }),
     });
+
 
     if (!response.ok) {
       const body = await response.text();
