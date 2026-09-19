@@ -12,9 +12,9 @@ export type Incident = {
 
 export const DEMO_INCIDENT: Incident = {
   source: "demo",
-  line: "CC",
-  stations: ["Bishan", "Marymount", "Caldecott", "Botanic Gardens", "Holland Village", "Buona Vista"],
-  message: "Demo incident — simulated data. No train service between Bishan and Buona Vista (Circle Line).",
+  line: "EW",
+  stations: ["Bugis", "City Hall", "Raffles Place", "Tanjong Pagar", "Outram Park", "Tiong Bahru", "Redhill", "Queenstown", "Commonwealth", "Buona Vista", "Dover", "Clementi", "Jurong East"],
+  message: "Demo incident — simulated data. No train service between Bugis and Jurong East (East–West Line).",
   addedMinutes: 20,
 };
 
