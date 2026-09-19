@@ -377,7 +377,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
 
   const departureTime = metrics?.departureClock ?? "--:--";
   const fixedDepartureMinutes = metrics ? toMinutes(metrics.departureClock) : null;
-  const arrivalTime = metrics?.arrivalClock ?? alarm.arriveBy || "--:--";
+  const arrivalTime = metrics?.arrivalClock ?? (alarm.arriveBy || "--:--");
   const latestAcceptableArrivalClock = metrics?.latestAcceptableClock ?? latestAcceptableArrival;
   const lateBy = metrics?.overLimitMinutes ?? 0;
   const routeLate = lateBy > 0;
