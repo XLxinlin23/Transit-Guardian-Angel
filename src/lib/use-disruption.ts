@@ -68,8 +68,18 @@ export function useDisruptionWatch(params: {
         maxDelayMinutes: Number(params.maxDelay) || 0,
         preference: params.preference,
         baselineMinutes: (params.baselineJourney ?? params.journey)?.minutes,
+        departureMinutes: params.departureMinutes,
       }),
-    [incident, params.alternatives, params.arriveBy, params.baselineJourney, params.journey, params.maxDelay, params.preference],
+    [
+      incident,
+      params.alternatives,
+      params.arriveBy,
+      params.baselineJourney,
+      params.journey,
+      params.maxDelay,
+      params.preference,
+      params.departureMinutes,
+    ],
   );
 
   return {
