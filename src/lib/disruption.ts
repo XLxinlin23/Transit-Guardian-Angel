@@ -1,4 +1,5 @@
 import type { Journey, JourneyLeg } from "./journey.functions";
+import { stationsBetween } from "./mrt-network";
 
 /** A disruption we can reason about — either live from LTA or a clearly-labelled demo. */
 export type Incident = {
@@ -33,13 +34,30 @@ export function formatMinutes(total: number): string {
   return `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
 }
 
-/** Does this leg run over the disrupted segment? */
+/**
+ * Does this leg run over the disrupted segment?
+ *
+ * Route data often names only the boarding and alighting stations, so a train that
+ * passes straight through the closed stretch would otherwise look unaffected. We
+ * therefore also expand the leg to every station it travels through on that line.
+ */
 export function legAffected(leg: JourneyLeg, incident: Incident): boolean {
   if (leg.mode !== "mrt" && leg.mode !== "lrt") return false;
-  if (leg.badge.toUpperCase() !== incident.line.toUpperCase()) return false;
+  const line = incident.line.toUpperCase();
+  if (leg.badge.toUpperCase() !== line) return false;
   if (!incident.stations.length) return true;
   const affected = new Set(incident.stations.map(norm));
-  return leg.points.some((point) => affected.has(norm(point.name)));
+
+  const named = leg.points.map((point) => norm(point.name)).filter(Boolean);
+  if (named.some((name) => affected.has(name))) return true;
+
+  // Expand the ridden stretch station by station and see if it crosses the closure.
+  const endpoints = [norm(leg.from), norm(leg.to), ...named].filter(Boolean);
+  const start = endpoints[0];
+  const end = endpoints[endpoints.length - 1];
+  if (!start || !end) return false;
+  const travelled = stationsBetween(line, start, end).map(norm);
+  return travelled.some((name) => affected.has(name));
 }
 
 export function journeyAffected(journey: Journey, incident: Incident): boolean {

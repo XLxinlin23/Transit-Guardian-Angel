@@ -1,8 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { STATION_INDEX, nearestStation, planRoute } from "./mrt-network";
+import { STATION_INDEX, nearestStation, planRoute, type BlockedSegment } from "./mrt-network";
 import { distanceMetres, loadBusRoutes, loadBusStops, type BusStopRecord } from "./lta-static.server";
+
+/** Stretches of track the fallback route must not use (matches the simulated incident). */
+const CLOSED_SEGMENTS: BlockedSegment[] = [{ line: "EW", a: "Simei", b: "Tanah Merah" }];
 
 export type TravelMode = "walk" | "bus" | "mrt" | "lrt";
 
@@ -474,12 +477,12 @@ async function buildCandidates(data: PlanInput): Promise<JourneyCandidate[]> {
   } catch (error) {
     console.error("Google route lookup failed", error);
   }
-  /** A rail route that keeps off the given lines, so a disruption always has a real fallback. */
-  const addRailAvoiding = (avoidLines: string[]) => {
+  /** A rail route that keeps off the given lines or closed stretches, so a disruption always has a real fallback. */
+  const addRailAvoiding = (avoidLines: string[], blockedSegments: BlockedSegment[] = []) => {
     const start = nearestStation(origin.lat, origin.lng);
     const end = nearestStation(destination.lat, destination.lng);
     if (!start || !end || start.name === end.name) return;
-    const rail = planRoute(start.name, end.name, ["transfers"] as never, avoidLines);
+    const rail = planRoute(start.name, end.name, ["transfers"] as never, avoidLines, blockedSegments);
     if (!rail) return;
     if (rail.legs.some((leg) => avoidLines.includes(leg.line))) return;
     const startNode = STATION_INDEX.get(start.name) ?? start;
@@ -508,9 +511,9 @@ async function buildCandidates(data: PlanInput): Promise<JourneyCandidate[]> {
   };
 
   if (candidates.length) {
-    // Keep at least one option clear of the East–West Line, so a disrupted EW trip
-    // can be compared against a genuinely different set of legs and line badges.
-    addRailAvoiding(["EW", "CG"]);
+    // Keep at least one option clear of the closed stretch, so a disrupted trip can be
+    // compared against a genuinely different set of legs and line badges.
+    addRailAvoiding([], CLOSED_SEGMENTS);
     await attachCrowd(candidates);
     return candidates;
   }
@@ -576,7 +579,7 @@ async function buildCandidates(data: PlanInput): Promise<JourneyCandidate[]> {
     }
   }
 
-  addRailAvoiding(["EW", "CG"]);
+  addRailAvoiding([], CLOSED_SEGMENTS);
 
   if (!candidates.length) {
     const fallback = toCandidate(walkLegBetween(origin, destination));
