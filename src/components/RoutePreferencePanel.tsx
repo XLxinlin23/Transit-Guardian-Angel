@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Banknote, Footprints, Gauge, ShieldCheck, TrainFront, Users } from "lucide-react";
+import { ArrowLeft, Banknote, Footprints, Gauge, ShieldCheck, TrainFront, Users } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ const OPTIONS: { value: RoutePreference; icon: typeof Gauge; detail: string }[] 
   { value: "crowd", icon: Users, detail: "Avoid busier services" },
 ];
 
-export function RoutePreferencePanel() {
+export function RoutePreferencePanel({ onBackToPlan }: { onBackToPlan?: () => void }) {
   const { preferences, setPreferences, fromPlace, toPlace } = useTrip();
   const selected = preferences;
   const [saved, setSaved] = useState(false);
@@ -147,6 +147,12 @@ export function RoutePreferencePanel() {
         <p className="text-sm font-semibold text-brand-deep">Disruption-aware recommendations</p>
         <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Your usual fastest route may change during an MRT delay. Wayline finds the best available match and adjusts your leave alert.</p>
       </section>
+
+      {onBackToPlan && (
+        <Button variant="outline" className="mt-5 h-11 w-full rounded-xl border-primary text-sm font-bold text-primary" onClick={onBackToPlan}>
+          <ArrowLeft /> Back to plan your trip
+        </Button>
+      )}
     </div>
   );
 }

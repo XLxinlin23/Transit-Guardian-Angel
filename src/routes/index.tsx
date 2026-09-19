@@ -76,7 +76,7 @@ function IndexShell() {
         />
 
         {tab === "home" && <RouteAlarmForm onSeeMoreRoutes={() => setTab("preference")} />}
-        {tab === "preference" && <RoutePreferencePanel />}
+        {tab === "preference" && <RoutePreferencePanel onBackToPlan={() => setTab("home")} />}
         {tab === "arrivals" && <ArrivalsView />}
         {tab === "alerts" && <AlertsView />}
       </main>
