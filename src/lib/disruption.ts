@@ -92,6 +92,8 @@ export function assessDisruption(params: {
   preference?: string | undefined;
   /** Duration of the originally planned route — fixes the departure time so every arrival lines up. */
   baselineMinutes?: number | undefined;
+  /** Actual departure minute (e.g. the moment the user left); overrides the planned one. */
+  departureMinutes?: number | null | undefined;
 }): DisruptionAssessment | null {
   const { journey, incident, arriveBy, maxDelayMinutes } = params;
 
@@ -99,8 +101,9 @@ export function assessDisruption(params: {
   if (!journey || reachBy === null) return null;
 
   const baseline = params.baselineMinutes ?? journey.minutes;
-  // Departure is fixed by the planned route; every arrival below is measured from it.
-  const departure = reachBy - baseline;
+  // Departure is fixed by the planned route, or by the moment the user actually left;
+  // every arrival below is measured from that same moment.
+  const departure = params.departureMinutes ?? reachBy - baseline;
   const arrivalOf = (minutes: number) => departure + minutes;
   const plannedArrival = arrivalOf(journey.minutes);
 

@@ -337,6 +337,11 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
     return formatMinutes(reach + (Number(alarm.maxDelay) || 0));
   })();
 
+  const simulation = useSimulationOptional();
+  const simClock = simulation?.clockActive ? simulation.clockMinutes : null;
+  const departedAt = simulation?.departedAt ?? null;
+  const rainDelay = simulation?.rain ? 5 : 0;
+
   const disruption = useDisruptionWatch({
     journey: preview,
     baselineJourney: recommendedJourney,
@@ -344,14 +349,10 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
     arriveBy: alarm.arriveBy,
     maxDelay: alarm.maxDelay,
     preference: preferences[0] ?? "speed",
+    // Once the user has left, every predicted arrival is measured from that exact moment.
+    departureMinutes: departedAt,
   });
   const assessment = disruption.assessment;
-
-
-  const simulation = useSimulationOptional();
-  const simClock = simulation?.clockActive ? simulation.clockMinutes : null;
-  const departedAt = simulation?.departedAt ?? null;
-  const rainDelay = simulation?.rain ? 5 : 0;
 
   const previewMinutes = preview?.totalDurationMinutes ?? preview?.minutes ?? null;
   const setRouteMinutes = simulation?.setRouteMinutes;
@@ -383,14 +384,14 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
   const routeLate = lateBy > 0;
   const departurePassed = Boolean(metrics && departedAt === null && departureHasPassed(alarm, metrics.departureClock));
 
-  const departedLine =
-    departedAt !== null && metrics
-      ? `Left at ${metrics.departureClock} · ${metrics.totalDurationMinutes} min journey · arriving about ${metrics.arrivalClock}${
-          metrics.arrivalClock > metrics.reachByClock
-            ? ` (after your ${metrics.reachByClock})`
-            : ` — before your ${metrics.reachByClock}`
-        }`
-      : null;
+  // The departure shown once the user has left is always the exact simulated moment they left.
+  const departedClock = departedAt !== null ? formatMinutes(departedAt) : null;
+  const departedLine = (() => {
+    if (!departedClock || !metrics) return null;
+    const late = (toMinutes(metrics.arrivalClock) ?? 0) > (toMinutes(metrics.reachByClock) ?? 0);
+    const tail = late ? `(after your ${metrics.reachByClock})` : `— before your ${metrics.reachByClock}`;
+    return `Left at ${departedClock} · ${metrics.totalDurationMinutes} min journey · arriving about ${metrics.arrivalClock} ${tail}`;
+  })();
   const statusLine = disruption.disrupted && assessment
     ? `${assessment.headline}${disruption.incident?.source === "demo" ? " (simulated)" : ""}`
     : routeLate
@@ -408,12 +409,16 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
       {simClock !== null && (
         <p className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-route-orange/35 bg-warning-soft px-3 py-2 text-xs font-bold text-brand-deep">
           <span>Simulated time {formatMinutes(simClock)}</span>
-          {minutesToLeave !== null && (
-            <span className="font-semibold text-muted-foreground">
-              {minutesToLeave > 0
-                ? `· leave in ${minutesToLeave} min (${departureTime})`
-                : `· departure time ${departureTime} has passed`}
-            </span>
+          {departedClock ? (
+            <span className="font-semibold text-muted-foreground">· left at {departedClock}</span>
+          ) : (
+            minutesToLeave !== null && (
+              <span className="font-semibold text-muted-foreground">
+                {minutesToLeave > 0
+                  ? `· leave in ${minutesToLeave} min (${departureTime})`
+                  : `· departure time ${departureTime} has passed`}
+              </span>
+            )
           )}
         </p>
       )}
@@ -689,11 +694,12 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                 <p className="ml-auto text-sm font-bold text-brand-deep">{metrics?.totalDurationMinutes ?? 0} min</p>
               </div>
               <p className="mt-1 text-xs font-semibold text-muted-foreground">
-                {routeLate
-                  ? `Leave at ${departureTime} · arrives ${arrivalTime} (${lateBy} min after latest ${latestAcceptableArrivalClock})`
-                  : disruption.disrupted
-                    ? `Leave at ${departureTime} · expected arrival ${arrivalTime} (planned ${alarm.arriveBy})`
-                    : `Leave at ${departureTime} to reach by ${arrivalTime}`}
+                {(() => {
+                  const lead = departedClock ? `Left at ${departedClock}` : `Leave at ${departureTime}`;
+                  if (routeLate) return `${lead} · arrives ${arrivalTime} (${lateBy} min after latest ${latestAcceptableArrivalClock})`;
+                  if (disruption.disrupted) return `${lead} · expected arrival ${arrivalTime} (planned ${alarm.arriveBy})`;
+                  return departedClock ? `${lead} · arriving ${arrivalTime}` : `${lead} to reach by ${arrivalTime}`;
+                })()}
               </p>
               {departurePassed && (
                 <p className="mt-1.5 rounded-lg border border-route-orange/40 bg-warning-soft px-2.5 py-1.5 text-[11px] font-bold text-brand-deep">
