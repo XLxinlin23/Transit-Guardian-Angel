@@ -292,7 +292,21 @@ export const getCommuteBriefing = createServerFn({ method: "POST" })
       : destStation
         ? { lat: destStation.lat, lng: destStation.lng }
         : null;
-    const { distanceToCorridor } = await import("@/lib/traffic.functions");
+    const distanceToCorridor = (
+      incident: { lat: number; lng: number },
+      from: { lat: number; lng: number },
+      to: { lat: number; lng: number },
+    ) => {
+      let best = Number.POSITIVE_INFINITY;
+      for (let i = 0; i <= 20; i += 1) {
+        const t = i / 20;
+        best = Math.min(
+          best,
+          distanceKm(incident, { lat: from.lat + (to.lat - from.lat) * t, lng: from.lng + (to.lng - from.lng) * t }),
+        );
+      }
+      return best;
+    };
     const routeIncidents =
       corridorFrom && corridorTo
         ? trafficData.incidents
