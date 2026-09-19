@@ -88,7 +88,13 @@ export const getBusArrivals = createServerFn({ method: "GET" })
     const updatedAt = new Date().toISOString();
     if (!key) return { busStopCode: data.busStopCode, services: [], updatedAt, configured: false };
 
-    const res = await ltaFetch(`v3/BusArrival?BusStopCode=${encodeURIComponent(data.busStopCode)}`, key);
+    let res: any;
+    try {
+      res = await ltaFetch(`v3/BusArrival?BusStopCode=${encodeURIComponent(data.busStopCode)}`, key);
+    } catch (err) {
+      console.error("BusArrival unavailable", err);
+      return { busStopCode: data.busStopCode, services: [], updatedAt, configured: true };
+    }
     const services: BusService[] = (res?.Services ?? []).map((s: any) => ({
       serviceNo: s.ServiceNo,
       operator: s.Operator,
