@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, BellRing, Bus, CheckCircle2, CloudRain, RefreshCw, Route, Users } from "lucide-react";
+import { AlertTriangle, BellRing, Bus, CarFront, CheckCircle2, CloudRain, RefreshCw, Route, Users } from "lucide-react";
 
 import { getCommuteBriefing } from "@/lib/commute.functions";
 import type { PlacePoint, RouteAlarm, RoutePreference } from "@/lib/commute-settings";
@@ -79,6 +79,7 @@ export function CommuteAlertCard({
           <Line icon={CloudRain} text={data.weather} />
           <Line icon={Users} text={data.crowd} />
           <Line icon={Bus} text={data.bus} />
+          <Line icon={CarFront} text={data.traffic} />
         </ul>
       )}
 
