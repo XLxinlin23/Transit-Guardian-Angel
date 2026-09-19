@@ -1,6 +1,7 @@
-import { AlertTriangle, BellRing, Clock, PlayCircle, ShieldAlert, TrainFront } from "lucide-react";
+import { AlertTriangle, BellRing, Clock, CloudRain, Footprints, PlayCircle, RotateCcw, ShieldAlert, TrainFront } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -32,7 +33,7 @@ function readAlarms(): SavedRouteAlarm[] {
 }
 
 export function SimulationView() {
-  const { demo, setDemo, clockMinutes, setClockMinutes, clockActive, setClockActive } = useSimulation();
+  const { demo, setDemo, clockMinutes, setClockMinutes, clockActive, setClockActive, rain, setRain, departedAt, setDepartedAt } = useSimulation();
   const [alarms, setAlarms] = useState<SavedRouteAlarm[]>([]);
 
   useEffect(() => {
@@ -50,14 +51,24 @@ export function SimulationView() {
       const trip = `${alarm.from || "Start"} → ${alarm.to || "Destination"}`;
       const plannedDeparture = reach - lead;
       const delay = demo ? DEMO_INCIDENT.addedMinutes : 0;
-      const departure = plannedDeparture - delay;
+      const rainDelay = rain ? 5 : 0;
+      const departure = plannedDeparture - delay - rainDelay;
 
       list.push({
         at: plannedDeparture - 15,
         tone: "info",
         title: `Trip ready · ${trip}`,
-        body: `Leave at ${formatMinutes(plannedDeparture)} to arrive by ${alarm.arriveBy}.`,
+        body: `Leave at ${formatMinutes(plannedDeparture)} to arrive by ${alarm.arriveBy}.${rain ? " Rain expected near your start — allow about 5 extra minutes." : ""}`,
       });
+
+      if (rain) {
+        list.push({
+          at: Math.max(0, plannedDeparture - 20),
+          tone: "warn",
+          title: `Rain near your start · ${trip}`,
+          body: "Simulated weather. Walking legs may take about 5 min longer — leave a little earlier.",
+        });
+      }
 
       if (demo) {
         list.push({
@@ -77,6 +88,17 @@ export function SimulationView() {
           : `Leave now to reach ${alarm.to || "your destination"} by ${alarm.arriveBy}.`,
       });
 
+      if (departedAt !== null) {
+        const predictedArrival = departedAt + lead + delay + rainDelay;
+        const late = predictedArrival > reach;
+        list.push({
+          at: departedAt,
+          tone: late ? "warn" : "info",
+          title: `You left · ${trip}`,
+          body: `Departed at ${formatMinutes(departedAt)} — expected to arrive around ${formatMinutes(predictedArrival)}${late ? ` (${predictedArrival - reach} min after your reach-by ${alarm.arriveBy}).` : `, before your reach-by ${alarm.arriveBy}.`}`,
+        });
+      }
+
       if (demo) {
         const lateArrival = reach + DEMO_INCIDENT.addedMinutes;
         const latest = reach + maxDelay;
@@ -92,7 +114,7 @@ export function SimulationView() {
       }
     }
     return list.sort((a, b) => a.at - b.at);
-  }, [alarms, demo]);
+  }, [alarms, demo, rain, departedAt]);
 
   const fired = events.filter((event) => event.at <= clockMinutes).reverse();
 
@@ -159,6 +181,40 @@ export function SimulationView() {
               </span>
               <Switch checked={clockActive} onCheckedChange={setClockActive} aria-label="Use simulated clock" />
             </Label>
+
+            <Label className="mt-2 flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-xl border border-border bg-card px-3">
+              <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                <CloudRain className="size-4 text-primary" /> Simulated rain at your start
+              </span>
+              <Switch checked={rain} onCheckedChange={setRain} aria-label="Simulated rain" />
+            </Label>
+
+            <div className="mt-2 flex items-center gap-2">
+              <Button
+                type="button"
+                className="min-h-11 flex-1 gap-2 rounded-xl"
+                disabled={departedAt !== null}
+                onClick={() => setDepartedAt(clockMinutes)}
+              >
+                <Footprints className="size-4" />
+                {departedAt === null ? "Leave now" : `Left at ${formatMinutes(departedAt)}`}
+              </Button>
+              {departedAt !== null && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11 gap-1.5 rounded-xl"
+                  onClick={() => setDepartedAt(null)}
+                >
+                  <RotateCcw className="size-4" /> Reset
+                </Button>
+              )}
+            </div>
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              {departedAt === null
+                ? "Press Leave now to record your simulated departure time — a notification confirms you have left."
+                : "Departure recorded. Move the clock to see your journey progress."}
+            </p>
 
             <Label className="mt-2 flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-xl border border-dashed border-route-orange/50 bg-card px-3">
               <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
