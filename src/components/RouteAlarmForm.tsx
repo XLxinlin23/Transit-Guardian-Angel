@@ -696,11 +696,12 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                 <p className="ml-auto text-sm font-bold text-brand-deep">{metrics?.totalDurationMinutes ?? 0} min</p>
               </div>
               <p className="mt-1 text-xs font-semibold text-muted-foreground">
-                {routeLate
-                  ? `Leave at ${departureTime} · arrives ${arrivalTime} (${lateBy} min after latest ${latestAcceptableArrivalClock})`
-                  : disruption.disrupted
-                    ? `Leave at ${departureTime} · expected arrival ${arrivalTime} (planned ${alarm.arriveBy})`
-                    : `Leave at ${departureTime} to reach by ${arrivalTime}`}
+                {(() => {
+                  const lead = departedClock ? `Left at ${departedClock}` : `Leave at ${departureTime}`;
+                  if (routeLate) return `${lead} · arrives ${arrivalTime} (${lateBy} min after latest ${latestAcceptableArrivalClock})`;
+                  if (disruption.disrupted) return `${lead} · expected arrival ${arrivalTime} (planned ${alarm.arriveBy})`;
+                  return departedClock ? `${lead} · arriving ${arrivalTime}` : `${lead} to reach by ${arrivalTime}`;
+                })()}
               </p>
               {departurePassed && (
                 <p className="mt-1.5 rounded-lg border border-route-orange/40 bg-warning-soft px-2.5 py-1.5 text-[11px] font-bold text-brand-deep">
