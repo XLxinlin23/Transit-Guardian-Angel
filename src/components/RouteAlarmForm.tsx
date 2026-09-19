@@ -290,6 +290,12 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
     .filter(Boolean)
     .join(" · ");
 
+  const latestAcceptableArrival = (() => {
+    const reach = parseTime(alarm.arriveBy);
+    if (reach === null) return "--:--";
+    return formatMinutes(reach + (Number(alarm.maxDelay) || 0));
+  })();
+
   const arrivalTime = alarm.arriveBy || "--:--";
   const departureTime = preview ? shiftTime(alarm.arriveBy, preview.minutes) : "--:--";
 
