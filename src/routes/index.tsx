@@ -41,6 +41,7 @@ function Index() {
 
 function IndexShell() {
   const [tab, setTab] = useState<Tab>("home");
+  const [compareRequest, setCompareRequest] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
@@ -75,8 +76,8 @@ function IndexShell() {
           onClose={() => setSettingsOpen(false)}
         />
 
-        {tab === "home" && <RouteAlarmForm onSeeMoreRoutes={() => setTab("preference")} />}
-        {tab === "preference" && <RoutePreferencePanel onBackToPlan={() => setTab("home")} />}
+        {tab === "home" && <RouteAlarmForm onSeeMoreRoutes={() => { setCompareRequest((value) => value + 1); setTab("preference"); }} />}
+        {tab === "preference" && <RoutePreferencePanel focusCompareRequest={compareRequest} onBackToPlan={() => setTab("home")} />}
         {tab === "arrivals" && <ArrivalsView />}
         {tab === "alerts" && <AlertsView />}
       </main>

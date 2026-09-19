@@ -21,9 +21,10 @@ type RouteMapProps = {
   currentIndex?: number | undefined;
   transferNames?: string[] | undefined;
   embedded?: boolean | undefined;
+  compact?: boolean | undefined;
 };
 
-export function RouteMap({ stations, segments, title = "Route map", badge, footer, currentIndex, transferNames, embedded = false }: RouteMapProps) {
+export function RouteMap({ stations, segments, title = "Route map", badge, footer, currentIndex, transferNames, embedded = false, compact = false }: RouteMapProps) {
   const [expanded, setExpanded] = useState(false);
   const mapRef = useRef<LeafletMap | null>(null);
   const routeBounds = useMemo<LatLngBoundsExpression>(
@@ -79,7 +80,9 @@ export function RouteMap({ stations, segments, title = "Route map", badge, foote
         className={`wayline-map overflow-hidden bg-secondary/50 ${
           expanded
             ? "fixed left-1/2 top-1/2 z-50 h-[85vh] w-screen -translate-x-1/2 -translate-y-1/2 rounded-none md:h-[80vh] md:w-[90vw] md:rounded-3xl"
-            : "relative mt-3 h-[320px] rounded-2xl md:h-[420px]"
+            : compact
+              ? "relative mt-3 h-[220px] rounded-xl md:h-[260px]"
+              : "relative mt-3 h-[320px] rounded-2xl md:h-[420px]"
         }`}
         role={expanded ? "dialog" : undefined}
         aria-modal={expanded ? "true" : undefined}
