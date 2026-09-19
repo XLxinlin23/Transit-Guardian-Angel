@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { BellRing, Bus, Home, Navigation, Settings, SlidersHorizontal } from "lucide-react";
-import { GoogleDirectionsPanel } from "../components/GoogleDirectionsPanel";
+import { BellRing, Bus, Home, Settings, SlidersHorizontal } from "lucide-react";
+
 import { SettingsSheet } from "../components/SettingsSheet";
 import { ThemeProvider } from "../lib/theme";
 import { useEffect, useState } from "react";
@@ -28,7 +28,7 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-type Tab = "home" | "preference" | "directions" | "arrivals" | "alerts";
+type Tab = "home" | "preference" | "arrivals" | "alerts";
 
 function Index() {
   return (
@@ -79,15 +79,14 @@ function IndexShell() {
 
         {tab === "home" && <RouteAlarmForm onSeeMoreRoutes={() => { setCompareRequest((value) => value + 1); setTab("preference"); }} />}
         {tab === "preference" && <RoutePreferencePanel focusCompareRequest={compareRequest} onBackToPlan={() => setTab("home")} />}
-        {tab === "directions" && <GoogleDirectionsPanel />}
         {tab === "arrivals" && <ArrivalsView />}
         {tab === "alerts" && <AlertsView />}
       </main>
 
-      <nav className="glass-control fixed inset-x-4 bottom-4 z-20 mx-auto grid max-w-[520px] grid-cols-5 rounded-2xl p-1.5" aria-label="Primary navigation">
+      <nav className="glass-control fixed inset-x-4 bottom-4 z-20 mx-auto grid max-w-[480px] grid-cols-4 rounded-2xl p-1.5" aria-label="Primary navigation">
         <NavButton active={tab === "home"} icon={Home} label="Home" onClick={() => setTab("home")} />
         <NavButton active={tab === "preference"} icon={SlidersHorizontal} label="Preferences" onClick={() => setTab("preference")} />
-        <NavButton active={tab === "directions"} icon={Navigation} label="Directions" onClick={() => setTab("directions")} />
+
         <NavButton active={tab === "arrivals"} icon={Bus} label="Arrivals" onClick={() => setTab("arrivals")} />
         <NavButton active={tab === "alerts"} icon={BellRing} label="Alerts" onClick={() => setTab("alerts")} />
       </nav>
