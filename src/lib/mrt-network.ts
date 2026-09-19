@@ -154,6 +154,7 @@ export const LINE_NAMES: Record<string, string> = {
   CG: "Changi Airport Branch",
   NS: "North South Line",
   NE: "North East Line",
+  DT: "Downtown Line",
   CC: "Circle Line",
 };
 
