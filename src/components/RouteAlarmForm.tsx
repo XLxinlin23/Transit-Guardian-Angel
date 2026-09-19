@@ -1,5 +1,4 @@
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
 import {
   AlarmClock,
   AlertTriangle,
@@ -624,7 +623,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
             <Button
               className="mt-6 h-11 w-full rounded-xl text-sm font-bold"
               disabled={!bothConfirmed || looking || pastReachBy}
-              onClick={() => journeyQuery.refetch()}
+              onClick={() => store.refetch()}
             >
               <Navigation /> {looking ? "Finding best route…" : "Find best route"}
             </Button>
