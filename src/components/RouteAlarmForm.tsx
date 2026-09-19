@@ -386,14 +386,12 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
 
   // The departure shown once the user has left is always the exact simulated moment they left.
   const departedClock = departedAt !== null ? formatMinutes(departedAt) : null;
-  const departedLine =
-    departedClock && metrics
-      ? `Left at ${departedClock} · ${metrics.totalDurationMinutes} min journey · arriving about ${metrics.arrivalClock}${
-          toMinutes(metrics.arrivalClock) > toMinutes(metrics.reachByClock)
-            ? ` (after your ${metrics.reachByClock})`
-            : ` — before your ${metrics.reachByClock}`
-        }`
-      : null;
+  const departedLine = (() => {
+    if (!departedClock || !metrics) return null;
+    const late = toMinutes(metrics.arrivalClock) > toMinutes(metrics.reachByClock);
+    const tail = late ? `(after your ${metrics.reachByClock})` : `— before your ${metrics.reachByClock}`;
+    return `Left at ${departedClock} · ${metrics.totalDurationMinutes} min journey · arriving about ${metrics.arrivalClock} ${tail}`;
+  })();
   const statusLine = disruption.disrupted && assessment
     ? `${assessment.headline}${disruption.incident?.source === "demo" ? " (simulated)" : ""}`
     : routeLate
