@@ -9,7 +9,7 @@ import { searchBusStops, type BusStop } from "../lib/bus-stops.functions";
 const LOAD_LABEL: Record<string, string> = { SEA: "Seats", SDA: "Standing", LSD: "Full" };
 
 export function BusArrivalCard({
-  defaultStop = "75009",
+  defaultStop = "",
   compactServices = 6,
   stopCode,
   stopName,
@@ -44,6 +44,7 @@ export function BusArrivalCard({
   const { data, isFetching, isError, refetch } = useQuery({
     queryKey: ["bus-arrivals", stop],
     queryFn: () => fetchArrivals({ data: { busStopCode: stop } }),
+    enabled: Boolean(stop),
     refetchInterval: 30_000,
   });
 
