@@ -1,7 +1,7 @@
 import "leaflet/dist/leaflet.css";
 
 import L, { type LatLngBoundsExpression, type LatLngExpression, type Map as LeafletMap } from "leaflet";
-import type { RefObject } from "react";
+import { Fragment, type RefObject } from "react";
 import { AttributionControl, CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip } from "react-leaflet";
 
 import { legColor, legLabel, MODE_COLORS, type TravelModeKey } from "@/lib/travel-modes";
@@ -96,7 +96,7 @@ export default function RouteLeafletMap({ mapRef, stations, segments, currentInd
           const color = legColor(segment.mode, segment.badge);
           const walking = segment.mode === "walk";
           return (
-            <div key={`seg-${segment.mode}-${segment.badge}-${index}`}>
+            <Fragment key={`seg-${segment.mode}-${segment.badge}-${index}`}>
               {/* White casing underneath for contrast against the base map */}
               <Polyline
                 positions={positions}
@@ -117,7 +117,7 @@ export default function RouteLeafletMap({ mapRef, stations, segments, currentInd
                   {legLabel(segment.mode, segment.badge)}
                 </Tooltip>
               </Polyline>
-            </div>
+            </Fragment>
           );
         })
       ) : (
