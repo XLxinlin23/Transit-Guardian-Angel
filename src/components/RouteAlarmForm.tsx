@@ -693,10 +693,15 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
           )}
 
           {bothConfirmed && !preview && (
-            <section className="glass-panel rounded-2xl p-5 text-sm text-muted-foreground">
-              {looking ? "Working out the best way door to door…" : "Tap “Find best route” to see your route."}
+            <section className={`glass-panel rounded-2xl p-5 text-sm ${planMessage ? "border border-route-red/35 text-foreground" : "text-muted-foreground"}`}>
+              {looking
+                ? "Working out the best way door to door…"
+                : planMessage
+                  ? planMessage
+                  : "Tap “Find best route” to see your route."}
             </section>
           )}
+
 
           <section className="glass-panel rounded-2xl p-5">
             <button
