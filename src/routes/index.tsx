@@ -99,10 +99,10 @@ function IndexShell() {
 
 /** The active trip's start, used to anchor weather, arrivals and traffic. */
 function useTripOrigin() {
-  const { draft } = useTrip();
-  const place = draft.fromPlace;
-  return place ? { lat: place.lat, lng: place.lng, label: place.name } : null;
+  const { fromPlace } = useTrip();
+  return fromPlace ? { lat: fromPlace.lat, lng: fromPlace.lng, label: fromPlace.name } : null;
 }
+
 
 function AlertsView() {
   const origin = useTripOrigin();
