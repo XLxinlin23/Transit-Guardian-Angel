@@ -54,21 +54,23 @@ export function WeatherCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Pick the nearest forecast area to the device location.
+  // Prefer the active trip's start; otherwise the nearest forecast area to the device.
   useEffect(() => {
-    if (!coords || !data?.areas.length || userPicked.current) return;
+    const point = origin ? { lat: origin.lat, lng: origin.lng } : coords;
+    if (!point || !data?.areas.length || userPicked.current) return;
     let best = data.areas[0]!;
     let bestDist = Number.POSITIVE_INFINITY;
     for (const a of data.areas) {
-      const d = (a.lat - coords.lat) ** 2 + (a.lng - coords.lng) ** 2;
+      const d = (a.lat - point.lat) ** 2 + (a.lng - point.lng) ** 2;
       if (d < bestDist) {
         bestDist = d;
         best = a;
       }
     }
     setArea(best.name);
-    setLocationNote("Nearest area to you: " + best.name);
-  }, [coords, data]);
+    setLocationNote(origin ? `Nearest area to your trip start (${origin.label}): ${best.name}` : "Nearest area to you: " + best.name);
+  }, [coords, data, origin]);
+
 
   const match = data?.areas.find((a) => a.name.toLowerCase() === area.trim().toLowerCase());
   const selected = match ?? data?.areas[0];
