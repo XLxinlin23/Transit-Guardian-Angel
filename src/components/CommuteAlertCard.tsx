@@ -99,7 +99,14 @@ export function CommuteAlertCard({
 
       {data && (
         <ul className="mt-3 space-y-1.5 text-xs leading-relaxed text-muted-foreground">
-          <Line icon={Route} text={data.routeSummary} />
+          <Line
+            icon={Route}
+            text={
+              metrics
+                ? `Leave ${metrics.departureClock} · arrive ${metrics.arrivalClock} · ${metrics.totalDurationMinutes} min door to door`
+                : data.routeSummary
+            }
+          />
           <Line icon={AlertTriangle} text={data.disruption} />
           <Line icon={Route} text={data.alternative} />
           <Line icon={CloudRain} text={data.weather} />
@@ -111,7 +118,10 @@ export function CommuteAlertCard({
 
       {data && (
         <p className="mt-3 text-[11px] text-muted-foreground">
-          Travel time now {data.travelMinutes} min (usual {data.baselineMinutes} min) · reminder {alarm.notifyLeadMinutes} min before you leave
+          {metrics
+            ? `Travel time ${metrics.totalDurationMinutes} min${metrics.delayMinutes > 0 ? ` (usual ${metrics.normalDurationMinutes} min · +${metrics.delayMinutes} min disruption)` : ""}`
+            : `Travel time now ${data.travelMinutes} min (usual ${data.baselineMinutes} min)`}{" "}
+          · reminder {alarm.notifyLeadMinutes} min before you leave
         </p>
       )}
     </section>
