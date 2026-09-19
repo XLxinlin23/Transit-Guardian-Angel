@@ -231,7 +231,7 @@ export async function googleRoutePlans(from: Point, to: Point): Promise<GoogleRo
 
 
   const plans: GoogleRoutePlan[] = [];
-  for (const route of [...transit, ...walking]) {
+  for (const route of routes) {
     const legs = toLegs(route, from, to);
     if (legs.length) plans.push({ legs, fare: fareOf(route) });
   }

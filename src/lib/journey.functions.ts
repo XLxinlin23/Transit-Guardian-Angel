@@ -244,8 +244,9 @@ function routeId(signature: string): string {
   return `route-${(hash >>> 0).toString(36)}`;
 }
 
-function toCandidate(legs: JourneyLeg[]): JourneyCandidate | null {
+function toCandidate(legs: JourneyLeg[], fareOverride?: number | null): JourneyCandidate | null {
   if (!legs.length) return null;
+
   const changes = Math.max(0, legs.filter((leg) => leg.mode !== "walk").length - 1);
   const minutes = legs.reduce((total, leg) => total + leg.minutes, 0) + changes * 2;
   const walkMetres = legs.reduce((total, leg) => total + (leg.metres ?? 0), 0);
