@@ -24,6 +24,10 @@ export type Journey = {
   minutes: number;
   /** Total walking distance across the whole trip. */
   walkMetres: number;
+  /** Total time spent on foot. */
+  walkMinutes: number;
+  /** Estimated adult fare in SGD. */
+  fare: number;
   /** Number of vehicle-to-vehicle changes. */
   transfers: number;
   /** One line explaining why this option won, e.g. "Fastest · 54 min". */
@@ -32,6 +36,7 @@ export type Journey = {
   alternatives: number;
   note?: string;
 };
+
 
 const LRT_LINES = new Set(["BP", "SE", "SW", "PE", "PW", "PTC", "STC"]);
 const WALK_METRES_PER_MIN = 75;
