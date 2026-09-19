@@ -1,4 +1,5 @@
 import { journeyDate, type RouteAlarm, type RoutePreference } from "./commute-settings";
+import { arrivalHasPassed, isoDateLabel, journeyISO } from "./sg-time";
 import type { Journey } from "./journey.functions";
 
 /** Minutes past midnight for "HH:MM", or null. */
@@ -39,18 +40,14 @@ export function latestAcceptableDate(
   return new Date(reach.getTime() + (Number(alarm.maxDelay) || 0) * 60_000);
 }
 
-/** True when "Today" is selected but the reach-by time is already behind us. */
+/** True when the chosen date + reach-by time is already behind Singapore's clock. */
 export function reachByHasPassed(alarm: Pick<RouteAlarm, "dateMode" | "date" | "arriveBy">): boolean {
-  if (alarm.dateMode !== "today") return false;
-  const reach = reachByDate(alarm);
-  return Boolean(reach && reach.getTime() < Date.now());
+  return arrivalHasPassed(alarm);
 }
 
 /** "Friday, 19 September · Arrive by 08:45" */
 export function journeyDateTimeLabel(alarm: Pick<RouteAlarm, "dateMode" | "date" | "arriveBy">): string {
-  const date = journeyDate(alarm);
-  const formatted = date.toLocaleDateString("en-SG", { weekday: "long", day: "numeric", month: "long" });
-  return `${formatted} · Arrive by ${alarm.arriveBy || "--:--"}`;
+  return `${isoDateLabel(journeyISO(alarm))} · Arrive by ${alarm.arriveBy || "--:--"}`;
 }
 
 export type ArrivalStatus = "onTime" | "within" | "late";
