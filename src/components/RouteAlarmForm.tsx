@@ -714,27 +714,42 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                 <div className="mt-4 border-t border-border pt-4">
                   <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Other routes</h3>
                   <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                    {alternatives.map(({ preference, journey, recommended }) => (
-                      <Button
-                        key={journey.id ?? `${preference}-${journey.minutes}`}
-                        type="button"
-                        variant="outline"
-                        aria-label={`Use ${PREFERENCE_LABELS[preference as keyof typeof PREFERENCE_LABELS] ?? preference} route`}
-                        onClick={() => setManualJourney(journey)}
-                        className="h-auto min-h-20 w-full items-start justify-start whitespace-normal rounded-xl border-success/25 bg-success-soft/35 p-3 text-left shadow-none hover:border-primary/40 hover:bg-primary/5"
-                      >
-                        <span className="min-w-0">
-                          <span className="block text-xs font-bold uppercase tracking-wide text-primary">
-                            {PREFERENCE_LABELS[preference as keyof typeof PREFERENCE_LABELS] ?? preference}{recommended ? " (Recommended)" : ""}
+                    {alternatives.map(({ preference, journey, recommended }) => {
+                      const label = PREFERENCE_LABELS[preference as keyof typeof PREFERENCE_LABELS] ?? preference;
+                      const metric = primaryMetric(journey, preference as never);
+                      const arrival = arrivalFromDeparture(journey, fixedDepartureMinutes);
+                      const status = arrivalStatus(arrival, alarm.arriveBy, alarm.maxDelay);
+                      return (
+                        <Button
+                          key={journey.id ?? `${preference}-${journey.minutes}`}
+                          type="button"
+                          variant="outline"
+                          aria-label={`Use ${label} route`}
+                          onClick={() => setManualJourney(journey)}
+                          className="h-auto min-h-24 w-full items-start justify-start whitespace-normal rounded-xl border-border bg-card p-3 text-left shadow-none hover:border-primary/40 hover:bg-primary/5"
+                        >
+                          <span className="min-w-0 flex-1">
+                            <span className="flex flex-wrap items-center gap-1.5">
+                              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+                                {label}
+                              </span>
+                              {recommended && (
+                                <span className="rounded-full bg-success-soft px-2 py-0.5 text-[10px] font-bold uppercase text-success">Recommended</span>
+                              )}
+                              {journey.fareEstimated !== false && (
+                                <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">Estimated</span>
+                              )}
+                            </span>
+                            <span className="mt-1.5 block font-display text-xl font-bold text-brand-deep">{metric.primary}</span>
+                            <span className="block text-[11px] font-semibold text-muted-foreground">{metric.support}</span>
+                            <span className={`mt-1.5 inline-block rounded-md border px-2 py-0.5 text-[10px] font-bold ${STATUS_CLASS[status]}`}>
+                              {departureTime} → {arrival}
+                              {status === "within" ? " · within your delay limit" : status === "late" ? " · unable to meet arrival limit" : ""}
+                            </span>
                           </span>
-                          <span className="mt-1 block text-sm font-bold text-brand-deep">{journey.minutes} min</span>
-                          <span className="block text-[11px] font-semibold text-muted-foreground">
-                            Walk {journey.totalWalkingDistanceMetres ?? journey.walkMetres ?? 0} m · {journey.totalWalkingTimeMinutes ?? journey.walkMinutes ?? 0} min · {journey.numberOfTransfers ?? journey.transfers ?? 0} transfer{(journey.numberOfTransfers ?? journey.transfers ?? 0) === 1 ? "" : "s"}
-                            {typeof journey.fare === "number" ? ` · $${journey.fare.toFixed(2)}` : ""}
-                          </span>
-                        </span>
-                      </Button>
-                    ))}
+                        </Button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
