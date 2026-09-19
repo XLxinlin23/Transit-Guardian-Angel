@@ -17,6 +17,9 @@ export type SimulationContextValue = {
   /** Simulated departure time (minutes past midnight) once "Leave now" is pressed; null when not left. */
   departedAt: number | null;
   setDepartedAt: (value: number | null) => void;
+  /** Door-to-door duration of the route currently shown on Home, in minutes. */
+  routeMinutes: number | null;
+  setRouteMinutes: (value: number | null) => void;
 };
 
 const SimulationContext = createContext<SimulationContextValue | null>(null);
