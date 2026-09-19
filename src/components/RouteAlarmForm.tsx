@@ -508,14 +508,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                   ariaLabel="To"
                 />
               </Field>
-              {isRecurring(alarm.repeat) ? (
-                <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5">
-                  <p className="text-xs font-bold text-brand-deep">{recurrenceLabel(alarm)}</p>
-                  <p className="mt-1 text-[11px] font-semibold text-muted-foreground">
-                    Repeating trip · next journey {nextRunLabel(alarm)}
-                  </p>
-                </div>
-              ) : alarm.repeat === "date" ? (
+              {alarm.repeat === "date" && (
                 <Field icon={CalendarDays} label="Journey date">
                   <Input
                     type="date"
@@ -525,51 +518,6 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                     className="h-11 bg-card"
                   />
                 </Field>
-              ) : (
-                <Field icon={CalendarDays} label="Journey date">
-                  <div className="grid grid-cols-2 gap-2">
-                    {([
-                      ["today", "Today"],
-                      ["date", "Select date"],
-                    ] as Array<[JourneyDateMode, string]>).map(([mode, label]) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        onClick={() => update("dateMode", mode)}
-                        aria-pressed={alarm.dateMode === mode}
-                        className={`min-h-10 rounded-lg border px-2 text-xs font-bold ${
-                          alarm.dateMode === mode ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-muted-foreground"
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  {alarm.dateMode === "date" && (
-                    <Input
-                      type="date"
-                      value={alarm.date}
-                      onChange={(event) => update("date", event.target.value)}
-                      aria-label="Journey date"
-                      className="mt-2 h-11 bg-card"
-                    />
-                  )}
-                </Field>
-              )}
-              {pastReachBy && (
-                <div className="rounded-xl border border-route-orange/40 bg-warning-soft px-3 py-2.5">
-                  <p className="text-xs font-bold text-brand-deep">This arrival time has already passed.</p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      update("date", sgTomorrowISO());
-                      update("dateMode", "date");
-                    }}
-                    className="mt-1.5 text-xs font-bold text-primary underline underline-offset-4"
-                  >
-                    Use tomorrow instead
-                  </button>
-                </div>
               )}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3">
                 <Field icon={AlarmClock} label="Reach by">
