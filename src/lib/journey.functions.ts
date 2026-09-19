@@ -205,18 +205,39 @@ type Candidate = {
   legs: JourneyLeg[];
   minutes: number;
   walkMetres: number;
+  walkMinutes: number;
+  fare: number;
   transfers: number;
   signature: string;
 };
+
+function pathMetres(points: Array<{ lat: number; lng: number }>): number {
+  let total = 0;
+  for (let i = 1; i < points.length; i += 1) {
+    total += distanceMetres(points[i - 1]!.lat, points[i - 1]!.lng, points[i]!.lat, points[i]!.lng);
+  }
+  return total;
+}
+
+/** Rough SG distance-fare estimate: flat base then a small per-km step. */
+function estimateFare(legs: JourneyLeg[]): number {
+  const ridden = legs.filter((leg) => leg.mode !== "walk");
+  if (!ridden.length) return 0;
+  const km = ridden.reduce((total, leg) => total + pathMetres(leg.points), 0) / 1000;
+  const fare = 1.19 + Math.max(0, km - 3.2) * 0.075;
+  return Math.round(fare * 100) / 100;
+}
 
 function toCandidate(legs: JourneyLeg[]): Candidate | null {
   if (!legs.length) return null;
   const changes = Math.max(0, legs.filter((leg) => leg.mode !== "walk").length - 1);
   const minutes = legs.reduce((total, leg) => total + leg.minutes, 0) + changes * 2;
   const walkMetres = legs.reduce((total, leg) => total + (leg.metres ?? 0), 0);
+  const walkMinutes = legs.filter((leg) => leg.mode === "walk").reduce((total, leg) => total + leg.minutes, 0);
   const signature = legs.map((leg) => `${leg.mode}:${leg.badge}:${leg.from}>${leg.to}`).join("|");
-  return { legs, minutes, walkMetres, transfers: changes, signature };
+  return { legs, minutes, walkMetres, walkMinutes, fare: estimateFare(legs), transfers: changes, signature };
 }
+
 
 const PRIMARY_ORDER = ["speed", "walking", "sheltered", "transfers", "cost", "crowd"] as const;
 
