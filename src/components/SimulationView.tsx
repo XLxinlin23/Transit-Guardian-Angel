@@ -114,7 +114,7 @@ export function SimulationView() {
       }
     }
     return list.sort((a, b) => a.at - b.at);
-  }, [alarms, demo]);
+  }, [alarms, demo, rain, departedAt]);
 
   const fired = events.filter((event) => event.at <= clockMinutes).reverse();
 
@@ -181,6 +181,40 @@ export function SimulationView() {
               </span>
               <Switch checked={clockActive} onCheckedChange={setClockActive} aria-label="Use simulated clock" />
             </Label>
+
+            <Label className="mt-2 flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-xl border border-border bg-card px-3">
+              <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                <CloudRain className="size-4 text-primary" /> Simulated rain at your start
+              </span>
+              <Switch checked={rain} onCheckedChange={setRain} aria-label="Simulated rain" />
+            </Label>
+
+            <div className="mt-2 flex items-center gap-2">
+              <Button
+                type="button"
+                className="min-h-11 flex-1 gap-2 rounded-xl"
+                disabled={departedAt !== null}
+                onClick={() => setDepartedAt(clockMinutes)}
+              >
+                <Footprints className="size-4" />
+                {departedAt === null ? "Leave now" : `Left at ${formatMinutes(departedAt)}`}
+              </Button>
+              {departedAt !== null && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11 gap-1.5 rounded-xl"
+                  onClick={() => setDepartedAt(null)}
+                >
+                  <RotateCcw className="size-4" /> Reset
+                </Button>
+              )}
+            </div>
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              {departedAt === null
+                ? "Press Leave now to record your simulated departure time — a notification confirms you have left."
+                : "Departure recorded. Move the clock to see your journey progress."}
+            </p>
 
             <Label className="mt-2 flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-xl border border-dashed border-route-orange/50 bg-card px-3">
               <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
