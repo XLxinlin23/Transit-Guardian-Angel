@@ -49,7 +49,13 @@ export const getTrainAlerts = createServerFn({ method: "GET" }).handler(async ()
   const updatedAt = new Date().toISOString();
   if (!key) return { status: "unknown", updatedAt, configured: false };
 
-  const data = await ltaFetch("TrainServiceAlerts", key);
+  let data: any;
+  try {
+    data = await ltaFetch("TrainServiceAlerts", key);
+  } catch (err) {
+    console.error("TrainServiceAlerts unavailable", err);
+    return { status: "unknown", updatedAt, configured: true };
+  }
   const value = data?.value ?? {};
   const affected = Array.isArray(value.AffectedSegments) ? value.AffectedSegments : [];
   const messages = Array.isArray(value.Message) ? value.Message : [];
