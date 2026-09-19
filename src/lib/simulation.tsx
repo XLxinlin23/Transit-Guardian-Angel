@@ -75,6 +75,7 @@ export function useSimulationOrLocal(): SimulationContextValue {
   const [clockActive, setClockActive] = useState(false);
   const [rain, setRain] = useState(false);
   const [departedAt, setDepartedAt] = useState<number | null>(null);
+  const [routeMinutes, setRouteMinutes] = useState<number | null>(null);
   const setClock = useCallback((value: number) => setClockMinutes(value), []);
   const local = useMemo<SimulationContextValue>(
     () => ({
@@ -88,8 +89,10 @@ export function useSimulationOrLocal(): SimulationContextValue {
       setRain,
       departedAt,
       setDepartedAt,
+      routeMinutes,
+      setRouteMinutes,
     }),
-    [demo, clockMinutes, clockActive, rain, departedAt, setClock],
+    [demo, clockMinutes, clockActive, rain, departedAt, routeMinutes, setClock],
   );
   return shared ?? local;
 }
