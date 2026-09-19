@@ -354,12 +354,23 @@ async function buildCandidates(data: PlanInput): Promise<JourneyCandidate[]> {
   const destination: Point = { lat: data.to.lat, lng: data.to.lng, name: data.to.label };
 
   const candidates: JourneyCandidate[] = [];
-  const add = (legs: JourneyLeg[]) => {
-    const candidate = toCandidate(legs);
+  const add = (legs: JourneyLeg[], fare?: number | null) => {
+    const candidate = toCandidate(legs, fare);
     if (!candidate) return;
     if (candidates.some((item) => item.signature === candidate.signature)) return;
     candidates.push(candidate);
   };
+
+  // 0. Google Maps walking/bus/MRT routes first — they follow real paths and timetables.
+  try {
+    const { googleRoutePlans } = await import("./google-routes.server");
+    for (const plan of await googleRoutePlans(origin, destination)) add(plan.legs, plan.fare);
+  } catch (error) {
+    console.error("Google route lookup failed", error);
+  }
+  if (candidates.length) return candidates;
+
+
 
   // 1. Straight walk door to door.
   const directMetres = distanceMetres(origin.lat, origin.lng, destination.lat, destination.lng);
