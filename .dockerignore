@@ -7,4 +7,3 @@ dist
 .agents
 .claude
 *.log
-.env
