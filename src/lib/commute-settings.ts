@@ -15,6 +15,8 @@ export type SavedRouteAlarm = {
   alarm: RouteAlarm;
   fromPlace: PlacePoint | null;
   toPlace: PlacePoint | null;
+  /** Door-to-door duration of the route saved with this alarm, in minutes. */
+  durationMinutes?: number | null;
 };
 
 export const ALARMS_STORAGE_KEY = "wayline-route-alarms";

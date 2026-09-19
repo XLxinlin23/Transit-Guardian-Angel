@@ -17,6 +17,9 @@ export type SimulationContextValue = {
   /** Simulated departure time (minutes past midnight) once "Leave now" is pressed; null when not left. */
   departedAt: number | null;
   setDepartedAt: (value: number | null) => void;
+  /** Door-to-door duration of the route currently shown on Home, in minutes. */
+  routeMinutes: number | null;
+  setRouteMinutes: (value: number | null) => void;
 };
 
 const SimulationContext = createContext<SimulationContextValue | null>(null);
@@ -30,6 +33,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
   const [clockActive, setClockActive] = useState(false);
   const [rain, setRain] = useState(false);
   const [departedAt, setDepartedAt] = useState<number | null>(null);
+  const [routeMinutes, setRouteMinutes] = useState<number | null>(null);
 
   const value = useMemo<SimulationContextValue>(
     () => ({
@@ -43,8 +47,10 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
       setRain,
       departedAt,
       setDepartedAt,
+      routeMinutes,
+      setRouteMinutes,
     }),
-    [demo, clockMinutes, clockActive, rain, departedAt],
+    [demo, clockMinutes, clockActive, rain, departedAt, routeMinutes],
   );
 
   return <SimulationContext.Provider value={value}>{children}</SimulationContext.Provider>;
@@ -69,6 +75,7 @@ export function useSimulationOrLocal(): SimulationContextValue {
   const [clockActive, setClockActive] = useState(false);
   const [rain, setRain] = useState(false);
   const [departedAt, setDepartedAt] = useState<number | null>(null);
+  const [routeMinutes, setRouteMinutes] = useState<number | null>(null);
   const setClock = useCallback((value: number) => setClockMinutes(value), []);
   const local = useMemo<SimulationContextValue>(
     () => ({
@@ -82,8 +89,10 @@ export function useSimulationOrLocal(): SimulationContextValue {
       setRain,
       departedAt,
       setDepartedAt,
+      routeMinutes,
+      setRouteMinutes,
     }),
-    [demo, clockMinutes, clockActive, rain, departedAt, setClock],
+    [demo, clockMinutes, clockActive, rain, departedAt, routeMinutes, setClock],
   );
   return shared ?? local;
 }

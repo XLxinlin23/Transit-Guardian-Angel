@@ -273,7 +273,13 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
 
   const saveAlarm = async () => {
     const next = { ...alarm, active: true };
-    const entry: SavedRouteAlarm = { id: editingId, alarm: next, fromPlace, toPlace };
+    const entry: SavedRouteAlarm = {
+      id: editingId,
+      alarm: next,
+      fromPlace,
+      toPlace,
+      durationMinutes: preview?.totalDurationMinutes ?? preview?.minutes ?? null,
+    };
     const exists = alarms.some((item) => item.id === editingId);
     persistAlarms(exists ? alarms.map((item) => (item.id === editingId ? entry : item)) : [...alarms, entry]);
     setAlarmField("active", true);
@@ -340,14 +346,33 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
   const assessment = disruption.assessment;
 
 
+  const simulation = useSimulationOptional();
+  const simClock = simulation?.clockActive ? simulation.clockMinutes : null;
+  const departedAt = simulation?.departedAt ?? null;
+  const rainDelay = simulation?.rain ? 5 : 0;
+
+  const previewMinutes = preview?.totalDurationMinutes ?? preview?.minutes ?? null;
+  const setRouteMinutes = simulation?.setRouteMinutes;
+  useEffect(() => {
+    setRouteMinutes?.(previewMinutes);
+  }, [previewMinutes, setRouteMinutes]);
+
   const departureTime = recommendedJourney ? shiftTime(alarm.arriveBy, recommendedJourney.minutes) : "--:--";
   const fixedDepartureMinutes = parseTime(departureTime);
   const pastReachBy = reachByHasPassed(alarm);
-  const arrivalTime = assessment
+  const plannedArrival = assessment
     ? assessment.predictedArrival
     : preview
       ? arrivalFromDeparture(preview, fixedDepartureMinutes)
       : alarm.arriveBy || "--:--";
+
+  // Once the user has left (simulated departure), arrival is measured from that moment.
+  const disruptionDelay = disruption.disrupted ? (assessment?.delayMinutes ?? 0) : 0;
+  const actualArrivalMin =
+    departedAt !== null && previewMinutes !== null
+      ? departedAt + previewMinutes + disruptionDelay + rainDelay
+      : null;
+  const arrivalTime = actualArrivalMin !== null ? formatMinutes(actualArrivalMin) : plannedArrival;
 
   // Minutes past the latest acceptable arrival for the route currently shown —
   // applies to any route on screen, disrupted or not.
@@ -356,17 +381,23 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
   const latestMin = reachMin !== null ? reachMin + (Number(alarm.maxDelay) || 0) : null;
   const lateBy = arrivalMin !== null && latestMin !== null ? Math.max(0, arrivalMin - latestMin) : 0;
   const routeLate = lateBy > 0;
+  const departedLine =
+    departedAt !== null
+      ? `Left at ${formatMinutes(departedAt)} · ${previewMinutes !== null ? `${previewMinutes + disruptionDelay + rainDelay} min journey · ` : ""}arriving about ${arrivalTime}${
+          reachMin !== null && arrivalMin !== null && arrivalMin > reachMin
+            ? ` (${arrivalMin - reachMin} min after your ${alarm.arriveBy})`
+            : ` — before your ${alarm.arriveBy}`
+        }`
+      : null;
   const statusLine = disruption.disrupted && assessment
     ? `${assessment.headline}${disruption.incident?.source === "demo" ? " (simulated)" : ""}`
     : routeLate
       ? `Arrives ${arrivalTime} — ${lateBy} min past your latest ${latestAcceptableArrival}. Leave earlier or pick another route.`
       : null;
 
-
-  const simulation = useSimulationOptional();
-  const simClock = simulation?.clockActive ? simulation.clockMinutes : null;
   const departureMin = parseTime(departureTime);
   const minutesToLeave = simClock !== null && departureMin !== null ? departureMin - simClock : null;
+
 
   return (
     <div className="pt-7">
@@ -381,6 +412,15 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                 : `· departure time ${departureTime} has passed`}
             </span>
           )}
+        </p>
+      )}
+      {departedLine && (
+        <p
+          className={`mt-2 rounded-xl border px-3 py-2 text-xs font-bold ${
+            routeLate ? "border-route-red/35 bg-route-red/10 text-route-red" : "border-success/35 bg-success-soft text-brand-deep"
+          }`}
+        >
+          {departedLine}
         </p>
       )}
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">

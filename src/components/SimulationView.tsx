@@ -40,6 +40,8 @@ export function SimulationView() {
     setAlarms(readAlarms());
   }, []);
 
+  const { routeMinutes } = useSimulation();
+
   const events = useMemo<SimNotification[]>(() => {
     const list: SimNotification[] = [];
     for (const entry of alarms) {
@@ -48,73 +50,80 @@ export function SimulationView() {
       if (reach === null) continue;
       const lead = Number(alarm.notifyLeadMinutes) || 20;
       const maxDelay = Number(alarm.maxDelay) || 0;
+      const latest = reach + maxDelay;
       const trip = `${alarm.from || "Start"} → ${alarm.to || "Destination"}`;
-      const plannedDeparture = reach - lead;
+
+      // Journey length actually planned for this trip — never the notification lead time.
+      const duration = entry.durationMinutes ?? routeMinutes ?? 30;
       const delay = demo ? DEMO_INCIDENT.addedMinutes : 0;
-      const rainDelay = rain ? 5 : 0;
-      const departure = plannedDeparture - delay - rainDelay;
+      const rainDelay = rain && alarm.notifyWeather ? 5 : 0;
+      // Leave early enough to absorb the disruption and the wet-weather allowance.
+      const departure = reach - duration - delay - rainDelay;
 
       list.push({
-        at: plannedDeparture - 15,
+        at: Math.max(0, departure - lead),
         tone: "info",
-        title: `Trip ready · ${trip}`,
-        body: `Leave at ${formatMinutes(plannedDeparture)} to arrive by ${alarm.arriveBy}.${rain ? " Rain expected near your start — allow about 5 extra minutes." : ""}`,
+        title: `Leave in ${lead} min · ${trip}`,
+        body: `${duration + delay + rainDelay} min journey. Leave at ${formatMinutes(departure)} to arrive by ${alarm.arriveBy}.${rain && alarm.notifyWeather ? " Rain near your start — 5 min added." : ""}`,
       });
 
-      if (rain) {
+      if (rain && alarm.notifyWeather) {
         list.push({
-          at: Math.max(0, plannedDeparture - 20),
+          at: Math.max(0, departure - lead - 5),
           tone: "warn",
           title: `Rain near your start · ${trip}`,
-          body: "Simulated weather. Walking legs may take about 5 min longer — leave a little earlier.",
+          body: "Simulated weather. Walking legs take about 5 min longer — leave a little earlier.",
         });
       }
 
       if (demo) {
-        list.push({
-          at: Math.max(0, plannedDeparture - 25),
-          tone: "warn",
-          title: `Circle Line disruption · ${trip}`,
-          body: `Demo incident — simulated data. Adds ${DEMO_INCIDENT.addedMinutes} min. Leave by ${formatMinutes(departure)} to still arrive ${alarm.arriveBy}.`,
-        });
+        const detectedAt = Math.max(0, departure - lead - 10);
+        if (departedAt === null || departedAt > detectedAt) {
+          list.push({
+            at: detectedAt,
+            tone: "warn",
+            title: `Disruption on your route · ${trip}`,
+            body: `Demo incident — simulated data. Adds ${DEMO_INCIDENT.addedMinutes} min. Leave by ${formatMinutes(departure)} to still arrive ${alarm.arriveBy}.`,
+          });
+        } else {
+          list.push({
+            at: departedAt + 5,
+            tone: "alert",
+            title: `Sudden disruption en route · ${trip}`,
+            body: `Demo incident — simulated data. ${DEMO_INCIDENT.message} Expect about ${DEMO_INCIDENT.addedMinutes} min extra.`,
+          });
+        }
       }
 
-      list.push({
-        at: departure,
-        tone: demo ? "warn" : "info",
-        title: `Leave now · ${trip}`,
-        body: demo
-          ? `Leaving now still reaches ${alarm.arriveBy} despite the simulated disruption.`
-          : `Leave now to reach ${alarm.to || "your destination"} by ${alarm.arriveBy}.`,
-      });
+      // The exact leave-now nudge is pointless once the user has already left.
+      if (departedAt === null || departedAt > departure) {
+        list.push({
+          at: Math.max(0, departure),
+          tone: demo ? "warn" : "info",
+          title: `Leave now · ${trip}`,
+          body: `Leave now to reach ${alarm.to || "your destination"} by ${alarm.arriveBy}.`,
+        });
+      }
 
       if (departedAt !== null) {
-        const predictedArrival = departedAt + lead + delay + rainDelay;
-        const late = predictedArrival > reach;
+        const arrival = departedAt + duration + delay + rainDelay;
+        const late = arrival > latest;
         list.push({
           at: departedAt,
-          tone: late ? "warn" : "info",
+          tone: late ? "alert" : arrival > reach ? "warn" : "info",
           title: `You left · ${trip}`,
-          body: `Departed at ${formatMinutes(departedAt)} — expected to arrive around ${formatMinutes(predictedArrival)}${late ? ` (${predictedArrival - reach} min after your reach-by ${alarm.arriveBy}).` : `, before your reach-by ${alarm.arriveBy}.`}`,
-        });
-      }
-
-      if (demo) {
-        const lateArrival = reach + DEMO_INCIDENT.addedMinutes;
-        const latest = reach + maxDelay;
-        list.push({
-          at: plannedDeparture,
-          tone: lateArrival > latest ? "alert" : "warn",
-          title: lateArrival > latest ? `Late arrival · ${trip}` : `Still within your limit · ${trip}`,
-          body:
-            lateArrival > latest
-              ? `Leaving now arrives ${formatMinutes(lateArrival)} — ${lateArrival - latest} min past your latest ${formatMinutes(latest)}.`
-              : `Leaving now arrives ${formatMinutes(lateArrival)}, within your ${maxDelay} min limit (latest ${formatMinutes(latest)}).`,
+          body: `Departed ${formatMinutes(departedAt)} · ${duration + delay + rainDelay} min journey — arriving about ${formatMinutes(arrival)}${
+            late
+              ? ` (${arrival - latest} min past your latest ${formatMinutes(latest)}).`
+              : arrival > reach
+                ? ` (${arrival - reach} min after ${alarm.arriveBy}, still within your ${maxDelay} min limit).`
+                : `, before your ${alarm.arriveBy}.`
+          }`,
         });
       }
     }
     return list.sort((a, b) => a.at - b.at);
-  }, [alarms, demo, rain, departedAt]);
+  }, [alarms, demo, rain, departedAt, routeMinutes]);
 
   const fired = events.filter((event) => event.at <= clockMinutes).reverse();
 
