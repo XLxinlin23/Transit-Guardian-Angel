@@ -51,14 +51,24 @@ export function SimulationView() {
       const trip = `${alarm.from || "Start"} → ${alarm.to || "Destination"}`;
       const plannedDeparture = reach - lead;
       const delay = demo ? DEMO_INCIDENT.addedMinutes : 0;
-      const departure = plannedDeparture - delay;
+      const rainDelay = rain ? 5 : 0;
+      const departure = plannedDeparture - delay - rainDelay;
 
       list.push({
         at: plannedDeparture - 15,
         tone: "info",
         title: `Trip ready · ${trip}`,
-        body: `Leave at ${formatMinutes(plannedDeparture)} to arrive by ${alarm.arriveBy}.`,
+        body: `Leave at ${formatMinutes(plannedDeparture)} to arrive by ${alarm.arriveBy}.${rain ? " Rain expected near your start — allow about 5 extra minutes." : ""}`,
       });
+
+      if (rain) {
+        list.push({
+          at: Math.max(0, plannedDeparture - 20),
+          tone: "warn",
+          title: `Rain near your start · ${trip}`,
+          body: "Simulated weather. Walking legs may take about 5 min longer — leave a little earlier.",
+        });
+      }
 
       if (demo) {
         list.push({
@@ -77,6 +87,17 @@ export function SimulationView() {
           ? `Leaving now still reaches ${alarm.arriveBy} despite the simulated disruption.`
           : `Leave now to reach ${alarm.to || "your destination"} by ${alarm.arriveBy}.`,
       });
+
+      if (departedAt !== null) {
+        const predictedArrival = departedAt + lead + delay + rainDelay;
+        const late = predictedArrival > reach;
+        list.push({
+          at: departedAt,
+          tone: late ? "warn" : "info",
+          title: `You left · ${trip}`,
+          body: `Departed at ${formatMinutes(departedAt)} — expected to arrive around ${formatMinutes(predictedArrival)}${late ? ` (${predictedArrival - reach} min after your reach-by ${alarm.arriveBy}).` : `, before your reach-by ${alarm.arriveBy}.`}`,
+        });
+      }
 
       if (demo) {
         const lateArrival = reach + DEMO_INCIDENT.addedMinutes;
