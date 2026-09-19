@@ -268,12 +268,34 @@ function weightsFor(preferences: RoutePreference[]): Weights {
   };
 }
 
-/** Shortest path weighted by the commuter's route preferences. Lines in `avoidLines` are heavily penalised. */
+/** A closed stretch of track: no trains run between these two adjacent stations on this line. */
+export type BlockedSegment = { line: string; a: string; b: string };
+
+const segmentKey = (line: string, a: string, b: string) =>
+  `${line.toUpperCase()}|${[a.toLowerCase(), b.toLowerCase()].sort().join("|")}`;
+
+/** Every station between two stations on a line, inclusive, in travel order. */
+export function stationsBetween(line: string, a: string, b: string): string[] {
+  const stations = LINES[line.toUpperCase()];
+  if (!stations) return [];
+  const names = stations.map(([name]) => name);
+  const start = names.findIndex((name) => name.toLowerCase() === a.toLowerCase());
+  const end = names.findIndex((name) => name.toLowerCase() === b.toLowerCase());
+  if (start < 0 || end < 0) return [];
+  return start <= end ? names.slice(start, end + 1) : names.slice(end, start + 1).reverse();
+}
+
+/**
+ * Shortest path weighted by the commuter's route preferences.
+ * Lines in `avoidLines` are heavily penalised; `blockedSegments` are removed outright,
+ * so only the closed stretch of track is avoided rather than the whole line.
+ */
 export function planRoute(
   fromName: string,
   toName: string,
   preferences: RoutePreference[],
   avoidLines: string[] = [],
+  blockedSegments: BlockedSegment[] = [],
 ): PlannedRoute | null {
   const from = findStation(fromName);
   const to = findStation(toName);
