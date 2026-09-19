@@ -86,70 +86,9 @@ export function RoutePreferencePanel({
     return () => window.cancelAnimationFrame(frame);
   }, [focusCompareRequest]);
 
-  const compare = useServerFn(compareJourneys);
-  const fetchTrainAlerts = useServerFn(getTrainAlerts);
-  const alertsQuery = useQuery({
-    queryKey: ["train-alerts"],
-    queryFn: () => fetchTrainAlerts(),
-    refetchInterval: 60_000,
-  });
-  const routesQuery = useQuery({
-    queryKey: ["journey-options", fromPlace?.lat, fromPlace?.lng, toPlace?.lat, toPlace?.lng],
-    enabled: Boolean(fromPlace && toPlace),
-    staleTime: 5 * 60_000,
-    queryFn: () => {
-      if (!fromPlace || !toPlace) return Promise.resolve([]);
-      return compare({
-        data: {
-          from: { lat: fromPlace.lat, lng: fromPlace.lng, label: fromPlace.name },
-          to: { lat: toPlace.lat, lng: toPlace.lng, label: toPlace.name },
-        },
-      });
-    },
-  });
-
-  const affectedLines = useMemo(
-    () => (alertsQuery.data?.line ?? "").split(/[\s,;/]+/).filter(Boolean).map((line) => line.toUpperCase()),
-    [alertsQuery.data?.line],
-  );
-  const isDisrupted = useMemo(
-    () => (journey: Journey) => {
-      if (alertsQuery.data?.status !== "disrupted") return false;
-      const lines = new Set(
-        journey.legs.filter((leg) => leg.mode === "mrt" || leg.mode === "lrt").map((leg) => leg.badge.toUpperCase()),
-      );
-      return !affectedLines.length || affectedLines.some((line) => lines.has(line));
-    },
-    [affectedLines, alertsQuery.data?.status],
-  );
-
-  const routes = useMemo<RouteGroup[]>(() => {
-    const grouped = new Map<string, RouteGroup>();
-    for (const option of routesQuery.data ?? []) {
-      const preference = option.preference as RoutePreference;
-      const current = grouped.get(option.journey.id);
-      if (current) current.preferences.push(preference);
-      else grouped.set(option.journey.id, { journey: option.journey, preferences: [preference] });
-    }
-    const all = [...grouped.values()];
-    const applied0 = all.find((group) => group.preferences.includes(applied))?.journey;
-    const reach = toMinutes(alarm.arriveBy);
-    const baseDuration = applied0?.totalDurationMinutes ?? applied0?.minutes ?? 0;
-    const departureMinutes = reach === null ? null : reach - baseDuration;
-    return filterEligible(all, {
-      arriveBy: alarm.arriveBy,
-      maxDelay: alarm.maxDelay,
-      departureMinutes,
-      isDisrupted,
-    });
-  }, [alarm.arriveBy, alarm.maxDelay, applied, isDisrupted, routesQuery.data]);
-
-  const fixedDepartureMinutes = useMemo(() => {
-    const reach = toMinutes(alarm.arriveBy);
-    const base = routes.find((group) => group.preferences.includes(applied))?.journey ?? routes[0]?.journey;
-    if (reach === null || !base) return null;
-    return reach - (base.totalDurationMinutes ?? base.minutes ?? 0);
-  }, [alarm.arriveBy, applied, routes]);
+  // Same shared store as Home — no separate copy of the route alternatives here.
+  const store = useRouteStore();
+  const routes = store.routes;
 
   const applyPreference = () => {
     setPreferences([pending]);
@@ -161,10 +100,11 @@ export function RoutePreferencePanel({
   const useRoute = () => {
     if (!pendingJourney) return;
     setManualJourney(pendingJourney);
-    const arrival = arrivalFromDeparture(pendingJourney, fixedDepartureMinutes);
-    const leaveAt = shiftTime(alarm.arriveBy, pendingJourney.totalDurationMinutes ?? pendingJourney.minutes);
+    const chosen = routes.find((route) => route.journey === pendingJourney);
     setPendingJourney(null);
-    setConfirmation(`Route selected. You will leave at ${leaveAt} and arrive by ${arrival}.`);
+    setConfirmation(
+      `Route selected. You will leave at ${chosen?.normalDepartureClock ?? store.departureClock} and arrive by ${chosen?.predictedArrivalClock ?? "--:--"}.`,
+    );
   };
 
   return (
