@@ -10,6 +10,7 @@ import { RouteAlarmForm } from "../components/RouteAlarmForm";
 import { RoutePreferencePanel } from "../components/RoutePreferencePanel";
 import { NearbyBusStopsCard } from "../components/NearbyBusStopsCard";
 import { WeatherCard } from "../components/WeatherCard";
+import { TrafficIncidentsCard } from "../components/TrafficIncidentsCard";
 import { TripProvider } from "../lib/trip-store";
 
 export const Route = createFileRoute("/")({
@@ -103,11 +104,12 @@ function AlertsView() {
       <div className="mt-5 grid gap-4 lg:grid-cols-2 lg:items-start">
         <MrtStatusCard />
         <WeatherCard />
+        <TrafficIncidentsCard />
       </div>
 
 
       <p className="mt-5 text-center text-[11px] text-muted-foreground">
-        Train and bus data © LTA DataMall · Weather © data.gov.sg
+        Train, bus and traffic data © LTA DataMall · Weather © data.gov.sg
       </p>
     </div>
   );
