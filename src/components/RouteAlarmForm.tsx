@@ -640,6 +640,16 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                     : `Leave at ${departureTime} to reach by ${arrivalTime}`}
               </p>
 
+              {disruption.disrupted && assessment && (
+                <dl className="mt-3 space-y-1 rounded-xl border border-route-red/30 bg-route-red/5 px-3 py-2.5 text-xs font-semibold text-brand-deep">
+                  <div className="flex justify-between gap-2"><dt>Original arrival</dt><dd>{alarm.arriveBy || "--:--"}</dd></div>
+                  <div className="flex justify-between gap-2"><dt>Updated arrival</dt><dd className="text-route-red">{assessment.predictedArrival}</dd></div>
+                  <div className="flex justify-between gap-2"><dt>Latest acceptable arrival</dt><dd>{latestAcceptableArrival}</dd></div>
+                  {lateBy > 0 && <p className="pt-1 text-route-red">This route exceeds your delay limit by {lateBy} min.</p>}
+                </dl>
+              )}
+
+
 
               <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
                 <Stat label="Walking" value={`${preview.totalWalkingDistanceMetres ?? preview.walkMetres ?? 0} m · ${preview.totalWalkingTimeMinutes ?? preview.walkMinutes ?? 0} min`} />
