@@ -33,7 +33,6 @@ import {
   REPEAT_LABELS,
   WEEKDAYS,
   journeyDateLabel,
-  type JourneyDateMode,
   type RepeatOption,
   DEFAULT_PREFERENCES,
   PREFERENCE_LABELS,
@@ -58,12 +57,11 @@ import {
   filterEligible,
   journeyDateTimeLabel,
   primaryMetric,
-  reachByHasPassed,
   STATUS_CLASS,
   toMinutes,
 } from "@/lib/journey-time";
 import { buildRouteMetrics } from "@/lib/route-metrics";
-import { departureHasPassed, isRecurring, nextRunLabel, recurrenceLabel, sgTomorrowISO } from "@/lib/sg-time";
+import { departureHasPassed, isRecurring, recurrenceLabel } from "@/lib/sg-time";
 import { RouteMap } from "./RouteMap";
 import { JourneyTimeline, RouteLegend } from "./JourneySteps";
 
