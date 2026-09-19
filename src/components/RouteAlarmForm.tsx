@@ -560,9 +560,14 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                   segments={segments}
                   embedded
                   title="Route map"
-                  badge={manualJourney ? "Chosen by you" : preferenceSummary}
-                  footer={`About ${preview.minutes} min door to door · ${preview.legs.length} leg${preview.legs.length > 1 ? "s" : ""} · route when no disruptions`}
+                  badge={disruption.disrupted ? "Disruption on this route" : manualJourney ? "Chosen by you" : preferenceSummary}
+                  footer={
+                    disruption.disrupted && assessment
+                      ? `${disruption.incident?.line ? `${disruption.incident.line} line disruption` : "Disruption"} · about ${preview.minutes + assessment.delayMinutes} min door to door · arrive ${assessment.predictedArrival}`
+                      : `About ${preview.minutes} min door to door · ${preview.legs.length} leg${preview.legs.length > 1 ? "s" : ""} · route when no disruptions`
+                  }
                 />
+
                 <div className="mt-3 px-1">
                   <RouteLegend legs={preview.legs} />
                 </div>
