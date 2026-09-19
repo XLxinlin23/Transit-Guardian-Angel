@@ -108,6 +108,21 @@ export function RoutePreferencePanel({
     },
   });
 
+  const affectedLines = useMemo(
+    () => (alertsQuery.data?.line ?? "").split(/[\s,;/]+/).filter(Boolean).map((line) => line.toUpperCase()),
+    [alertsQuery.data?.line],
+  );
+  const isDisrupted = useMemo(
+    () => (journey: Journey) => {
+      if (alertsQuery.data?.status !== "disrupted") return false;
+      const lines = new Set(
+        journey.legs.filter((leg) => leg.mode === "mrt" || leg.mode === "lrt").map((leg) => leg.badge.toUpperCase()),
+      );
+      return !affectedLines.length || affectedLines.some((line) => lines.has(line));
+    },
+    [affectedLines, alertsQuery.data?.status],
+  );
+
   const routes = useMemo<RouteGroup[]>(() => {
     const grouped = new Map<string, RouteGroup>();
     for (const option of routesQuery.data ?? []) {
@@ -116,8 +131,25 @@ export function RoutePreferencePanel({
       if (current) current.preferences.push(preference);
       else grouped.set(option.journey.id, { journey: option.journey, preferences: [preference] });
     }
-    return [...grouped.values()];
-  }, [routesQuery.data]);
+    const all = [...grouped.values()];
+    const applied0 = all.find((group) => group.preferences.includes(applied))?.journey;
+    const reach = toMinutes(alarm.arriveBy);
+    const baseDuration = applied0?.totalDurationMinutes ?? applied0?.minutes ?? 0;
+    const departureMinutes = reach === null ? null : reach - baseDuration;
+    return filterEligible(all, {
+      arriveBy: alarm.arriveBy,
+      maxDelay: alarm.maxDelay,
+      departureMinutes,
+      isDisrupted,
+    });
+  }, [alarm.arriveBy, alarm.maxDelay, applied, isDisrupted, routesQuery.data]);
+
+  const fixedDepartureMinutes = useMemo(() => {
+    const reach = toMinutes(alarm.arriveBy);
+    const base = routes.find((group) => group.preferences.includes(applied))?.journey ?? routes[0]?.journey;
+    if (reach === null || !base) return null;
+    return reach - (base.totalDurationMinutes ?? base.minutes ?? 0);
+  }, [alarm.arriveBy, applied, routes]);
 
   const applyPreference = () => {
     setPreferences([pending]);
