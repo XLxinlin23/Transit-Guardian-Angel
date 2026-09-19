@@ -271,3 +271,74 @@ function Metric({ icon: Icon, label, value }: { icon: typeof Clock3; label: stri
     </div>
   );
 }
+
+/** Route detail view — uses Google's walking/bus/MRT geometry when available. */
+function RouteDetails({
+  journey,
+  segments,
+  title,
+  preference,
+  from,
+  to,
+}: {
+  journey: Journey;
+  segments: Array<{ mode: Journey["legs"][number]["mode"]; badge: string; points: Journey["legs"][number]["points"] }>;
+  title: string;
+  preference: RoutePreference;
+  from: PlacePoint | null;
+  to: PlacePoint | null;
+}) {
+  const directions = useServerFn(getGoogleDirections);
+  const onlyWalking = journey.legs.every((leg) => leg.mode === "walk");
+
+  const query = useQuery({
+    queryKey: ["google-directions", from?.lat, from?.lng, to?.lat, to?.lng, preference, onlyWalking],
+    enabled: Boolean(from && to),
+    staleTime: 5 * 60_000,
+    queryFn: () => {
+      if (!from || !to) return Promise.resolve(null);
+      return directions({
+        data: {
+          origin: { label: from.name, lat: from.lat, lng: from.lng },
+          destination: { label: to.name, lat: to.lat, lng: to.lng },
+          mode: onlyWalking ? ("WALK" as const) : ("TRANSIT" as const),
+          preference,
+        },
+      });
+    },
+  });
+
+  const google = query.data && query.data.segments.length > 0 ? query.data : null;
+
+  return (
+    <div>
+      <RouteMap
+        stations={
+          google
+            ? ([google.origin, google.destination].filter(Boolean) as { name: string; lat: number; lng: number }[])
+            : []
+        }
+        segments={google ? google.segments : segments}
+        embedded
+        compact
+        title={title}
+        footer={
+          google
+            ? `${google.minutes} min · ${formatDistance(google.distanceMetres)} · Directions © Google · Base map © OpenStreetMap contributors`
+            : "Base map © OpenStreetMap contributors"
+        }
+      />
+      <div className="mt-3"><RouteLegend legs={journey.legs} /></div>
+      <div className="mt-3">
+        {query.isFetching && !google ? (
+          <p className="text-xs text-muted-foreground">Loading Google directions…</p>
+        ) : google ? (
+          <DirectionsStepList steps={google.steps} />
+        ) : (
+          <JourneyTimeline legs={journey.legs} />
+        )}
+      </div>
+      {query.data?.message && !google && <p className="mt-2 text-xs text-muted-foreground">{query.data.message}</p>}
+    </div>
+  );
+}
