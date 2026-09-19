@@ -28,7 +28,8 @@ export function useDisruptionWatch(params: {
   maxDelay: string;
   preference?: string | undefined;
 }): DisruptionWatch {
-  const [demo, setDemo] = useState(false);
+  // Shared with the Simulation tab, so a simulated incident is visible everywhere.
+  const { demo, setDemo } = useSimulationOrLocal();
 
   const alertsFn = useServerFn(getTrainAlerts);
   const alertsQuery = useQuery({
