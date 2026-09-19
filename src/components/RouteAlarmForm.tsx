@@ -454,7 +454,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
 
       <div className="mt-5 grid items-start gap-4 lg:grid-cols-2">
         {/* Left column — the trip form */}
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           {alarms.length > 0 && (
             <section className="glass-panel rounded-2xl p-5">
               <div className="flex items-center justify-between gap-3">
@@ -550,11 +550,21 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
             </section>
           )}
 
+          {showForm && (
           <section className="glass-panel rounded-2xl p-5">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="font-display text-base font-bold text-brand-deep">
                 {editingExisting ? "Edit trip" : "Plan your trip"}
               </h2>
+              {editingExisting && formOpen && (
+                <button
+                  type="button"
+                  onClick={() => setFormOpen(false)}
+                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-muted-foreground hover:bg-secondary"
+                >
+                  <Check className="size-4" /> Done
+                </button>
+              )}
               {editingExisting && (
                 <button
                   type="button"
