@@ -146,8 +146,11 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
         },
       }),
   });
-  const recommendedJourney: Journey | null = journeyQuery.data ?? null;
+  const planResult = journeyQuery.data ?? null;
+  const recommendedJourney: Journey | null = planResult?.ok ? planResult.journey : null;
+  const planMessage = planResult && !planResult.ok ? planResult.message : null;
   const preview: Journey | null = manualJourney ?? recommendedJourney;
+
 
   const compareFn = useServerFn(compareJourneys);
   const optionsQuery = useQuery({
