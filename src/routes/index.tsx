@@ -3,8 +3,8 @@ import { BellRing, Bus, FlaskConical, Home, Settings, SlidersHorizontal } from "
 
 import { SettingsSheet } from "../components/SettingsSheet";
 import { SimulationView } from "../components/SimulationView";
-import { SimulationProvider } from "../lib/simulation";
-import { ThemeProvider } from "../lib/theme";
+import { SimulationProvider } from "@/lib/simulation";
+import { ThemeProvider } from "@/lib/theme";
 import { useEffect, useState } from "react";
 import { BusArrivalCard } from "../components/BusArrivalCard";
 import { MrtStatusCard } from "../components/MrtStatusCard";
@@ -14,7 +14,7 @@ import { RoutePreferencePanel } from "../components/RoutePreferencePanel";
 import { NearbyBusStopsCard } from "../components/NearbyBusStopsCard";
 import { WeatherCard } from "../components/WeatherCard";
 import { TrafficIncidentsCard } from "../components/TrafficIncidentsCard";
-import { TripProvider, useTrip } from "../lib/trip-store";
+import { TripProvider, useTrip } from "@/lib/trip-store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
