@@ -84,6 +84,8 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
   const [saved, setSaved] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // The trip form stays closed for an already-saved alarm until the user taps it.
+  const [formOpen, setFormOpen] = useState(false);
 
   const saveRemote = useServerFn(saveCommuteSchedule);
   const listRemote = useServerFn(listCommuteSchedules);
@@ -211,6 +213,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
   const editAlarm = (entry: SavedRouteAlarm) => {
     loadDraft({ editingId: entry.id, alarm: entry.alarm, fromPlace: entry.fromPlace, toPlace: entry.toPlace });
     setSaved(true);
+    setFormOpen(true);
     setSettingsOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -218,13 +221,50 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
   const startNewAlarm = () => {
     startNewTrip();
     setSaved(false);
+    setFormOpen(true);
     setSettingsOpen(false);
   };
 
   const clearCurrentTrip = () => {
     clearTrip();
     setSaved(false);
+    setFormOpen(true);
     setSettingsOpen(false);
+  };
+
+  // Temporarily pause/resume an alarm without deleting it.
+  const toggleAlarmActive = async (entry: SavedRouteAlarm, active: boolean) => {
+    const updated: SavedRouteAlarm = { ...entry, alarm: { ...entry.alarm, active } };
+    persistAlarms(alarms.map((item) => (item.id === entry.id ? updated : item)));
+    if (entry.id === editingId) setAlarmField("active", active);
+    try {
+      await saveRemote({
+        data: {
+          deviceId: getDeviceId(),
+          alarmId: entry.id,
+          label: `${entry.alarm.from} → ${entry.alarm.to}`.slice(0, 60),
+          origin: entry.alarm.from,
+          destination: entry.alarm.to,
+          fromLat: entry.fromPlace?.lat ?? null,
+          fromLng: entry.fromPlace?.lng ?? null,
+          toLat: entry.toPlace?.lat ?? null,
+          toLng: entry.toPlace?.lng ?? null,
+          travelDays: entry.alarm.repeat === "custom" ? entry.alarm.days : defaultDays(entry.alarm.repeat),
+          repeatOption: entry.alarm.repeat,
+          arriveBy: entry.alarm.arriveBy,
+          maxDelay: Number(entry.alarm.maxDelay) || 0,
+          preferences,
+          active,
+          notifyLeadMinutes: Number(entry.alarm.notifyLeadMinutes) || 0,
+          notifyWeather: entry.alarm.notifyWeather,
+          notifyCrowd: entry.alarm.notifyCrowd,
+          notifyBus: entry.alarm.notifyBus,
+          busStopCode: entry.alarm.busStopCode.trim() ? entry.alarm.busStopCode.trim() : null,
+        },
+      });
+    } catch {
+      /* paused/resumed on this device; backend syncs on next save */
+    }
   };
 
   const removeAlarm = async (id: string) => {
@@ -250,6 +290,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
     persistAlarms(exists ? alarms.map((item) => (item.id === editingId ? entry : item)) : [...alarms, entry]);
     setAlarmField("active", true);
     setSaved(true);
+    setFormOpen(false);
     setSyncing(true);
     try {
       await saveRemote({
@@ -286,6 +327,9 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
   const canSave = alarm.from.trim() && alarm.to.trim() && alarm.arriveBy && (alarm.repeat !== "custom" || alarm.days.length > 0);
   const repeatSummary = alarm.repeat === "custom" ? alarm.days.join(", ") : REPEAT_LABELS[alarm.repeat];
   const editingExisting = alarms.some((item) => item.id === editingId);
+  const editingEntry = alarms.find((item) => item.id === editingId) ?? null;
+  // The edit form only shows for a brand-new trip or after tapping a saved alarm.
+  const showForm = formOpen || !editingExisting;
   const settingsSummary = [
     `${alarm.notifyLeadMinutes} min before`,
     alarm.notifyWeather ? "weather" : null,
@@ -410,7 +454,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
 
       <div className="mt-5 grid items-start gap-4 lg:grid-cols-2">
         {/* Left column — the trip form */}
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           {alarms.length > 0 && (
             <section className="glass-panel rounded-2xl p-5">
               <div className="flex items-center justify-between gap-3">
@@ -440,8 +484,19 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                         <p className="truncate text-xs text-muted-foreground">
                           Arrive by {entry.alarm.arriveBy} ·{" "}
                           {entry.alarm.repeat === "custom" ? entry.alarm.days.join(", ") : REPEAT_LABELS[entry.alarm.repeat]}
+                          {!entry.alarm.active && " · Paused"}
                         </p>
                       </button>
+                      <div className="flex shrink-0 flex-col items-center gap-0.5">
+                        <Switch
+                          checked={entry.alarm.active}
+                          onCheckedChange={(value) => toggleAlarmActive(entry, value)}
+                          aria-label={`${entry.alarm.active ? "Pause" : "Resume"} alarm ${entry.alarm.from} to ${entry.alarm.to}`}
+                        />
+                        <span className="text-[10px] font-semibold text-muted-foreground">
+                          {entry.alarm.active ? "On" : "Paused"}
+                        </span>
+                      </div>
                       <button
                         type="button"
                         onClick={() => removeAlarm(entry.id)}
@@ -457,23 +512,59 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
             </section>
           )}
 
-          {saved && alarm.active && (
+          {editingExisting && alarm.active && !showForm && (
             <section className="rounded-2xl border border-success/30 bg-success-soft p-4">
               <div className="flex items-start gap-3">
                 <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-success text-primary-foreground"><Check /></div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-brand-deep">Alarm active · arrive by {alarm.arriveBy}</p>
                   <p className="mt-1 text-xs leading-relaxed text-foreground">{alarm.from} → {alarm.to} · {repeatSummary}</p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setFormOpen(true)}
+                  className="shrink-0 rounded-lg px-2 py-1 text-xs font-bold text-primary hover:bg-secondary"
+                >
+                  Edit trip
+                </button>
               </div>
             </section>
           )}
 
+          {editingExisting && !alarm.active && !showForm && (
+            <section className="rounded-2xl border border-border bg-card p-4">
+              <div className="flex items-start gap-3">
+                <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-secondary text-muted-foreground"><BellRing /></div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-brand-deep">Alarm paused</p>
+                  <p className="mt-1 text-xs leading-relaxed text-foreground">{alarm.from} → {alarm.to} · {repeatSummary}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormOpen(true)}
+                  className="shrink-0 rounded-lg px-2 py-1 text-xs font-bold text-primary hover:bg-secondary"
+                >
+                  Edit trip
+                </button>
+              </div>
+            </section>
+          )}
+
+          {showForm && (
           <section className="glass-panel rounded-2xl p-5">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="font-display text-base font-bold text-brand-deep">
                 {editingExisting ? "Edit trip" : "Plan your trip"}
               </h2>
+              {editingExisting && formOpen && (
+                <button
+                  type="button"
+                  onClick={() => setFormOpen(false)}
+                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-muted-foreground hover:bg-secondary"
+                >
+                  <Check className="size-4" /> Done
+                </button>
+              )}
               {editingExisting && (
                 <button
                   type="button"
@@ -598,10 +689,11 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
               Clear trip
             </button>
           </section>
+          )}
         </div>
 
         {/* Right column — route result, map and alerts */}
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           {preview && (
             <JourneyStatusCard
               watch={disruption}
@@ -800,7 +892,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                 disabled={!canSave || syncing}
                 onClick={saveAlarm}
               >
-                <BellRing /> {syncing ? "Saving…" : "Save route alarm"}
+                <BellRing /> {syncing ? "Saving…" : editingExisting ? "Update route alarm" : "Save route alarm"}
               </Button>
             </section>
           )}
