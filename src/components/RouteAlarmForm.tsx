@@ -486,10 +486,9 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                 />
               </Field>
               <Field icon={CalendarDays} label="Journey date">
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   {([
                     ["today", "Today"],
-                    ["tomorrow", "Tomorrow"],
                     ["date", "Select date"],
                   ] as Array<[JourneyDateMode, string]>).map(([mode, label]) => (
                     <button
