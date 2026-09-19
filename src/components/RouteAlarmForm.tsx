@@ -639,7 +639,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 function shiftTime(hhmm: string, minusMinutes: number): string {
-  const [h, m] = (hhmm || "").split(":").map(Number);
+  const [h = NaN, m = NaN] = (hhmm || "").split(":").map(Number);
   if (Number.isNaN(h) || Number.isNaN(m)) return "--:--";
   let total = h * 60 + m - (minusMinutes || 0);
   total = ((total % 1440) + 1440) % 1440;
