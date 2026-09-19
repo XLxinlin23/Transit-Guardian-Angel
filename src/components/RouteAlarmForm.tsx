@@ -62,6 +62,8 @@ import {
   STATUS_CLASS,
   toMinutes,
 } from "@/lib/journey-time";
+import { buildRouteMetrics } from "@/lib/route-metrics";
+import { departureHasPassed, isRecurring, nextRunLabel, recurrenceLabel, sgTomorrowISO } from "@/lib/sg-time";
 import { RouteMap } from "./RouteMap";
 import { JourneyTimeline, RouteLegend } from "./JourneySteps";
 
@@ -357,46 +359,47 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
     setRouteMinutes?.(previewMinutes);
   }, [previewMinutes, setRouteMinutes]);
 
-  const departureTime = recommendedJourney ? shiftTime(alarm.arriveBy, recommendedJourney.minutes) : "--:--";
-  const fixedDepartureMinutes = parseTime(departureTime);
   const pastReachBy = reachByHasPassed(alarm);
-  const plannedArrival = assessment
-    ? assessment.predictedArrival
-    : preview
-      ? arrivalFromDeparture(preview, fixedDepartureMinutes)
-      : alarm.arriveBy || "--:--";
+  const baselineMinutes = recommendedJourney?.totalDurationMinutes ?? recommendedJourney?.minutes ?? null;
 
-  // Once the user has left (simulated departure), arrival is measured from that moment.
+  // One metrics object per route — every figure on this page reads from it.
   const disruptionDelay = disruption.disrupted ? (assessment?.delayMinutes ?? 0) : 0;
-  const actualArrivalMin =
-    departedAt !== null && previewMinutes !== null
-      ? departedAt + previewMinutes + disruptionDelay + rainDelay
-      : null;
-  const arrivalTime = actualArrivalMin !== null ? formatMinutes(actualArrivalMin) : plannedArrival;
+  const metrics = preview
+    ? buildRouteMetrics({
+        journey: preview,
+        alarm,
+        baselineMinutes,
+        delayMinutes: disruptionDelay + rainDelay,
+        // Once the user has actually left, that moment replaces the planned departure.
+        departureMinutes: departedAt,
+      })
+    : null;
 
-  // Minutes past the latest acceptable arrival for the route currently shown —
-  // applies to any route on screen, disrupted or not.
-  const reachMin = parseTime(alarm.arriveBy);
-  const arrivalMin = parseTime(arrivalTime);
-  const latestMin = reachMin !== null ? reachMin + (Number(alarm.maxDelay) || 0) : null;
-  const lateBy = arrivalMin !== null && latestMin !== null ? Math.max(0, arrivalMin - latestMin) : 0;
+  const departureTime = metrics?.departureClock ?? "--:--";
+  const fixedDepartureMinutes = metrics ? toMinutes(metrics.departureClock) : null;
+  const arrivalTime = metrics?.arrivalClock ?? (alarm.arriveBy || "--:--");
+  const latestAcceptableArrivalClock = metrics?.latestAcceptableClock ?? latestAcceptableArrival;
+  const lateBy = metrics?.overLimitMinutes ?? 0;
   const routeLate = lateBy > 0;
+  const departurePassed = Boolean(metrics && departedAt === null && departureHasPassed(alarm, metrics.departureClock));
+
   const departedLine =
-    departedAt !== null
-      ? `Left at ${formatMinutes(departedAt)} · ${previewMinutes !== null ? `${previewMinutes + disruptionDelay + rainDelay} min journey · ` : ""}arriving about ${arrivalTime}${
-          reachMin !== null && arrivalMin !== null && arrivalMin > reachMin
-            ? ` (${arrivalMin - reachMin} min after your ${alarm.arriveBy})`
-            : ` — before your ${alarm.arriveBy}`
+    departedAt !== null && metrics
+      ? `Left at ${metrics.departureClock} · ${metrics.totalDurationMinutes} min journey · arriving about ${metrics.arrivalClock}${
+          metrics.arrivalClock > metrics.reachByClock
+            ? ` (after your ${metrics.reachByClock})`
+            : ` — before your ${metrics.reachByClock}`
         }`
       : null;
   const statusLine = disruption.disrupted && assessment
     ? `${assessment.headline}${disruption.incident?.source === "demo" ? " (simulated)" : ""}`
     : routeLate
-      ? `Arrives ${arrivalTime} — ${lateBy} min past your latest ${latestAcceptableArrival}. Leave earlier or pick another route.`
+      ? `Arrives ${arrivalTime} — ${lateBy} min past your latest ${latestAcceptableArrivalClock}. Leave earlier or pick another route.`
       : null;
 
-  const departureMin = parseTime(departureTime);
+  const departureMin = fixedDepartureMinutes;
   const minutesToLeave = simClock !== null && departureMin !== null ? departureMin - simClock : null;
+
 
 
   return (
@@ -525,49 +528,56 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                   ariaLabel="To"
                 />
               </Field>
-              <Field icon={CalendarDays} label="Journey date">
-                <div className="grid grid-cols-2 gap-2">
-                  {([
-                    ["today", "Today"],
-                    ["date", "Select date"],
-                  ] as Array<[JourneyDateMode, string]>).map(([mode, label]) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => update("dateMode", mode)}
-                      aria-pressed={alarm.dateMode === mode}
-                      className={`min-h-10 rounded-lg border px-2 text-xs font-bold ${
-                        alarm.dateMode === mode ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-muted-foreground"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
+              {isRecurring(alarm.repeat) ? (
+                <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5">
+                  <p className="text-xs font-bold text-brand-deep">{recurrenceLabel(alarm)}</p>
+                  <p className="mt-1 text-[11px] font-semibold text-muted-foreground">
+                    Repeating trip · next journey {nextRunLabel(alarm)}
+                  </p>
                 </div>
-                {alarm.dateMode === "date" && (
-                  <Input
-                    type="date"
-                    value={alarm.date}
-                    onChange={(event) => update("date", event.target.value)}
-                    aria-label="Journey date"
-                    className="mt-2 h-11 bg-card"
-                  />
-                )}
-              </Field>
+              ) : (
+                <Field icon={CalendarDays} label="Journey date">
+                  <div className="grid grid-cols-2 gap-2">
+                    {([
+                      ["today", "Today"],
+                      ["date", "Select date"],
+                    ] as Array<[JourneyDateMode, string]>).map(([mode, label]) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => update("dateMode", mode)}
+                        aria-pressed={alarm.dateMode === mode}
+                        className={`min-h-10 rounded-lg border px-2 text-xs font-bold ${
+                          alarm.dateMode === mode ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-muted-foreground"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  {alarm.dateMode === "date" && (
+                    <Input
+                      type="date"
+                      value={alarm.date}
+                      onChange={(event) => update("date", event.target.value)}
+                      aria-label="Journey date"
+                      className="mt-2 h-11 bg-card"
+                    />
+                  )}
+                </Field>
+              )}
               {pastReachBy && (
                 <div className="rounded-xl border border-route-orange/40 bg-warning-soft px-3 py-2.5">
-                  <p className="text-xs font-bold text-brand-deep">{alarm.arriveBy} has already passed today.</p>
+                  <p className="text-xs font-bold text-brand-deep">This arrival time has already passed.</p>
                   <button
                     type="button"
                     onClick={() => {
-                      const tomorrow = new Date(Date.now() + 86_400_000);
-                      const iso = tomorrow.toLocaleDateString("en-CA");
-                      update("date", iso);
+                      update("date", sgTomorrowISO());
                       update("dateMode", "date");
                     }}
                     className="mt-1.5 text-xs font-bold text-primary underline underline-offset-4"
                   >
-                    Use tomorrow's date instead
+                    Use tomorrow instead
                   </button>
                 </div>
               )}
@@ -575,7 +585,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                 <Field icon={AlarmClock} label="Reach by">
                   <Input type="time" value={alarm.arriveBy} onChange={(event) => update("arriveBy", event.target.value)} aria-label="Reach by" className="h-11 bg-card" />
                   <p className="mt-1.5 text-[11px] font-semibold text-muted-foreground">
-                    {journeyDateLabel(alarm)} · {alarm.arriveBy || "--:--"}
+                    {isRecurring(alarm.repeat) ? recurrenceLabel(alarm) : journeyDateLabel(alarm)} · {alarm.arriveBy || "--:--"}
                   </p>
                 </Field>
                 <Field icon={ShieldAlert} label="Maximum delay">
@@ -668,27 +678,37 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                 </p>
               )}
 
-              <p className="mt-3 text-xs font-bold text-brand-deep">{journeyDateTimeLabel(alarm)}</p>
+              <p className="mt-3 text-xs font-bold text-brand-deep">
+                {isRecurring(alarm.repeat) ? `${recurrenceLabel(alarm)} · Arrive by ${alarm.arriveBy}` : journeyDateTimeLabel(alarm)}
+              </p>
 
               <div className="mt-2 flex items-baseline gap-2">
                 <p className="font-display text-2xl font-bold text-primary">{departureTime}</p>
                 <span className="text-sm text-muted-foreground">→</span>
                 <p className={`font-display text-2xl font-bold ${disruption.disrupted || routeLate ? "text-route-red" : "text-brand-deep"}`}>{arrivalTime}</p>
-                <p className="ml-auto text-sm font-bold text-brand-deep">{preview.minutes} min</p>
+                <p className="ml-auto text-sm font-bold text-brand-deep">{metrics?.totalDurationMinutes ?? 0} min</p>
               </div>
               <p className="mt-1 text-xs font-semibold text-muted-foreground">
                 {routeLate
-                  ? `Leave at ${departureTime} · arrives ${arrivalTime} (${lateBy} min after latest ${latestAcceptableArrival})`
+                  ? `Leave at ${departureTime} · arrives ${arrivalTime} (${lateBy} min after latest ${latestAcceptableArrivalClock})`
                   : disruption.disrupted
                     ? `Leave at ${departureTime} · expected arrival ${arrivalTime} (planned ${alarm.arriveBy})`
                     : `Leave at ${departureTime} to reach by ${arrivalTime}`}
               </p>
+              {departurePassed && (
+                <p className="mt-1.5 rounded-lg border border-route-orange/40 bg-warning-soft px-2.5 py-1.5 text-[11px] font-bold text-brand-deep">
+                  That departure time has already passed — leaving now arrives later than shown.
+                </p>
+              )}
 
-              {disruption.disrupted && assessment && (
+              {disruption.disrupted && metrics && assessment && (
                 <dl className="mt-3 space-y-1 rounded-xl border border-route-red/30 bg-route-red/5 px-3 py-2.5 text-xs font-semibold text-brand-deep">
-                  <div className="flex justify-between gap-2"><dt>Original arrival</dt><dd>{alarm.arriveBy || "--:--"}</dd></div>
-                  <div className="flex justify-between gap-2"><dt>Updated arrival</dt><dd className="text-route-red">{assessment.predictedArrival}</dd></div>
-                  <div className="flex justify-between gap-2"><dt>Latest acceptable arrival</dt><dd>{latestAcceptableArrival}</dd></div>
+                  <div className="flex justify-between gap-2"><dt>Normal duration</dt><dd>{metrics.normalDurationMinutes} min</dd></div>
+                  <div className="flex justify-between gap-2"><dt>Disrupted duration</dt><dd className="text-route-red">{metrics.totalDurationMinutes} min</dd></div>
+                  <div className="flex justify-between gap-2"><dt>Delay</dt><dd className="text-route-red">+{metrics.delayMinutes} min</dd></div>
+                  <div className="flex justify-between gap-2"><dt>Original arrival</dt><dd>{assessment.originalArrival}</dd></div>
+                  <div className="flex justify-between gap-2"><dt>Updated arrival</dt><dd className="text-route-red">{metrics.arrivalClock}</dd></div>
+                  <div className="flex justify-between gap-2"><dt>Latest acceptable arrival</dt><dd>{metrics.latestAcceptableClock}</dd></div>
                   {lateBy > 0 && <p className="pt-1 text-route-red">This route exceeds your delay limit by {lateBy} min.</p>}
                 </dl>
               )}
@@ -696,11 +716,11 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
 
 
               <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
-                <Stat label="Walking" value={`${preview.totalWalkingDistanceMetres ?? preview.walkMetres ?? 0} m · ${preview.totalWalkingTimeMinutes ?? preview.walkMinutes ?? 0} min`} />
-                <Stat label="Transfers" value={String(preview.transfers ?? 0)} />
+                <Stat label="Walking" value={`${metrics?.walkingDistanceMetres ?? 0} m · ${metrics?.walkingMinutes ?? 0} min`} />
+                <Stat label="Transfers" value={String(metrics?.transferCount ?? 0)} />
                 <Stat
-                  label={preview.fareEstimated === false ? "Fare" : "Estimated fare"}
-                  value={typeof preview.fare === "number" ? `$${preview.fare.toFixed(2)}` : "—"}
+                  label={metrics?.fareEstimated === false ? "Fare" : "Estimated fare"}
+                  value={typeof metrics?.estimatedFare === "number" ? `$${metrics.estimatedFare.toFixed(2)}` : "—"}
                 />
               </dl>
 
@@ -741,8 +761,8 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                   badge={disruption.disrupted ? "Disruption on this route" : manualJourney ? "Chosen by you" : preferenceSummary}
                   footer={
                     disruption.disrupted && assessment
-                      ? `${disruption.incident?.line ? `${disruption.incident.line} line disruption` : "Disruption"} · about ${preview.minutes + assessment.delayMinutes} min door to door · arrive ${assessment.predictedArrival}`
-                      : `About ${preview.minutes} min door to door · ${preview.legs.length} leg${preview.legs.length > 1 ? "s" : ""} · route when no disruptions`
+                      ? `${disruption.incident?.line ? `${disruption.incident.line} line disruption` : "Disruption"} · about ${metrics?.totalDurationMinutes ?? 0} min door to door · arrive ${metrics?.arrivalClock ?? assessment.predictedArrival}`
+                      : `About ${metrics?.totalDurationMinutes ?? 0} min door to door · ${preview.legs.length} leg${preview.legs.length > 1 ? "s" : ""} · route when no disruptions`
                   }
                 />
 
@@ -884,7 +904,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
           </section>
 
           {saved && alarm.active && (
-            <CommuteAlertCard alarm={alarm} preferences={preferences} fromPlace={fromPlace} toPlace={toPlace} />
+            <CommuteAlertCard alarm={alarm} preferences={preferences} fromPlace={fromPlace} toPlace={toPlace} metrics={metrics} />
           )}
 
           <p className="px-1 text-xs leading-relaxed text-muted-foreground">

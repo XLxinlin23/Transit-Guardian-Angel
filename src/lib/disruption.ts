@@ -118,10 +118,16 @@ export function assessDisruption(params: {
   };
 
   if (!incident || !journeyAffected(journey, incident)) {
+    // An incident can be active while this particular route avoids it — say so, so the
+    // user never thinks a simulated or live incident has quietly disappeared.
+    const avoiding = Boolean(incident);
+    const label = incident?.source === "demo" ? "Demo incident active." : "Incident active.";
     return {
       ...base,
       level: "none",
-      headline: "No disruption affecting your journey.",
+      headline: avoiding
+        ? `${label} Your selected route avoids the affected ${incident!.line || "disrupted"} Line segment.`
+        : "No disruption affecting your journey.",
       detail:
         plannedArrival <= reachBy
           ? `On track to arrive by ${formatMinutes(plannedArrival)}.`

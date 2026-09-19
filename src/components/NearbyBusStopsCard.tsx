@@ -12,11 +12,14 @@ export function NearbyBusStopsCard({
   selectedCode,
   onSelect,
   origin,
+  autoSelect = false,
 }: {
   selectedCode?: string | undefined;
   onSelect: (stop: NearbyBusStop) => void;
   /** Start of the active trip — stops are shown around it instead of the device location. */
   origin?: { lat: number; lng: number; label: string } | null | undefined;
+  /** Pick the closest stop automatically when nothing valid is selected. */
+  autoSelect?: boolean;
 }) {
   const [coords, setCoords] = useState<Coords | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
@@ -51,6 +54,19 @@ export function NearbyBusStopsCard({
     staleTime: 5 * 60_000,
   });
 
+  // Keep the shown arrivals honest: as soon as stops for this anchor load, use the
+  // closest one unless the user has already picked a stop from this very list.
+  const stops = data?.stops;
+  useEffect(() => {
+    if (!autoSelect || !stops?.length) return;
+    if (selectedCode && stops.some((stop) => stop.code === selectedCode)) return;
+    onSelect(stops[0]!);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSelect, stops, selectedCode]);
+
+  const autoFailed = autoSelect && !isFetching && Boolean(anchor) && !stops?.length;
+
+
 
   return (
     <section className="glass-panel overflow-hidden rounded-2xl border-t-2 border-t-success p-5">
@@ -80,6 +96,11 @@ export function NearbyBusStopsCard({
         <p className="mt-3 text-sm text-muted-foreground">Waiting for the LTA DataMall account key.</p>
       )}
       {open && isError && <p className="mt-3 text-sm text-warning">Couldn’t load nearby stops right now.</p>}
+      {autoFailed && (
+        <p className="mt-3 text-sm font-semibold text-warning">
+          We couldn’t find a stop near your trip start — please choose a bus stop yourself.
+        </p>
+      )}
 
       {open && data?.stops.length ? (
         <ul className="mt-4 space-y-2">
