@@ -51,6 +51,18 @@ export function legAffected(leg: JourneyLeg, incident: Incident): boolean {
   const named = leg.points.map((point) => norm(point.name)).filter(Boolean);
   if (named.some((name) => affected.has(name))) return true;
 
+  // Geographic fallback: stop names from live routing do not always match our station
+  // list, so also flag the leg when its path passes right by an affected station.
+  const affectedCoords = lineStations(line).filter((station) => affected.has(norm(station.name)));
+  if (affectedCoords.length) {
+    const near = (lat: number, lng: number, station: { lat: number; lng: number }) => {
+      const dLat = (lat - station.lat) * 111320;
+      const dLng = (lng - station.lng) * 111320 * Math.cos((station.lat * Math.PI) / 180);
+      return Math.hypot(dLat, dLng) <= 400;
+    };
+    if (leg.points.some((point) => affectedCoords.some((station) => near(point.lat, point.lng, station)))) return true;
+  }
+
   // Expand the ridden stretch station by station and see if it crosses the closure.
   const endpoints = [norm(leg.from), norm(leg.to), ...named].filter(Boolean);
   const start = endpoints[0];
