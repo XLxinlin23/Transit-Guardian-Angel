@@ -78,6 +78,10 @@ export function TrafficIncidentsCard({
         )}
       </div>
 
+      {open && <p className="mt-3 text-xs font-semibold text-muted-foreground">{anchorNote}</p>}
+
+
+
       {open && data && !data.configured ? (
         <p className="mt-4 text-sm text-muted-foreground">Waiting for live road incident data.</p>
       ) : open && isError ? (
