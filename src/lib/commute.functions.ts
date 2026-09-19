@@ -271,14 +271,36 @@ export const getCommuteBriefing = createServerFn({ method: "POST" })
         ? { lat: originStation.lat, lng: originStation.lng }
         : null;
 
-    const [disruption, weather, crowdMap, bus] = await Promise.all([
+    const [disruption, weather, crowdMap, bus, trafficData] = await Promise.all([
       transit
         .fetchDisruption()
         .catch((): import("@/lib/transit.server").DisruptionInfo => ({ configured: false, disrupted: false, lines: [] })),
       data.notifyWeather && weatherPoint ? transit.fetchWeatherNear(weatherPoint.lat, weatherPoint.lng).catch(() => null) : null,
       data.notifyCrowd && routeLines[0] ? transit.fetchCrowd(routeLines[0]).catch(() => ({})) : {},
       data.notifyBus && data.busStopCode ? transit.fetchNextBus(data.busStopCode).catch(() => null) : null,
+      transit.fetchTrafficIncidents().catch(() => ({ configured: false, incidents: [] as import("@/lib/transit.server").TrafficIncident[] })),
     ]);
+
+    // Road incidents that sit on (or very near) the corridor this trip travels.
+    const corridorFrom = hasFromCoords
+      ? { lat: data.fromLat!, lng: data.fromLng! }
+      : originStation
+        ? { lat: originStation.lat, lng: originStation.lng }
+        : null;
+    const corridorTo = hasToCoords
+      ? { lat: data.toLat!, lng: data.toLng! }
+      : destStation
+        ? { lat: destStation.lat, lng: destStation.lng }
+        : null;
+    const { distanceToCorridor } = await import("@/lib/traffic.functions");
+    const routeIncidents =
+      corridorFrom && corridorTo
+        ? trafficData.incidents
+            .map((incident) => ({ incident, km: distanceToCorridor(incident, corridorFrom, corridorTo) }))
+            .filter((entry) => entry.km <= 1.2)
+            .sort((a, b) => a.km - b.km)
+        : [];
+
 
     const hitLines = disruption.lines.filter((line) => routeLines.includes(line));
     let travelMinutes = baselineMinutes;
