@@ -14,5 +14,5 @@ export default defineConfig({
   },
   // Default stays cloudflare-module (Lovable hosting). For self-hosting on
   // Google Cloud Run, build with NITRO_PRESET=node-server (see Dockerfile).
-  nitro: { preset: process.env.NITRO_PRESET || "cloudflare-module" },
+  nitro: { preset: process.env["NITRO_PRESET"] || "cloudflare-module" },
 });
