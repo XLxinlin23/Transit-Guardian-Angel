@@ -44,7 +44,8 @@ import {
 
 import { useTrip } from "@/lib/trip-store";
 import { getDeviceId } from "@/lib/device-id";
-import { compareJourneys, planJourney, type Journey } from "@/lib/journey.functions";
+import { type Journey } from "@/lib/journey.functions";
+import { useRouteStore } from "@/lib/route-state";
 import { PlacePicker, placeLine, type ConfirmedPlace } from "./PlacePicker";
 import { CommuteAlertCard } from "./CommuteAlertCard";
 import { JourneyStatusCard } from "./JourneyStatusCard";
@@ -170,7 +171,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
 
   const typedBoth = Boolean(alarm.from.trim() && alarm.to.trim());
   const bothConfirmed = Boolean(fromPlace && toPlace);
-  const looking = journeyQuery.isFetching;
+  const looking = store.loading;
   const preferenceSummary = PREFERENCE_LABELS[preferences[0] ?? "speed"];
 
   const update = <Key extends keyof RouteAlarm>(key: Key, value: RouteAlarm[Key]) => {
