@@ -36,7 +36,7 @@ export function RouteMap({ stations, segments, title = "Route map", badge, foote
   const fitRoute = () => {
     const map = mapRef.current;
     if (!map) return;
-    map.fitBounds(routeBounds, { padding: [26, 26] });
+    map.fitBounds(routeBounds, { padding: [34, 34], maxZoom: 16 });
   };
 
   useEffect(() => {
@@ -45,7 +45,7 @@ export function RouteMap({ stations, segments, title = "Route map", badge, foote
 
     const frame = window.requestAnimationFrame(() => {
       map.invalidateSize();
-      map.fitBounds(routeBounds, { padding: [26, 26] });
+      map.fitBounds(routeBounds, { padding: [34, 34], maxZoom: 16 });
     });
 
     return () => window.cancelAnimationFrame(frame);
