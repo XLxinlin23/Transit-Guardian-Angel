@@ -72,6 +72,9 @@ export const DEFAULT_ALARM: RouteAlarm = {
   from: "Tampines",
   to: "Raffles Place",
   arriveBy: "08:45",
+  dateMode: "today",
+  date: "",
+
   maxDelay: "15",
   repeat: "weekdays",
   days: ["Mon", "Tue", "Wed", "Thu", "Fri"],
