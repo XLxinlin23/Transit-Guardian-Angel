@@ -558,6 +558,8 @@ function logCandidateMetrics(candidates: JourneyCandidate[]) {
       walkingTimeMinutes: candidate.totalWalkingTimeMinutes,
       durationMinutes: candidate.totalDurationMinutes,
       transfers: candidate.numberOfTransfers,
+      transit: usesTransit(candidate),
+      crowdScore: candidate.crowdScore,
     })),
   );
 }
@@ -577,8 +579,12 @@ function pickJourney(candidates: JourneyCandidate[], preference: string): Journe
     walkMinutes: winner.totalWalkingTimeMinutes,
     totalWalkingTimeMinutes: winner.totalWalkingTimeMinutes,
     fare: winner.fare,
+    fareEstimated: winner.fareEstimated,
     transfers: winner.numberOfTransfers,
     numberOfTransfers: winner.numberOfTransfers,
+    crowdLevel: crowdLabel(winner.crowdScore),
+    dataSource: winner.source,
+    updatedAt: new Date().toISOString(),
     reason:
       preference === "walking"
         ? reasonFor(winner, preference, ranked[1])
@@ -597,6 +603,14 @@ function pickJourney(candidates: JourneyCandidate[], preference: string): Journe
   return journey;
 }
 
+function directDistance(data: PlanInput): number {
+  return distanceMetres(data.from.lat, data.from.lng, data.to.lat, data.to.lng);
+}
+
+export type PlanResult =
+  | { ok: true; journey: Journey }
+  | { ok: false; message: string };
+
 export const planJourney = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) =>
     z
@@ -607,10 +621,19 @@ export const planJourney = createServerFn({ method: "GET" })
       })
       .parse(data),
   )
-  .handler(async ({ data }): Promise<Journey | null> => {
-    const candidates = await buildCandidates(data);
-    if (process.env["NODE_ENV"] !== "production") logCandidateMetrics(candidates);
-    return pickJourney(candidates, primaryPreference(data.preferences));
+  .handler(async ({ data }): Promise<PlanResult> => {
+    const all = await buildCandidates(data);
+    const candidates = eligibleCandidates(all, directDistance(data));
+    if (process.env["NODE_ENV"] !== "production") logCandidateMetrics(all);
+    if (!candidates.length) {
+      const km = (directDistance(data) / 1000).toFixed(1);
+      return {
+        ok: false,
+        message: `No reasonable public transport route was found for this ${km} km trip. The only option returned was a very long walk, so nothing is recommended — try a nearby station or stop as your start or end point.`,
+      };
+    }
+    const journey = pickJourney(candidates, primaryPreference(data.preferences));
+    return journey ? { ok: true, journey } : { ok: false, message: "No route could be calculated for this trip." };
   });
 
 export type JourneyOption = { preference: string; journey: Journey };
@@ -621,7 +644,8 @@ export const compareJourneys = createServerFn({ method: "GET" })
     z.object({ from: pointSchema, to: pointSchema }).parse(data),
   )
   .handler(async ({ data }): Promise<JourneyOption[]> => {
-    const candidates = await buildCandidates(data);
+    const all = await buildCandidates(data);
+    const candidates = eligibleCandidates(all, directDistance(data));
     if (!candidates.length) return [];
     if (process.env["NODE_ENV"] !== "production") logCandidateMetrics(candidates);
     const options: JourneyOption[] = [];
@@ -630,4 +654,6 @@ export const compareJourneys = createServerFn({ method: "GET" })
       if (journey) options.push({ preference, journey });
     }
     return options;
+  });
+
   });
