@@ -311,8 +311,10 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
     alternatives,
     arriveBy: alarm.arriveBy,
     maxDelay: alarm.maxDelay,
+    preference: preferences[0] ?? "speed",
   });
   const assessment = disruption.assessment;
+
 
   const departureTime = recommendedJourney ? shiftTime(alarm.arriveBy, recommendedJourney.minutes) : "--:--";
   const arrivalTime = assessment ? assessment.predictedArrival : alarm.arriveBy || "--:--";
