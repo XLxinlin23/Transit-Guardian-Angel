@@ -1,7 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { STATION_INDEX, nearestStation, planRoute } from "./mrt-network";
+import { STATION_INDEX, nearestStation, planRoute, type BlockedSegment } from "./mrt-network";
+
+/** Stretches of track the fallback route must not use (matches the simulated incident). */
+const CLOSED_SEGMENTS: BlockedSegment[] = [{ line: "EW", a: "Simei", b: "Tanah Merah" }];
 import { distanceMetres, loadBusRoutes, loadBusStops, type BusStopRecord } from "./lta-static.server";
 
 export type TravelMode = "walk" | "bus" | "mrt" | "lrt";
