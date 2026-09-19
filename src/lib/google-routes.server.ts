@@ -210,15 +210,25 @@ export async function googleRoutePlans(from: Point, to: Point): Promise<GoogleRo
   const destination = { location: { latLng: { latitude: to.lat, longitude: to.lng } } };
   const common = { origin, destination, regionCode: "SG", languageCode: "en-SG" };
 
-  const [transit, walking] = await Promise.all([
-    computeRoutes({
-      ...common,
-      travelMode: "TRANSIT",
-      computeAlternativeRoutes: true,
-      transitPreferences: { allowedTravelModes: ["BUS", "SUBWAY", "TRAIN", "LIGHT_RAIL", "RAIL"] },
-    }).catch(() => []),
+  const transitBody = (routingPreference?: string) => ({
+    ...common,
+    travelMode: "TRANSIT",
+    computeAlternativeRoutes: true,
+    transitPreferences: {
+      allowedTravelModes: ["BUS", "SUBWAY", "TRAIN", "LIGHT_RAIL", "RAIL"],
+      ...(routingPreference ? { routingPreference } : {}),
+    },
+  });
+
+  const results = await Promise.all([
+    computeRoutes(transitBody()).catch(() => []),
+    computeRoutes(transitBody("LESS_WALKING")).catch(() => []),
+    computeRoutes(transitBody("FEWER_TRANSFERS")).catch(() => []),
     computeRoutes({ ...common, travelMode: "WALK" }).catch(() => []),
   ]);
+
+  const routes = results.flat();
+
 
   const plans: GoogleRoutePlan[] = [];
   for (const route of [...transit, ...walking]) {
