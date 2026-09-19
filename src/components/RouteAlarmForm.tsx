@@ -627,7 +627,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
               </div>
 
               <Field icon={CalendarDays} label="How often">
-                <Select value={alarm.repeat} onValueChange={(value) => update("repeat", value as RepeatOption)}>
+                <Select value={alarm.repeat} onValueChange={(value) => changeRepeat(value as RepeatOption)}>
                   <SelectTrigger aria-label="How often" className="h-11 bg-card"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(REPEAT_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
@@ -640,15 +640,27 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                   <legend className="text-xs font-bold text-foreground">Active days</legend>
                   <div className="mt-3 grid grid-cols-4 gap-2">
                     {WEEKDAYS.map((day) => {
-                      const checked = alarm.days.includes(day);
+                      const checked = customDraft.includes(day);
                       return (
                         <Label key={day} className={`flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border px-2 text-xs font-bold ${checked ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-muted-foreground"}`}>
-                          <Checkbox checked={checked} onCheckedChange={(value) => toggleDay(day, value === true)} className="sr-only" />
+                          <Checkbox checked={checked} onCheckedChange={(value) => toggleDraftDay(day, value === true)} className="sr-only" />
                           {day}
                         </Label>
                       );
                     })}
                   </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-3 h-10 w-full rounded-xl text-xs font-bold"
+                    disabled={customDraft.length === 0}
+                    onClick={confirmCustomDays}
+                  >
+                    Confirm days
+                  </Button>
+                  <p className="mt-1.5 text-[11px] font-semibold text-muted-foreground">
+                    Tap Confirm days to apply. Picking all seven days switches to Every day; Mon–Fri switches to Every weekday; Sat–Sun switches to Every weekend.
+                  </p>
                 </fieldset>
               )}
             </div>
