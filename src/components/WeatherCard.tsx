@@ -7,13 +7,21 @@ import { getWeather } from "../lib/singapore.functions";
 
 const WET = /rain|shower|thunder/i;
 
-export function WeatherCard({ defaultArea = "Tampines" }: { defaultArea?: string }) {
+export function WeatherCard({
+  defaultArea = "Tampines",
+  origin,
+}: {
+  defaultArea?: string;
+  /** Start of the active trip — weather follows it instead of the device location. */
+  origin?: { lat: number; lng: number; label: string } | null | undefined;
+}) {
   const [area, setArea] = useState(defaultArea);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locating, setLocating] = useState(false);
   const [locationNote, setLocationNote] = useState<string | null>(null);
   const userPicked = useRef(false);
   const fetchWeather = useServerFn(getWeather);
+
 
   const { data, isFetching, isError, refetch } = useQuery({
     queryKey: ["weather-2h"],
