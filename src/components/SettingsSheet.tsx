@@ -1,4 +1,4 @@
-import { BellRing, Bus, Check, Home, Monitor, Moon, Navigation, SlidersHorizontal, Sun, X } from "lucide-react";
+import { BellRing, Bus, Check, Home, Monitor, Moon, SlidersHorizontal, Sun, X } from "lucide-react";
 import { useTheme, type ThemeMode } from "../lib/theme";
 
 export type SubsystemKey = "home" | "preference" | "arrivals" | "alerts";
