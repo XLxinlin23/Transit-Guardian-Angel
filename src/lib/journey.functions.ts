@@ -698,5 +698,18 @@ export const compareJourneys = createServerFn({ method: "GET" })
       const journey = pickJourney(candidates, preference);
       if (journey) options.push({ preference, journey });
     }
+    // Always surface the routes that steer clear of the closed stretch, even when they
+    // win no preference — during a disruption they are the only routes worth showing.
+    const included = new Set(options.map((option) => option.journey.id));
+    const safeExtras = candidates
+      .filter((candidate) => !included.has(candidate.id) && !crossesClosedSegment(candidate.legs))
+      .sort((a, b) => a.totalDurationMinutes - b.totalDurationMinutes)
+      .slice(0, 2);
+    for (const candidate of safeExtras) {
+      const journey = pickJourney([candidate], "speed");
+      if (!journey) continue;
+      journey.reason = "Avoids the closed Simei–Tanah Merah stretch.";
+      options.push({ preference: "disruption", journey });
+    }
     return options;
   });
