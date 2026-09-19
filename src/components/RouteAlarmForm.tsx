@@ -411,12 +411,16 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
       {simClock !== null && (
         <p className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-route-orange/35 bg-warning-soft px-3 py-2 text-xs font-bold text-brand-deep">
           <span>Simulated time {formatMinutes(simClock)}</span>
-          {minutesToLeave !== null && (
-            <span className="font-semibold text-muted-foreground">
-              {minutesToLeave > 0
-                ? `· leave in ${minutesToLeave} min (${departureTime})`
-                : `· departure time ${departureTime} has passed`}
-            </span>
+          {departedClock ? (
+            <span className="font-semibold text-muted-foreground">· left at {departedClock}</span>
+          ) : (
+            minutesToLeave !== null && (
+              <span className="font-semibold text-muted-foreground">
+                {minutesToLeave > 0
+                  ? `· leave in ${minutesToLeave} min (${departureTime})`
+                  : `· departure time ${departureTime} has passed`}
+              </span>
+            )
           )}
         </p>
       )}
