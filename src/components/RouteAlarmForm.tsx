@@ -239,9 +239,29 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
     setSaved(false);
   };
 
-  const toggleDay = (day: string, checked: boolean) => {
-    const days = checked ? [...alarm.days, day] : alarm.days.filter((item) => item !== day);
-    update("days", days);
+  const [customDraft, setCustomDraft] = useState<string[]>(alarm.days);
+
+  const toggleDraftDay = (day: string, checked: boolean) => {
+    setCustomDraft((current) => (checked ? [...current, day] : current.filter((item) => item !== day)));
+  };
+
+  const confirmCustomDays = () => {
+    const picked = new Set(customDraft);
+    const isAll = WEEKDAYS.every((day) => picked.has(day));
+    const workdays = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+    const isWeekdays = workdays.every((day) => picked.has(day)) && !picked.has("Sat") && !picked.has("Sun");
+    const isWeekends = picked.has("Sat") && picked.has("Sun") && !workdays.some((day) => picked.has(day));
+    const days = WEEKDAYS.filter((day) => picked.has(day));
+    setAlarmField("days", days);
+    setSaved(false);
+    if (isAll) setAlarmField("repeat", "daily");
+    else if (isWeekdays) setAlarmField("repeat", "weekdays");
+    else if (isWeekends) setAlarmField("repeat", "weekends");
+  };
+
+  const changeRepeat = (value: RepeatOption) => {
+    update("repeat", value);
+    if (value === "custom") setCustomDraft(alarm.days);
   };
 
   const editAlarm = (entry: SavedRouteAlarm) => {
@@ -941,6 +961,7 @@ function shiftTime(hhmm: string, minusMinutes: number): string {
 
 
 function defaultDays(repeat: RepeatOption): string[] {
+  if (repeat === "daily") return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   if (repeat === "weekdays") return ["Mon", "Tue", "Wed", "Thu", "Fri"];
   if (repeat === "weekends") return ["Sat", "Sun"];
   return [];
