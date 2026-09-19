@@ -11,9 +11,12 @@ type Coords = { lat: number; lng: number };
 export function NearbyBusStopsCard({
   selectedCode,
   onSelect,
+  origin,
 }: {
   selectedCode?: string | undefined;
   onSelect: (stop: NearbyBusStop) => void;
+  /** Start of the active trip — stops are shown around it instead of the device location. */
+  origin?: { lat: number; lng: number; label: string } | null | undefined;
 }) {
   const [coords, setCoords] = useState<Coords | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
@@ -38,12 +41,16 @@ export function NearbyBusStopsCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const anchor: Coords | null = origin ? { lat: origin.lat, lng: origin.lng } : coords;
+  const anchorNote = origin ? `Stops near your trip start: ${origin.label}` : coords ? "Stops near your current location" : null;
+
   const { data, isFetching, isError } = useQuery({
-    queryKey: ["nearby-bus-stops", coords?.lat, coords?.lng],
-    queryFn: () => fetchNearby({ data: { lat: coords!.lat, lng: coords!.lng, limit: 5 } }),
-    enabled: !!coords,
+    queryKey: ["nearby-bus-stops", anchor?.lat, anchor?.lng],
+    queryFn: () => fetchNearby({ data: { lat: anchor!.lat, lng: anchor!.lng, limit: 5 } }),
+    enabled: !!anchor,
     staleTime: 5 * 60_000,
   });
+
 
   return (
     <section className="glass-panel overflow-hidden rounded-2xl border-t-2 border-t-success p-5">
