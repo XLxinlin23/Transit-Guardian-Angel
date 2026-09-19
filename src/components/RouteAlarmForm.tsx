@@ -84,6 +84,8 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
   const [saved, setSaved] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // The trip form stays closed for an already-saved alarm until the user taps it.
+  const [formOpen, setFormOpen] = useState(false);
 
   const saveRemote = useServerFn(saveCommuteSchedule);
   const listRemote = useServerFn(listCommuteSchedules);
@@ -211,6 +213,7 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
   const editAlarm = (entry: SavedRouteAlarm) => {
     loadDraft({ editingId: entry.id, alarm: entry.alarm, fromPlace: entry.fromPlace, toPlace: entry.toPlace });
     setSaved(true);
+    setFormOpen(true);
     setSettingsOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -218,13 +221,50 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
   const startNewAlarm = () => {
     startNewTrip();
     setSaved(false);
+    setFormOpen(true);
     setSettingsOpen(false);
   };
 
   const clearCurrentTrip = () => {
     clearTrip();
     setSaved(false);
+    setFormOpen(true);
     setSettingsOpen(false);
+  };
+
+  // Temporarily pause/resume an alarm without deleting it.
+  const toggleAlarmActive = async (entry: SavedRouteAlarm, active: boolean) => {
+    const updated: SavedRouteAlarm = { ...entry, alarm: { ...entry.alarm, active } };
+    persistAlarms(alarms.map((item) => (item.id === entry.id ? updated : item)));
+    if (entry.id === editingId) setAlarmField("active", active);
+    try {
+      await saveRemote({
+        data: {
+          deviceId: getDeviceId(),
+          alarmId: entry.id,
+          label: `${entry.alarm.from} → ${entry.alarm.to}`.slice(0, 60),
+          origin: entry.alarm.from,
+          destination: entry.alarm.to,
+          fromLat: entry.fromPlace?.lat ?? null,
+          fromLng: entry.fromPlace?.lng ?? null,
+          toLat: entry.toPlace?.lat ?? null,
+          toLng: entry.toPlace?.lng ?? null,
+          travelDays: entry.alarm.repeat === "custom" ? entry.alarm.days : defaultDays(entry.alarm.repeat),
+          repeatOption: entry.alarm.repeat,
+          arriveBy: entry.alarm.arriveBy,
+          maxDelay: Number(entry.alarm.maxDelay) || 0,
+          preferences,
+          active,
+          notifyLeadMinutes: Number(entry.alarm.notifyLeadMinutes) || 0,
+          notifyWeather: entry.alarm.notifyWeather,
+          notifyCrowd: entry.alarm.notifyCrowd,
+          notifyBus: entry.alarm.notifyBus,
+          busStopCode: entry.alarm.busStopCode.trim() ? entry.alarm.busStopCode.trim() : null,
+        },
+      });
+    } catch {
+      /* paused/resumed on this device; backend syncs on next save */
+    }
   };
 
   const removeAlarm = async (id: string) => {
