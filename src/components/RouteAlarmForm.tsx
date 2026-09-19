@@ -624,7 +624,9 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                 </p>
               )}
 
-              <div className="mt-3 flex items-baseline gap-2">
+              <p className="mt-3 text-xs font-bold text-brand-deep">{journeyDateTimeLabel(alarm)}</p>
+
+              <div className="mt-2 flex items-baseline gap-2">
                 <p className="font-display text-2xl font-bold text-primary">{departureTime}</p>
                 <span className="text-sm text-muted-foreground">→</span>
                 <p className={`font-display text-2xl font-bold ${disruption.disrupted || routeLate ? "text-route-red" : "text-brand-deep"}`}>{arrivalTime}</p>
