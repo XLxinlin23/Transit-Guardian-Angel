@@ -36,7 +36,7 @@ export function RouteMap({ stations, segments, title = "Route map", badge, foote
   const fitRoute = () => {
     const map = mapRef.current;
     if (!map) return;
-    map.fitBounds(routeBounds, { padding: [26, 26] });
+    map.fitBounds(routeBounds, { padding: [34, 34], maxZoom: 16 });
   };
 
   useEffect(() => {
@@ -45,7 +45,7 @@ export function RouteMap({ stations, segments, title = "Route map", badge, foote
 
     const frame = window.requestAnimationFrame(() => {
       map.invalidateSize();
-      map.fitBounds(routeBounds, { padding: [26, 26] });
+      map.fitBounds(routeBounds, { padding: [34, 34], maxZoom: 16 });
     });
 
     return () => window.cancelAnimationFrame(frame);
@@ -78,7 +78,7 @@ export function RouteMap({ stations, segments, title = "Route map", badge, foote
         className={`wayline-map overflow-hidden bg-secondary/50 ${
           expanded
             ? "fixed left-1/2 top-1/2 z-50 h-[85vh] w-screen -translate-x-1/2 -translate-y-1/2 rounded-none md:h-[80vh] md:w-[90vw] md:rounded-3xl"
-            : "relative mt-3 h-56 rounded-2xl"
+            : "relative mt-3 h-[320px] rounded-2xl md:h-[420px]"
         }`}
         role={expanded ? "dialog" : undefined}
         aria-modal={expanded ? "true" : undefined}

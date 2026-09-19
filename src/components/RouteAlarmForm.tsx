@@ -43,7 +43,7 @@ import { compareJourneys, planJourney, type Journey } from "@/lib/journey.functi
 import { PlacePicker, placeLine, type ConfirmedPlace } from "./PlacePicker";
 import { CommuteAlertCard } from "./CommuteAlertCard";
 import { RouteMap } from "./RouteMap";
-import { MODE_COLORS, MODE_LABELS } from "@/lib/travel-modes";
+import { JourneyTimeline, RouteLegend } from "./JourneySteps";
 
 export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => void }) {
   const {
@@ -170,7 +170,6 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
     () => (preview ? preview.legs.map((leg) => ({ mode: leg.mode, badge: leg.badge, points: leg.points })) : []),
     [preview],
   );
-  const modesUsed = useMemo(() => [...new Set(preview?.legs.map((leg) => leg.mode) ?? [])], [preview]);
 
   const typedBoth = Boolean(alarm.from.trim() && alarm.to.trim());
   const bothConfirmed = Boolean(fromPlace && toPlace);
@@ -528,31 +527,12 @@ export function RouteAlarmForm({ onSeeMoreRoutes }: { onSeeMoreRoutes?: () => vo
                 badge={preferenceSummary}
                 footer={`About ${preview.minutes} min door to door · ${preview.legs.length} leg${preview.legs.length > 1 ? "s" : ""} · currently no disruption`}
               />
-              <div className="mt-3 flex flex-wrap gap-3 px-1">
-                {modesUsed.map((mode) => (
-                  <span key={mode} className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground">
-                    <span className="h-1.5 w-5 rounded-full" style={{ backgroundColor: MODE_COLORS[mode] }} />
-                    {MODE_LABELS[mode]}
-                  </span>
-                ))}
+              <div className="mt-3 px-1">
+                <RouteLegend legs={preview.legs} />
               </div>
-              <ol className="mt-3 space-y-2 rounded-xl border border-border bg-card p-4">
-                {preview.legs.map((leg, index) => (
-                  <li key={`${leg.badge}-${index}`} className="flex items-start gap-3 text-sm">
-                    <span
-                      className="mt-0.5 shrink-0 rounded-md px-2 py-0.5 text-[11px] font-bold text-white"
-                      style={{ backgroundColor: MODE_COLORS[leg.mode] }}
-                    >
-                      {leg.badge}
-                    </span>
-                    <span className="min-w-0 text-foreground">
-                      <span className="font-bold text-brand-deep">{leg.from} → {leg.to}</span>
-                      <br />
-                      {leg.detail} · {leg.minutes} min
-                    </span>
-                  </li>
-                ))}
-              </ol>
+              <div className="mt-3">
+                <JourneyTimeline legs={preview.legs} />
+              </div>
             </section>
           )}
 
