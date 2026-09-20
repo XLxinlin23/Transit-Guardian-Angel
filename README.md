@@ -50,11 +50,10 @@ Hackathon prototype under active development.
 - Integrated external data sources into a React and TypeScript application
 - Learned how frontend applications consume and display live data
 
-## My Contributions
+## Key Contributions
 
-- Integrated and tested real-time API data sources through Google cloud console, Datamall, and Postman
-- Worked with API key authentication
-- Improved project documentation and organization
-- Studied and documented the application architecture
-- Contributed to feature refinement and deployment 
-
+- Integrated and tested real-time API data sources through Google Cloud Console, LTA DataMall, and Postman
+- Configured and managed API authentication using API keys
+- Tested and validated API requests and responses before application integration
+- Contributed to the development of live transport disruption monitoring features
+- Improved project documentation and repository organization
