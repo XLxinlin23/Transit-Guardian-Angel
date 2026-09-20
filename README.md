@@ -1,16 +1,6 @@
 # Transit Guardian
 
-## Overview
-
-Transit Guardian is a smart commuting assistant designed for fixed-route commuters.
-
-It monitors:
-- MRT disruptions
-- Bus arrivals
-- Traffic incidents
-- Weather conditions
-
-and alerts users only when disruptions significantly affect their normal journey.
+A smart transport disruption monitoring application designed for fixed route commuters.
 
 ## Problem Statement
 
@@ -35,21 +25,29 @@ For Rachel, minor delays are not important. However, significant disruptions can
 
 Transit Guardian focuses on notifying Rachel only when an incident is likely to impact her commute and provides clear guidance on what action to take.
 
+## Live Demo
+
+https://transit-guardian-angel.lovable.app/
+
+## Demo Video
+
+https://youtu.be/5u59cNqmxF8
+
 ## Screenshots
 
 ### Home Screen
-- Display Rachel's daily commute overview, route and status, and key transport information.
+- Display Rachel's daily commute overview, route status, and key transport information.
 
 <img width="960" height="600" alt="Screenshot 2026-09-20 224450" src="https://github.com/user-attachments/assets/1e40c40b-0e88-49d6-b12b-75cbadc8420c" />
 
 ### Preference Page
-- Allows commuters to configure their route, notification thresholds, travel preference.
+- Allows commuters to configure routes, notification thresholds, travel preference.
 
 <img width="960" height="600" alt="Screenshot 2026-09-20 224549" src="https://github.com/user-attachments/assets/9b9d1a19-7e09-4211-94fa-96e79418b8c0" />
 
 ### nearby MRT station and bus stop location, live bus arrival timing
-- tracks commute location and highlights nearby Mrt stations and Bus stops for convenient searches.
-- provides live arrival timing of all busses according to the commutes' choice of bus stop.
+- Tracks the commuter's location and highlights nearby MRT stations and Bus stops for convenient route planning.
+- provides live arrival timings of busses serving the selected bus stop.
 
 <img width="960" height="600" alt="Screenshot 2026-09-20 224614" src="https://github.com/user-attachments/assets/b0e4239b-845c-4af5-a205-623de6171927" />
 
@@ -81,13 +79,24 @@ Transit Guardian focuses on notifying Rachel only when an incident is likely to 
 - Leaflet Maps
 - Tailwind CSS
 
+## Data Sources
+
+Transit Guardian integrates real-time transport and disruption data through external APIs, including LTA DataMall services and Google Cloud APIs.
+
 ## Key Contributions
 
 - Integrated and tested real-time API data sources through Google Cloud Console, LTA DataMall, and Postman
 - Configured API authentication using API keys
-- Assisted with deployment setup
+- Assisted with deployment and cloud hosting setup
 - Organized project documentation
 - Documented application architecture and features
+
+## Documentation
+
+- ProjectOverview.md – Project goals and purpose.
+- Features.md – Core features and functionality.
+- Architecture.md – Component structure and application organization.
+- google-cloud-deploy.md – Deployment setup and Google Cloud configuration.
 
 ## What I learned 
 
@@ -97,21 +106,6 @@ Transit Guardian focuses on notifying Rachel only when an incident is likely to 
 - Used Postman to test, validate, and debug API requests
 - Integrated external data sources into a React and TypeScript application
 - Learned how frontend applications consume and display live data
-
-## Documentation
-
-- ProjectOverview.md – Project goals and purpose.
-- Features.md – Core features and functionality.
-- Architecture.md – Component structure and application organization.
-- google-cloud-deploy.md – Deployment setup and Google Cloud configuration.
-
-## Live Demo
-
-https://transit-guardian-angel.lovable.app/
-
-## Demo Video
-
-https://youtu.be/5u59cNqmxF8
 
 ## Challenges Faced
 
