@@ -12,6 +12,29 @@ It monitors:
 
 and alerts users only when disruptions significantly affect their normal journey.
 
+## Problem Statement
+
+Singapore's transport network works well on most days. However, when disruptions occur, commuters are often left to determine for themselves whether the disruption affects their journey and what alternative actions to take.
+
+Most existing transport applications are reactive and generic, providing the same information to every user regardless of their commuting habits.
+
+Commute Guardian aims to take a proactive approach by understanding a commuter's usual travel pattern and only providing alerts when a disruption has a meaningful impact on their journey.
+
+## Target User
+
+### Rachel - Fixed Schedule Commuter
+
+Rachel travels from Tampines to Raffles Place via the East-West Line every weekday.
+
+- Leaves home at 7:40 AM
+- Needs to reach the office by 8:45 AM
+- Has followed the same route for several years
+- Does not actively check transport apps on normal days
+
+For Rachel, minor delays are not important. However, significant disruptions can affect meetings and work commitments.
+
+Commute Guardian focuses on notifying Rachel only when an incident is likely to impact her commute and provides clear guidance on what action to take.
+
 ## Features
 
 - Route monitoring
@@ -50,10 +73,17 @@ Hackathon prototype under active development.
 - Integrated external data sources into a React and TypeScript application
 - Learned how frontend applications consume and display live data
 
-## Key Contributions
+## My Contributions
 
 - Integrated and tested real-time API data sources through Google Cloud Console, LTA DataMall, and Postman
-- Configured and managed API authentication using API keys
-- Tested and validated API requests and responses before application integration
-- Contributed to the development of live transport disruption monitoring features
-- Improved project documentation and repository organization
+- Configured API authentication using API keys
+- Assisted with deployment setup
+- Organized project documentation
+- Documented application architecture and features
+
+## Documentation
+
+- ProjectOverview.md – Project goals and purpose
+- Features.md – Core features and functionality
+- Architecture.md – Component structure and application organization
+- google-cloud-deploy.md – Deployment setup and Google Cloud configuration
