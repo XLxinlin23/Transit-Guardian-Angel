@@ -1,4 +1,4 @@
-# Transit Guardian
+# Transit Guardian Angel
 
 A smart transport disruption monitoring application designed for fixed route commuters.
 
@@ -8,7 +8,7 @@ Singapore's transport network works well on most days. However, when disruptions
 
 Most existing transport applications are reactive and generic, providing the same information to every user regardless of their commuting habits.
 
-Transit Guardian aims to take a proactive approach by understanding a commuter's usual travel pattern and only providing alerts when a disruption has a meaningful impact on their journey.
+Transit Guardian Angel aims to take a proactive approach by understanding a commuter's usual travel pattern and only providing alerts when a disruption has a meaningful impact on their journey.
 
 ## Target User
 
@@ -23,7 +23,7 @@ Rachel travels from Tampines to Raffles Place via the East-West Line every weekd
 
 For Rachel, minor delays are not important. However, significant disruptions can affect meetings and work commitments.
 
-Transit Guardian focuses on notifying Rachel only when an incident is likely to impact her commute and provides clear guidance on what action to take.
+Transit Guardian Angel focuses on notifying Rachel only when an incident is likely to impact her commute and provides clear guidance on what action to take.
 
 ## Live Demo
 
@@ -31,7 +31,7 @@ https://transit-guardian-angel.lovable.app/
 
 ## Demo Video
 
-https://youtu.be/5u59cNqmxF8
+https://studio.youtube.com/video/5u59cNqmxF8/edit
 
 ## Screenshots
 
@@ -81,7 +81,7 @@ https://youtu.be/5u59cNqmxF8
 
 ## Data Sources
 
-Transit Guardian integrates real-time transport and disruption data through external APIs, including LTA DataMall services and Google Cloud APIs.
+Transit Guardian Angel integrates real-time transport and disruption data through external APIs, including LTA DataMall services and Google Cloud APIs.
 
 ## Key Contributions
 
@@ -117,4 +117,4 @@ Transit Guardian integrates real-time transport and disruption data through exte
 
 ## Reflection
 
-This project was my first experience working with real-time APIs and live transport data. Through the development of Transit Guardian, I learned how API keys are managed, how external data sources are tested and integrated, and how meaningful commuter alerts can be generated from live information. The project also gave me experience understanding and documenting an existing codebase rather than building everything from scratch.
+This project was my first experience working with real-time APIs and live transport data. Through the development of Transit Guardian Angel, I learned how API keys are managed, how external data sources are tested and integrated, and how meaningful commuter alerts can be generated from live information. The project also gave me experience understanding and documenting an existing codebase rather than building everything from scratch.
