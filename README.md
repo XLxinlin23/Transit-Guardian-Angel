@@ -31,7 +31,7 @@ https://transit-guardian-angel.lovable.app/
 
 ## Demo Video
 
-https://studio.youtube.com/video/5u59cNqmxF8/edit
+https://youtu.be/5u59cNqmxF8
 
 ## Screenshots
 
